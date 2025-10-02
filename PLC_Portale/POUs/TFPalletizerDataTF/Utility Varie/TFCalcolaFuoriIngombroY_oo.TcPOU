@@ -1,0 +1,277 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="TFCalcolaFuoriIngombroY_oo" Id="{702c3a3d-f7a6-4d5e-8274-658ec34cfe30}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCalcolaFuoriIngombroY_oo
+VAR_INPUT
+	
+	WorkArea : POINTER TO TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO TFMachinePalletizer_WorkAreaState;
+	Pallet : POINTER TO  TFMachinePalletizer_Pallet;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	AngoloRotazioneDestinazionePinza : REAL;
+END_VAR
+VAR_OUTPUT
+	Errore : TFError_WAM;
+	QuotaFuoriIngombro_Y_Calcolata : LREAL;
+END_VAR
+VAR
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+QuotaFuoriIngombro_Y_Calcolata := 0;
+(* Calcolo gli ingombri della pinza nelle varie direzioni *)
+TFCalcoliIngombroPinza(Mission := Mission,
+							WorkAreaManager := WorkAreaManager,
+							ModuleAX_J := ModuleAX_J,
+							AngoloRotazioneDestinazionePinza:= AngoloRotazioneDestinazionePinza,
+							IngombroX_Pos := ADR(IngombroX_Pos),
+							IngombroY_Pos := ADR(IngombroY_Pos),
+							IngombroX_Neg := ADR(IngombroX_Neg),
+							IngombroY_Neg := ADR(IngombroY_Neg),
+							IngombroZ_Pos := ADR(IngombroZ_Pos),
+							IngombroZ_Neg := ADR(IngombroZ_Neg),
+							IngombroY_Tot := ADR(IngombroY_Tot),
+							IngombroDestinazioneX_Pos := ADR(IngombroDestinazioneX_Pos),
+							IngombroDestinazioneY_Pos := ADR(IngombroDestinazioneY_Pos),
+							IngombroDestinazioneX_Neg := ADR(IngombroDestinazioneX_Neg),
+							IngombroDestinazioneY_Neg := ADR(IngombroDestinazioneY_Neg),
+							IngombroDestinazioneZ_Pos := ADR(IngombroDestinazioneZ_Pos),
+							IngombroDestinazioneZ_Neg := ADR(IngombroDestinazioneZ_Neg),
+							IngombroMaxX_Pos := ADR(IngombroMaxX_Pos),
+							IngombroMaxY_Pos := ADR(IngombroMaxY_Pos),
+							IngombroMaxX_Neg := ADR(IngombroMaxX_Neg),
+							IngombroMaxY_Neg := ADR(IngombroMaxY_Neg),
+							IngombroMaxZ_Pos := ADR(IngombroMaxZ_Pos),
+							IngombroMaxZ_Neg := ADR(IngombroMaxZ_Neg));
+
+CASE VERSO_PALLETTIZZATORE OF
+	{region " Pallettizzatore DX "}					
+	PALLETTIZZATORE_DX:
+		CASE RIFERIMENTO_POSTAZIONE_WA OF
+			{Region "ANGOLO DX" }
+			ANGOLO_DX:
+			
+				IF AngoloRotazioneDestinazionePinza > 90 THEN					
+				
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y + 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+										
+				ELSIF AngoloRotazioneDestinazionePinza < 90 THEN
+									
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y - 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim/2;(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+				ELSE
+					
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y;// + 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													//OffsetSicurezza.Y.Avuoto;
+				END_IF
+			{endregion}
+			{Region "CENTRALE" }
+			CENTRALE :
+			
+				IF AngoloRotazioneDestinazionePinza > 90 THEN					
+				
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y + 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim/2 +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+										
+				ELSIF AngoloRotazioneDestinazionePinza < 90 THEN
+									
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y - 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim/2 -(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+				ELSE
+					
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y;// + 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													//OffsetSicurezza.Y.Avuoto;
+				END_IF
+			{endregion}
+			{Region "ANGOLO SX" }
+			ANGOLO_SX :
+			
+				IF AngoloRotazioneDestinazionePinza > 90 THEN					
+				
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y + 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+										
+				ELSIF AngoloRotazioneDestinazionePinza < 90 THEN
+									
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y - 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim/2;(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+				ELSE
+					
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y;// + 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													//OffsetSicurezza.Y.Avuoto;
+				END_IF
+			{endregion}
+
+			{Region "XDX_YCENTRALE" }			
+			XDX_YCENTRALE:	
+			
+				;		
+			{endregion}
+
+			{Region "XSX_YCENTRALE" }
+			XSX_YCENTRALE:
+			
+				;
+			{endregion}
+			
+		ELSE
+			Errore.Code := ErrWAM_FTC_PostazioneNONDefinita;
+		END_CASE	
+	{endregion}	
+	{region " Pallettizzatore SX "}	
+	PALLETTIZZATORE_SX:
+
+		CASE RIFERIMENTO_POSTAZIONE_WA OF
+			{Region "ANGOLO DX" }
+			ANGOLO_DX:
+			
+				IF AngoloRotazioneDestinazionePinza > 95 THEN					
+				
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y + 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													IngombroDestinazioneY_Neg +
+													OffsetSicurezza.Y.Avuoto;
+										
+				ELSIF AngoloRotazioneDestinazionePinza < 85 THEN
+									
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y - 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim/2;(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													IngombroDestinazioneY_Pos -
+													OffsetSicurezza.Y.Avuoto;
+				ELSE
+					
+					IF ModuleAX_Y^.Ax^.Status.ActPosition >= WorkArea^.Y THEN 
+						QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y + 					(* Quota Y Postazione *)																									
+															WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+															IngombroDestinazioneY_Neg +
+															OffsetSicurezza.Y.Avuoto;
+					ELSE
+						QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y - 					(* Quota Y Postazione *)																									
+															//WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+															IngombroDestinazioneY_Pos +
+															OffsetSicurezza.Y.Avuoto;
+
+					END_IF
+				END_IF
+			{endregion}
+			{Region "CENTRALE" }				
+			CENTRALE :
+				IF AngoloRotazioneDestinazionePinza > 90 THEN					
+				
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y + 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim/2 +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+										
+				ELSIF AngoloRotazioneDestinazionePinza < 90 THEN
+									
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y - 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim/2 -(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+				ELSE
+					
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y;// + 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													//OffsetSicurezza.Y.Avuoto;
+				END_IF
+			{endregion}
+			{Region "ANGOLO SX" }
+			ANGOLO_SX :
+				IF AngoloRotazioneDestinazionePinza > 90 THEN					
+				
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y + 					(* Quota Y Postazione *)																									
+													WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+										
+				ELSIF AngoloRotazioneDestinazionePinza < 90 THEN
+									
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y - 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim/2;(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													OffsetSicurezza.Y.Avuoto;
+				ELSE
+					
+					QuotaFuoriIngombro_Y_Calcolata := WorkArea^.Y;// + 					(* Quota Y Postazione *)																									
+													//WorkAreaState^.Supporto.YDim +(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+													//OffsetSicurezza.Y.Avuoto;
+				END_IF
+			{endregion}
+			{Region "XDX_YCENTRALE" }
+			XDX_YCENTRALE:
+				;
+			{endregion}
+			{Region "XSX_YCENTRALE" }
+			XSX_YCENTRALE:
+				;
+			{endregion}		
+							
+		ELSE
+			Errore.Code := ErrWAM_FTC_PostazioneNONDefinita;
+		END_CASE
+	{endregion}	
+	ELSE
+		;	
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcolaFuoriIngombroY_oo">
+      <LineId Id="420" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="463" Count="22" />
+      <LineId Id="421" Count="0" />
+      <LineId Id="486" Count="0" />
+      <LineId Id="11" Count="6" />
+      <LineId Id="21" Count="2" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="334" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="332" Count="1" />
+      <LineId Id="39" Count="2" />
+      <LineId Id="335" Count="1" />
+      <LineId Id="46" Count="5" />
+      <LineId Id="337" Count="15" />
+      <LineId Id="72" Count="4" />
+      <LineId Id="353" Count="15" />
+      <LineId Id="104" Count="5" />
+      <LineId Id="132" Count="5" />
+      <LineId Id="161" Count="8" />
+      <LineId Id="430" Count="0" />
+      <LineId Id="170" Count="3" />
+      <LineId Id="371" Count="3" />
+      <LineId Id="488" Count="0" />
+      <LineId Id="375" Count="5" />
+      <LineId Id="489" Count="0" />
+      <LineId Id="381" Count="2" />
+      <LineId Id="423" Count="0" />
+      <LineId Id="384" Count="1" />
+      <LineId Id="490" Count="0" />
+      <LineId Id="386" Count="0" />
+      <LineId Id="424" Count="0" />
+      <LineId Id="427" Count="1" />
+      <LineId Id="491" Count="0" />
+      <LineId Id="429" Count="0" />
+      <LineId Id="426" Count="0" />
+      <LineId Id="425" Count="0" />
+      <LineId Id="201" Count="3" />
+      <LineId Id="403" Count="15" />
+      <LineId Id="226" Count="3" />
+      <LineId Id="387" Count="15" />
+      <LineId Id="253" Count="3" />
+      <LineId Id="283" Count="3" />
+      <LineId Id="315" Count="9" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

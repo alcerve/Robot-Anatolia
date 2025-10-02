@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFModulePalletizerRobot_OUT" Id="{8b334c21-60a7-4bf8-971c-17d723ac0240}">
+    <Declaration><![CDATA[TYPE TFModulePalletizerRobot_OUT :
+STRUCT
+
+	EV_Suction			: BOOL;
+	EV_SuctionCupsUp	: BOOL;
+	EV_SuctionCupsDown	: BOOL;
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

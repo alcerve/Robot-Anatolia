@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFNumeroPacchiSuLinea" Id="{8f764da7-feb1-47a2-9b06-9bacd2aaaa80}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFNumeroPacchiSuLinea : UINT
+VAR_INPUT
+	ArrayPacchi : POINTER TO DUT_ArrayPacchi; 					//Array contenente i pacchi sui trasporti				
+END_VAR
+VAR
+	i : UINT;
+//	j : uint;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFNumeroPacchiSuLinea := 0; 
+
+FOR i:= 1 TO MAXDIMARRAYPACCHI DO
+	//FOR j:= 1 TO MAXHANDLINGPACK-1 DO
+		IF ArrayPacchi^.Pacco[i].ID.ID_Pacco[0] > 0 THEN
+			TFNumeroPacchiSuLinea := TFNumeroPacchiSuLinea +1;
+		END_IF
+	//END_FOR
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="TFNumeroPacchiSuLinea">
+      <LineId Id="9" Count="2" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="34" Count="1" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

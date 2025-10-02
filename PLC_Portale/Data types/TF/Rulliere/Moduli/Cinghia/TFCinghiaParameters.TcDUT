@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFCinghiaParameters" Id="{5c1ce1c9-58fd-4971-8b10-d6c1a6e11873}">
+    <Declaration><![CDATA[TYPE TFCinghiaParameters :
+STRUCT
+	ExtraLoadSpace 		: REAL := 100; //Spazio Extra per fermata su sensore in fase di carico	
+	ExtraUnloadSpace 	: REAL := 200; //Spazio Extra per scarico rulliera 
+	ExtraSpinta      	: real := 50; //Spazion aggiungiuntivo per spinta pallet in accoppiamento
+	//Con Carico a bordo
+	VelocitaCarico			: REAL := 20; // [%] Percentuale Velocità Con carico a bordo
+	AccCarico				: REAL := 20; // [%] Percentuale Accelerazione Con carico a bordo
+	DecCarico				: REAL := 20; // [%] Percentuale Decelerazione Con carico a bordo
+	//Senza Carico a bordo
+	VelocitaVuoto			: REAL := 50; // [%] Percentuale Velocità Senza carico a bordo 
+	AccVuoto				: REAL := 50; // [%] Percentuale Accelerazione Senza carico a bordo
+	DecVuoto				: REAL := 50; // [%] Percentuale Decelerazione Senza carico a bordo
+	//Manulai
+	VelocitaJog				: REAL := 50; // [%] Percentuale Velocità Manuale
+	AccJog					: REAL := 50; // [%] Percentuale Accelerazione Manuale
+	DecJog					: REAL := 50; // [%] Percentuale Decelerazione Manuale
+
+	CorrezioneVelocitaInverter2PerTandem 		: REAL := 5;
+	CorrezioneVelocitaInverter2PerTandemMonte 	: REAL := 5;
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

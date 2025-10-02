@@ -1,0 +1,180 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFGestioneFTC_Misura" Id="{7870dc10-f58d-4038-8661-3a52a9e0bb1b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFGestioneFTC_Misura
+VAR_INPUT
+	EseguiMisura 	: BOOL; //Start esecuzione misura
+	IN 				: TFGestioneFTC_Misura_IN; //Struttura Ingressi
+	PosizioneAsse 	: LREAL;	//Posizione dell'asse
+	AsseInMovimento : BOOL; //Indica se l'asse è in movimento o meno
+	SpazioFiltro 	: REAL := 50; //Spazio utilizzato per filtrare le FTC
+END_VAR
+VAR_OUTPUT
+	
+	OUT 				: TFGestioneFTC_Misura_OUT;
+END_VAR
+VAR
+	FiltroFTC1 : Signal_SpaceFilter;
+	FiltroFTC2 : Signal_SpaceFilter;
+	FiltroFTC3 : Signal_SpaceFilter;
+	FiltroFTC4 : Signal_SpaceFilter;
+	
+	StartLettura 	: BOOL;
+	PosizioneTesta 	: REAL;
+	PosizioneCoda 	: REAL;
+	
+	UltimaLunghezza : REAL := 0; //Appoggio x debug
+	FTC_PallettoneIntercettata : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FiltroFTC1(Sensor:=IN.FTC_ZoccoloBasso,
+			ActualPosition:=PosizioneAsse,
+			SpaceFilter:=SpazioFiltro,
+			AxisMoving:=AsseInMovimento,
+			EnableDirectStatusAxStop:=TRUE,
+			SensorOUT=>OUT.FTC_ZoccoloBassoFiltrata);
+FiltroFTC2(Sensor:=IN.FTC_Pallettone,
+			ActualPosition:=PosizioneAsse,
+			SpaceFilter:=SpazioFiltro,
+			AxisMoving:=AsseInMovimento,
+			EnableDirectStatusAxStop:=TRUE,
+			SensorOUT=>OUT.FTC_PallettoneFiltrata);
+FiltroFTC3(Sensor:=IN.FTC_CavallinaBassa,
+			ActualPosition:=PosizioneAsse,
+			SpaceFilter:=SpazioFiltro,
+			AxisMoving:=AsseInMovimento,
+			EnableDirectStatusAxStop:=TRUE,
+			SensorOUT=>OUT.FTC_CavallinaBassaFiltrata);
+FiltroFTC4(Sensor:=IN.FTC_CavallinaAlta,
+			ActualPosition:=PosizioneAsse,
+			SpaceFilter:=SpazioFiltro,
+			AxisMoving:=AsseInMovimento,
+			EnableDirectStatusAxStop:=TRUE,
+			SensorOUT=>OUT.FTC_CavallinaAltaFiltrata);
+
+IF EseguiMisura THEN
+	IF OUT.FTC_ZoccoloBassoFiltrata THEN
+		//Memorizzo la quota della testa dell'elemento
+		IF NOT StartLettura THEN 
+			Out.Supporto := SupportoVuoto;//Sbianco la memoria dell'ultima lettura
+			UltimaLunghezza := 0;
+			OUT.MisuraInCorso := TRUE;  
+			PosizioneTesta := PosizioneAsse;
+			StartLettura := TRUE;
+		END_IF	
+	
+		IF OUT.FTC_PallettoneFiltrata OR WEINTEK_TRANSPORT.AbilitaIngressoPalletSingolo THEN //Se vedo questa FTC sicuramente non è una cassa
+			IF NOT WEINTEK_TRANSPORT.AbilitaIngressoPalletSingolo THEN
+				OUT.Supporto.Tipologia := PALLET_ACCOPPIATI;//Dichiaro la tipologia di supporto
+			ELSE
+				OUT.Supporto.Tipologia := PALLET_STANDARD;//Dichiaro la tipologia di supporto
+			END_IF
+			OUT.Supporto.ZDim := 1000;//800;
+			OUT.Supporto.HMAX := 1000;//800;
+			FTC_PallettoneIntercettata := TRUE;
+			IF OUT.FTC_CavallinaBassaFiltrata THEN //Se vedo questa FTC si tratta di una cavallina Bassa
+				OUT.Supporto.Tipologia := CAVALLETTO;//Dichiaro la tipologia di supporto
+				OUT.Supporto.ZDim := 350;
+				OUT.Supporto.HMAX := 1600;
+			END_IF
+			IF OUT.FTC_CavallinaAltaFiltrata THEN //Se vedo questa FTC si tratta di cavallina ALTA
+				OUT.Supporto.Tipologia := CAVALLETTO;//Dichiaro la tipologia di supporto
+				OUT.Supporto.ZDim := 350;
+				OUT.Supporto.HMAX := 2000;
+			END_IF
+		ELSIF NOT OUT.FTC_PallettoneFiltrata AND NOT FTC_PallettoneIntercettata THEN //Se non vedo questa FTC si tratta di una cassa
+			OUT.Supporto.Tipologia := CASSA_STANDARD;//Dichiaro la tipologia di supporto
+			OUT.Supporto.ZDim := 200;
+			OUT.Supporto.HMAX := 420;
+		END_IF
+	
+	ELSIF NOT OUT.FTC_ZoccoloBassoFiltrata AND StartLettura THEN
+		Out.MisuraDone := TRUE;
+		OUT.MisuraInCorso := TRUE;  
+		PosizioneCoda := PosizioneAsse;
+		Out.LunghezzaMisurata := PosizioneCoda - PosizioneTesta;
+		Out.Supporto.XDim := Out.LunghezzaMisurata;
+		UltimaLunghezza := Out.LunghezzaMisurata;
+		FTC_PallettoneIntercettata := FALSE;
+	END_IF
+	//Cambio tipologia nel caso di pallet >= 1400
+	IF Out.Supporto.XDim >= 1400 AND OUT.Supporto.Tipologia = PALLET_ACCOPPIATI THEN
+		OUT.Supporto.Tipologia := PALLET_STANDARD;
+	END_IF
+ELSE
+	Out.MisuraDone 		:= FALSE;
+	OUT.MisuraInCorso 	:= FALSE;
+	StartLettura 		:= FALSE;
+	
+END_IF
+
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFGestioneFTC_Misura">
+      <LineId Id="48" Count="1" />
+      <LineId Id="181" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="60" Count="1" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="63" Count="4" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="69" Count="4" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="75" Count="2" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="297" Count="0" />
+      <LineId Id="296" Count="0" />
+      <LineId Id="298" Count="1" />
+      <LineId Id="209" Count="1" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="206" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="37" Count="1" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="265" Count="3" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="105" Count="1" />
+      <LineId Id="108" Count="1" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="270" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="309" Count="2" />
+      <LineId Id="308" Count="0" />
+      <LineId Id="142" Count="3" />
+      <LineId Id="304" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="92" Count="1" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

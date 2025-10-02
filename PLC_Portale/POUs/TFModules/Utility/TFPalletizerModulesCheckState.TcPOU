@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerModulesCheckState" Id="{78339197-fe0d-41e4-afb8-c10428a119c4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerModulesCheckState : BOOL (* Funzione che ritorna TRUE se tutti i moduli sono nello stato richiesto *)
+VAR_INPUT
+	State : UINT;
+	Modules : POINTER TO TFPalletizerModules;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerModulesCheckState	:=	
+						TFStateCodeGet(Modules^.AX_X.State) = State AND
+						TFStateCodeGet(Modules^.AX_Y.State) = State AND
+						TFStateCodeGet(Modules^.AX_Z.State) = State AND 
+						TFStateCodeGet(Modules^.AX_J.State) = State AND 
+						TFStateCodeGet(Modules^.Pinza.State) = State;
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerModulesCheckState">
+      <LineId Id="109" Count="0" />
+      <LineId Id="127" Count="3" />
+      <LineId Id="126" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

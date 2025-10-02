@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="Comandi_1" Id="{50d904c2-2cb6-4a6c-8f82-d26d815796d9}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+	
+	CmdSbloccaBascolante 					: INT := 5000; (* Command: Do *)
+	CmdBloccaBascolante 					: INT := 5100; (* Command: Do *)
+	CmdSbloccaRotazione 					: INT := 5200; (* Command: Do *)
+	CmdBloccaRotazione 						: INT := 5300; (* Command: Do *)
+	CmdBloccaPinza							: INT := 5400; //blocco di tutta la pinza
+	CmdSbloccaPinza							: INT := 5500; //sblocco di tutta la pinza
+
+	
+	StateSbloccaBascolante_RUN 			: INT := 5000;
+	StateSbloccaBascolante_END 			: INT := 5099;
+	StateBloccaBascolante_RUN 			: INT := 5100;
+	StateBloccaBascolante_END 			: INT := 5199;
+//                                        
+	StateSbloccaRotazione_RUN 			: INT := 5200;
+	StateSbloccaRotazione_END 			: INT := 5299;
+	StateBloccaRotazione_RUN 			: INT := 5300;
+	StateBloccaRotazione_END 			: INT := 5399;
+                                          
+	StateBloccaPinza_RUN 			: INT := 5400;
+	StateBloccaPinza_END 			: INT := 5499;
+	StateSbloccaPinza_RUN 			: INT := 5500;
+	StateSbloccaPinza_END 			: INT := 5599;
+
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

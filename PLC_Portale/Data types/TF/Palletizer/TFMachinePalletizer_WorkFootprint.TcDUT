@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkFootprint" Id="{d4970261-375b-42a0-a66d-deb3f80b0ae3}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkFootprint :
+STRUCT
+	X			: REAL	:= 0.0;	(* READ	- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Y			: REAL	:= 0.0;	(* READ	- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Z			: REAL	:= 0.0;	(* READ	- (mm) Quota assoluta di impianto DA ORIGINE *)
+	XDim		: REAL	:= 0.0;	(* READ	- (mm) Dimensione X *)
+	YDim		: REAL	:= 0.0;	(* READ	- (mm) Dimensione Y *)
+	ZDim		: REAL	:= 0.0;	(* READ	- (mm) Dimensione Z *)	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

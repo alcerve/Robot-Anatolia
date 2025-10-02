@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerGetNumPickPointForLayerCode" Id="{94ea2132-b464-42da-80fa-00fe34948988}" SpecialFunc="None">
+    <Declaration><![CDATA[(* Restituisce il numero del Pick-Point in cui è presente LA FALDA col codice desiderato, se restituisce -1, nessun Pick-Point ha il codice *)
+FUNCTION TFPalletizerGetNumPickPointForLayerCode : UINT 
+VAR_INPUT
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	LayerCode : INT;
+END_VAR
+VAR
+	pickpoint : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Restituisce il numero del Pick-Point in cui è presente LA FALDA col codice desiderato, se restituisce -1, nessun Pick-Point ha il codice *)
+(* Per tutti i Pick-Point *)
+FOR pickpoint:=1 TO MAXPICKPOINT DO
+	(* Se il Pick Point è Abilitato *)
+	IF WorkPickPoint^[pickpoint].Enable = 1 THEN
+		(* Se il Pick Point è di tipo Magazzino Falde *)
+		IF WorkPickPoint^[pickpoint].Tipologia = MAGAZZINO_FALDE THEN
+			(* Se è presente almeno una falda *)
+			IF WorkPickPointState^[WorkPickPoint^[pickpoint].ID].ProdPresence = PROD_PRESENTE THEN
+				(* Se il codice coincide con quello richiesto *)
+				IF WorkPickPointState^[WorkPickPoint^[pickpoint].ID].Code = LayerCode THEN
+					(* La funzione restituisce il numero del Pick-Point *)
+					TFPalletizerGetNumPickPointForLayerCode := (pickpoint);
+					RETURN;
+				END_IF	
+			END_IF				
+		END_IF
+	END_IF
+END_FOR
+TFPalletizerGetNumPickPointForLayerCode := 0;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerGetNumPickPointForLayerCode">
+      <LineId Id="95" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

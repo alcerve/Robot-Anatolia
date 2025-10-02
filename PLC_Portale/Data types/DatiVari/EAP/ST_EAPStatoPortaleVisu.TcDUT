@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_EAPStatoPortaleVisu" Id="{55a7f8f5-6532-4a84-98e0-5ced8618281d}">
+    <Declaration><![CDATA[TYPE ST_EAPStatoPortaleVisu : 
+	STRUCT
+		(*   X Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2)   *)
+		AsseX : ST_EAPAxeState;
+		(*   Y Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2)   *)
+		AsseY : ST_EAPAxeState;
+		(*   Z Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2)   *)
+		AsseZ : ST_EAPAxeState;
+		(*   J Axe State (UI Position=°,  UI Velocity=°/sec  UI Acc/Dec=°/sec2)   *)
+		AsseJ : ST_EAPAxeState;
+		(*   K Axe State (UI Position=°,  UI Velocity=°/sec  UI Acc/Dec=°/sec2)   *)
+		AsseK : ST_EAPAxeState;
+		(*  Stato completo della pinza  *)
+		Pinza : ST_EAPPinzaVenstoseStateComplete;
+		(*  Stato del modulo macchina  *)
+		Macchina : ST_EAPMachineState;
+		(*  Stato del modulo di gestione Asse X  *)
+		ModAsse_X : ST_EAPModuleState;
+		(*  Stato del modulo di gestione Asse Y  *)
+		ModAsse_Y : ST_EAPModuleState;
+		(*  Stato del modulo di gestione Asse z  *)
+		ModAsse_Z : ST_EAPModuleState;
+		(*  Stato del modulo di gestione Asse J  *)
+		ModAsse_J : ST_EAPModuleState;
+		(*  Stato del modulo di gestione Asse K  *)
+		ModAsse_K : ST_EAPModuleState;
+		(*  Stato del modulo di gestione Pinza  *)
+		ModPinza : ST_EAPModuleState;
+		(*  Stato del modulo di gestione Barcode  *)
+		ModLettoreBc : ST_EAPModuleState;
+	END_STRUCT
+END_TYPE
+
+
+
+
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

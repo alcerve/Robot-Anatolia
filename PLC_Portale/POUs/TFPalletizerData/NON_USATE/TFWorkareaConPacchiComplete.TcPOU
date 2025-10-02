@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFWorkareaConPacchiComplete" Id="{52bb9255-5907-48e8-a9d1-a2f34535c493}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFWorkareaConPacchiComplete : BOOL
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+END_VAR
+VAR
+	wa : INT;
+	n : INT;
+	i : INT;
+	a : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFWorkareaConPacchiComplete := TRUE; 
+
+FOR wa:=1 TO MAXAREA DO
+	IF WorkArea^[wa].Enable = 1 THEN
+		(* Verifico se il codice è già stato assegnato *)
+		IF (WorkArea^[wa].Code > 0 AND WorkArea^[wa].Typology = TYPOLOGY_PALLET) AND 
+		(WorkAreaState^[wa].State < WORKAREA_STATE_OCCUPIED_WORKED AND WorkAreaState^[wa].State > WORKAREA_STATE_FREE_DISABLED) AND 
+		(Forming^[WorkAreaState^[wa].F].PackXP[WorkAreaState^[wa].P].Grip <> -1 AND 
+		Forming^[WorkAreaState^[wa].F].PackXN[WorkAreaState^[wa].P].Grip <> -1) THEN
+			TFWorkareaConPacchiComplete := FALSE; 
+			RETURN;
+		END_IF
+	END_IF
+END_FOR
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFWorkareaConPacchiComplete">
+      <LineId Id="12" Count="1" />
+      <LineId Id="121" Count="2" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="129" Count="0" />
+      <LineId Id="131" Count="3" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

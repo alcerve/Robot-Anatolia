@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Work_PickPoint_Dimension" Id="{46cc8879-4b37-4eef-a852-4884601c1d0c}">
+    <Declaration><![CDATA[TYPE Work_PickPoint_Dimension :
+STRUCT
+	Xdim	:REAL := 600; // Larghezza
+	Ydim	:REAL := 0; // Lunghezza
+	Zdim	:REAL := 900; // Altezza
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

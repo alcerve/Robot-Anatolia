@@ -1,0 +1,1409 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFModulePalletizer_Ax" Id="{181cc900-7ad4-4607-83e4-ad5a256f2554}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFModulePalletizer_Ax
+VAR_INPUT
+	Cmd : CommandBuffer;
+	Cfg : Config;
+	IN : Module_Palletizer_Ax_IN;
+	Ax : POINTER TO TFMotion;
+	ManCmd : POINTER TO TFMachinePalletizer_AxeManCmd;
+	AxisPar : POINTER TO Ax_Palletizer_Parameters;
+	AxHomingParameters : POINTER TO AxHomingParameters;
+	Programma : POINTER TO Descrittore_Programma;
+	ProgrammaNEXT : POINTER TO Descrittore_Programma;
+	AbilitaOffsetInUscitaTasteggio : BOOL := FALSE;	
+	OffsetUscitaDaTasteggio: REAL := 0.0; 
+	EncoderEsterno : POINTER TO GestioneEncoderEsterno;
+	VelocitaDiUscitaDaTastatori : REAL;
+	TempoRisalitaTastatori : REAL := 1;
+	ByPassTastatoriInUscitaTasteggio : BOOL := FALSE;//Bypass sensore in uscita tastatori
+	InterventoPxASpazio : BOOL := FALSE;
+	SpazioInteventoPX : REAL := 20;
+END_VAR
+VAR_OUTPUT
+	CmdExe : CommandExe;
+	CmdExd : CommandExe;
+	CmdNext : Command;
+	CmdLog : CommandLog;
+	ProgramLog : ProgrammaLog; 
+	State : State;
+	StateLog : StateLog;
+	Error : Error;
+	ErrorLog : ErrorLog;
+	Warning : Warning;
+	WarningLog : WarningLog;
+	OUT : Module_Palletizer_Ax_OUT;
+	//Status : TFTransportModuleStatus;
+	QuotaAsseLetturaTasteggio : LREAL;
+END_VAR
+VAR
+	Power : UINT;
+	Init : BOOL;
+	Timer : REAL;
+	Timeout : REAL;
+	TimerControlloCoppia : REAL;
+	TempoFiltroTastatoriON : REAL;
+	TempoFiltroTastatoriOFF : REAL;
+	ParametersArray : ParametersArray;
+	MAN_Actuator : UINT;
+	MAN_Cmd : UINT;
+	
+	Px_Touch : BOOL;
+	Px_TouchEmergency : BOOL;
+	
+	AggiornamentoParametriDone : BOOL;	  // va a true quando si carica un nuovo programma
+	AggiornamentoLogProgrammiDone : BOOL := TRUE; // va a true quando è stato aggiornato il Log dei programmi eseguiti
+	LancioNuovaMove	: BOOL; // Va a true quando dall'esterno viene lanciata una nuova move con un  nuovo programma.
+	TempoControlloCoppia : REAL := 200;
+	ContatoreNext : INT;
+	ProgrammaLanciatoTrig : BOOL;
+	ComandiMovimentoInviati : UINT;
+	MovimentiDiretti : UINT;
+	
+	HomeDirect : BOOL;
+	Spaziotastatori : Signal_SpaceFilter;
+	PxSimulatoTasteggioSpazio: BOOL;
+	DirezionePositivaRicercaTasteggio : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT Init THEN
+	TFCommandBufferClear(ADR(Cmd));
+	TFCommandClear(ADR(CmdNext));
+	TFCommandExeClear(ADR(CmdExe));
+	TFStateUpdate(ADR(State),StateNOP);
+	TFErrorClear(ADR(Error));
+	TFWarningClear(ADR(Warning));
+	Init := TRUE;
+END_IF
+
+(* Generic Timer - Add here all your Timers *)
+TFTimerCall(ADR(Timer),Cfg.TimeBase);
+TFTimerCall(ADR(Timeout),Cfg.TimeBase);
+TFTimerCall(ADR(TimerControlloCoppia),Cfg.TimeBase);
+TFTimerCall(ADR(TempoFiltroTastatoriON),Cfg.TimeBase);
+TFTimerCall(ADR(TempoFiltroTastatoriOFF),Cfg.TimeBase);
+
+IF Programma^.Torque > 0 THEN
+	AxisPar^.MaxTorque	:= Programma^.Torque;
+ELSE
+	AxisPar^.MaxTorque	:= 50;
+END_IF
+
+
+(* Axis Call *)
+Ax^();
+
+Ax^.EnableTorqueCtrl := FALSE;
+Ax^.EnableMoveAbsModifyContinuous := TRUE; //Abilitazione del move absoluto con cambi al volo
+
+(* External To Buffered Command *)
+TFCommandToNext(ADR(Cmd),ADR(CmdNext),ADR(CmdExe),ADR(Cfg),ADR(Error),ADR(ErrorLog),ADR(State));
+
+(* Buffered To Exe Command *)
+TFCommandToExecution(ADR(CmdNext),ADR(CmdExe),ADR(Error),ADR(ErrorLog),ADR(State),ADR(CmdLog));
+
+(* Valorizzazione delle variabili utilizzando i parametri presenti nel programma da eseguire *)
+(*IF CmdNext.Code = '' THEN
+	IF Programma^.Stato = DA_ESEGUIRE THEN// AND NOT ProgrammaLanciatoTrig THEN
+		AxisPar^.Acc 				:= Programma^.Accelerazione;
+		AxisPar^.Dec 				:= Programma^.Decelerazione;
+		AxisPar^.Vel 				:= Programma^.Velocita;
+		AxisPar^.MaxTorque			:= Programma^.Torque;
+		AxisPar^.Quota_Destinazione := Programma^.Quota_Destinazione;
+		IF CmdExe.Code = CmdNOP THEN
+			TFCommandSend(CmdMOVETOPOS,ParametersArray,Cmd);
+			ComandiMovimentoInviati := ComandiMovimentoInviati+1;
+		ELSIF CmdExe.Code = CmdMOVETOPOS THEN
+			MovimentiDiretti := MovimentiDiretti +1;
+		END_IF
+		TFProgramLogUpdate(Programma,ADR(ProgramLog));
+		//Programma^.Stato := IN_ESECUZIONE;
+		ProgrammaLanciatoTrig := TRUE;
+	END_IF
+END_IF*)
+
+(* Tastatori Pinza *)
+Px_Touch := IN.Px_Touch_1 AND IN.Px_Touch_2;
+Px_TouchEmergency := IN.Px_TouchEmergency_1 AND IN.Px_TouchEmergency_2;
+
+Spaziotastatori(Sensor:= NOT Px_Touch,
+						ActualPosition:=AX^.AxRef^.NcToPlc.ActPos,
+						SpaceFilterON:=SpazioInteventoPX,
+						SpaceFilterOFF:=SpazioInteventoPX,
+						NegativeDirection := NOT Ax^.AxRef^.Status.PositiveDirection,
+						AxisMoving:=Ax^.AxRef^.Status.Moving,
+						EnableDirectStatusAxStop:=TRUE,
+						SensorOUT=>PxSimulatoTasteggioSpazio);
+
+IF CmdNext.Code = '' THEN
+	IF Programma^.Stato = DA_ESEGUIRE THEN// AND NOT ProgrammaLanciatoTrig THEN
+		AxisPar^.Acc 				:= Programma^.Accelerazione;
+		AxisPar^.Dec 				:= Programma^.Decelerazione;
+		AxisPar^.Vel 				:= Programma^.Velocita;
+		AxisPar^.MaxTorque			:= Programma^.Torque;
+		AxisPar^.Jerk				:= Programma^.Jerk;
+		AxisPar^.Quota_Destinazione := Programma^.Quota_Destinazione;
+		IF CmdExe.Code = CmdNOP THEN
+			TFCommandSend(CmdMOVETOPOS,ParametersArray,Cmd);
+			ComandiMovimentoInviati := ComandiMovimentoInviati+1;
+		ELSIF CmdExe.Code = CmdMOVETOPOS THEN
+			MovimentiDiretti := MovimentiDiretti +1;
+		END_IF
+		TFProgramLogUpdate(Programma,ADR(ProgramLog));
+		ProgrammaLanciatoTrig := TRUE;
+	ELSIF Programma^.Stato = IN_ESECUZIONE THEN
+		IF AxisPar^.Acc <> Programma^.Accelerazione OR
+		 AxisPar^.Dec 				<> Programma^.Decelerazione OR
+		 AxisPar^.Vel 				<> Programma^.Velocita OR
+		 AxisPar^.Jerk				<> Programma^.Jerk OR
+		 AxisPar^.Quota_Destinazione <> Programma^.Quota_Destinazione THEN
+			
+			AxisPar^.Acc 				:= Programma^.Accelerazione;
+			AxisPar^.Dec 				:= Programma^.Decelerazione;
+			AxisPar^.Vel 				:= Programma^.Velocita;
+			AxisPar^.MaxTorque			:= Programma^.Torque;
+			AxisPar^.Jerk				:= Programma^.Jerk;
+			AxisPar^.Quota_Destinazione := Programma^.Quota_Destinazione;
+		END_IF
+	
+	END_IF
+END_IF
+
+
+IF CmdNext.Code <> '' THEN
+	ContatoreNext := ContatoreNext +1;
+END_IF
+
+(* Exe Command *)
+CASE CmdExe.Code OF
+
+	(* ******************************************************************************************************** *)
+	(* Nop  *)
+	(* ******************************************************************************************************** *)
+	CmdNOP:	;
+
+	(* ******************************************************************************************************** *)
+	(* Stop *)
+	(* ******************************************************************************************************** *)
+	CmdSTOP:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateSTOP_RUN);
+				TFTimerSet(ADR(Timeout),2000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+
+			(* Case 1 - Clear All Commands*)
+			1:	
+				(* Se sto eseguendo un programma e mi arriva un comando di stop Imprevisto, setto lo stato del programma in interrotto *)
+				IF Programma^.Stato = IN_ESECUZIONE THEN//AND Ax^.Command.MoveAbsolute THEN
+					Programma^.Stato := INTERROTTO;
+					//ProgrammaNEXT^.Stato := INTERROTTO;
+					LancioNuovaMove := FALSE;
+				END_IF
+				ProgrammaLanciatoTrig := FALSE;
+				AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+				AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+				Ax^.Command.ErrorReset 		:= FALSE;
+				Ax^.Command.Home 			:= FALSE;
+				Ax^.Command.MoveAbsolute 	:= FALSE;
+				Ax^.Command.Halt 			:= FALSE;
+				Ax^.Command.MoveJogNeg		:= FALSE;
+				Ax^.Command.MoveJogPos		:= FALSE;
+				Ax^.Command.HomeAbsEnc 		:= FALSE;
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				
+			(* Case 2 *)
+			2:	Ax^.Parameter.StopDeceleration 	:= AxisPar^.MaxDec;
+				Ax^.Parameter.Deceleration 		:= AxisPar^.MaxDec;
+				Ax^.Parameter.HaltDeceleration 	:= AxisPar^.MaxDec;
+				Ax^.Parameter.Jerk				:= MaxJerk;
+				Ax^.Command.Stop 				:= TRUE;
+				IF Ax^.Status.StopDone THEN
+					Ax^.Command.Stop := FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Stop := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Stop := FALSE;
+					TFError(ErrTOSTOP,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateSTOP_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+	
+	(* ******************************************************************************************************** *)
+	(* Error Reset *)
+	(* ******************************************************************************************************** *)
+	CmdRESET:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateRESET_RUN);
+				TFTimerSet(ADR(Timeout),2000,TRUE);
+				Ax^.Command.Home 			:= FALSE;
+				Ax^.Command.MoveAbsolute 	:= FALSE;
+				Ax^.Command.Halt 			:= FALSE;
+				Ax^.Command.MoveJogNeg		:= FALSE;
+				Ax^.Command.MoveJogPos		:= FALSE;
+				Ax^.Command.HomeAbsEnc 		:= FALSE;
+				IF NOT Ax^.Status.PowerActive AND Ax^.Status.ErrorID <> 0 THEN
+					Ax^.Command.Power := FALSE;
+				END_IF
+				IF Programma^.Stato = IN_ESECUZIONE THEN//AND Ax^.Command.MoveAbsolute THEN
+					Programma^.Stato := INTERROTTO;
+					//ProgrammaNEXT^.Stato := INTERROTTO;
+					LancioNuovaMove := FALSE;
+				END_IF
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 1 *)
+			1:	Ax^.Command.ErrorReset := TRUE;
+				AggiornamentoParametriDone := FALSE;
+				ProgrammaLanciatoTrig := FALSE;				
+				IF Ax^.Status.ErrorResetDone THEN
+					Ax^.Command.ErrorReset := FALSE;
+					IF Ax^.PowerEnable OR (Ax^.BrakeEnable AND Ax^.BrakePresent) THEN
+						TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+					ELSE
+						TFCommandCase(ADR(CmdExe),99,CommandCase_JMP);
+					END_IF
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.ErrorReset := FALSE;
+					IF Ax^.Status.ErrorID <> ErrNULL THEN
+						TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					END_IF
+					TFError(ErrTORESET,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 10 - Power On *)
+			10:	
+				Ax^.Command.Power := TRUE;
+				
+				IF Ax^.Status.PowerActive OR (Ax^.BrakeEnable AND Ax^.BrakePresent) THEN
+					TFCommandCase(ADR(CmdExe),99,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Power := FALSE;
+					TFError(ErrNOPOWER,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Power := FALSE;
+					TFError(ErrTOPOWERON,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			(* Case 99 *)
+			99:	TFErrorClear(ADR(Error));
+				TFWarningClear(ADR(Warning));
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateRESET_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+	
+	(* ******************************************************************************************************** *)
+	(* Power *)
+	(* ******************************************************************************************************** *)
+	CmdPOWER:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StatePOWER_RUN);
+				TFTimerSet(ADR(Timeout),2500,TRUE);
+
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),1) THEN
+					Power := STRING_TO_UINT(ParametersArray.Parameters[0]);
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF
+
+				IF Power = 1 THEN
+					TFCommandCase(ADR(CmdExe),5,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);
+				END_IF
+				
+			5:
+				Ax^.Command.ErrorReset := TRUE;
+				AggiornamentoParametriDone := FALSE;
+				ProgrammaLanciatoTrig := FALSE;				
+				IF Ax^.Status.ErrorResetDone THEN
+					Ax^.Command.ErrorReset := FALSE;
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.ErrorReset := FALSE;
+					IF Ax^.Status.ErrorID <> ErrNULL THEN
+						TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					END_IF
+					TFError(ErrTORESET,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF	
+				
+			(* Case 10 - Power On *)
+			10:	Ax^.Command.Power := TRUE;
+				
+				IF Ax^.Status.PowerActive OR (Ax^.BrakeEnable AND Ax^.BrakePresent) THEN
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Power := FALSE;
+					TFError(ErrNOPOWER,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Power := FALSE;
+					TFError(ErrTOPOWERON,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			(* Case 20 - Power Off *)
+			20:	Ax^.Command.Power := FALSE;
+				
+				IF NOT Ax^.Status.PowerActive THEN
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					TFError(ErrTOPOWEROFF,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StatePOWER_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+	
+	(* ******************************************************************************************************** *)
+	(* Home *)
+	(* ******************************************************************************************************** *)
+	CmdHOME:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateHOME_RUN);
+				TFTimerSet(ADR(Timeout),120000,TRUE);
+				
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),1) THEN
+					HomeDirect := STRING_TO_BOOL(ParametersArray.Parameters[0]);				
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF
+				(* Valuto se devo fare l'home direct *)
+				IF HomeDirect THEN
+					IF AxHomingParameters^.TipoHoming = HOMING_STANDARD THEN
+						TFCommandCase(ADR(CmdExe),89,CommandCase_JMP);
+					ELSIF  AxHomingParameters^.TipoHoming = HOMING_ASSE_PINZA THEN
+						TFCommandCase(ADR(CmdExe),62,CommandCase_JMP);
+					END_IF
+				ELSE
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				END_IF
+				
+				
+			(* Case 1 - Stop Asse *)
+			1:	Ax^.Command.Stop := TRUE;
+				IF Ax^.Status.StopDone THEN
+					Ax^.Command.Stop := FALSE;
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Stop := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 2 - Power ON Asse *)
+			2:	CASE Ax^.EncoderType OF
+					INCREMENTAL_ENCODER:
+						Ax^.Command.Power := TRUE;
+						IF Ax^.Status.PowerActive THEN
+							TFTimerSet(ADR(Timeout),120000,TRUE);
+						ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+							Ax^.Command.Power := FALSE;
+							TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						ELSIF TFTimerDone(ADR(Timeout)) THEN
+							Ax^.Command.Power := FALSE;
+							TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_IF
+						TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+					ABSOLUTE_ENCODER:
+						IF AxHomingParameters^.TipoHoming = HOMING_STANDARD THEN
+							TFCommandCase(ADR(CmdExe),6,CommandCase_JMP);
+						ELSIF  AxHomingParameters^.TipoHoming = HOMING_ASSE_PINZA THEN
+							TFCommandCase(ADR(CmdExe),62,CommandCase_JMP);
+						END_IF	
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_CASE
+				
+			(* Case 3 - Gestione encoder Relativo *)
+			3:	Ax^.Command.Home := TRUE;
+				Ax^.Parameter.HomePosition  := AxisPar^.HomeDefine;
+				Ax^.Parameter.HomeMode 		:= HomeModeDefault;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				IF Ax^.Status.HomeDone THEN
+					Ax^.Command.Home := FALSE;
+					TFTimerSet(ADR(Timeout),120000,TRUE);
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 21 ;
+				END_IF	
+			
+			(* Case 4 - Mi porto in posizione di Home *)
+			4:	Ax^.Command.MoveAbsolute := TRUE;
+				Ax^.Parameter.Position 		:= AxisPar^.HomePosition;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+				Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				Ax^.Parameter.Velocity := AxisPar^.MaxVel * 0.1 ;
+
+				IF Ax^.Status.MoveAbsoluteDone THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 22 ;
+				END_IF
+			
+			(* Case 6 - Gestione encoder ASSOLUTO *)
+			6:	Ax^.Command.Home := TRUE;
+				Ax^.Parameter.HomePosition  := LREAL_TO_REAL(Ax^.AxRef^.NcToPlc.ActPos);
+				Ax^.Parameter.HomeMode 		:= HomeModeDirect;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				IF Ax^.Status.HomeDone THEN
+					Ax^.Command.Home := FALSE;
+					TFTimerSet(ADR(Timeout),120000,TRUE);
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 23 ;
+				END_IF	
+			
+			(* Case 7 - Mi porto in posizione di Home *)
+			7:	Ax^.Command.MoveAbsolute := TRUE;
+				Ax^.Parameter.Position 		:= AxisPar^.HomePosition;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+				Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				Ax^.Parameter.Velocity 		:= AxisPar^.MaxVel * 0.1 ;
+
+				IF Ax^.Status.MoveAbsoluteDone THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 24 ;
+				END_IF
+				
+			(* Jog fino alla lettura del sensore *)
+			60:
+				Ax^.Parameter.Torque		:= AxisPar^.MaxTorque;
+				Ax^.Parameter.TorqueMax		:= 100;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+				Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+				Ax^.Parameter.JogVelocity 	:= AxisPar^.ManSlowVel / 100.0 * AxisPar^.MaxVel;
+				IF AxHomingParameters^.InvertiDirezione THEN
+					Ax^.Command.MoveJogPos := TRUE;
+				ELSE
+					Ax^.Command.MoveJogNeg := TRUE;
+				END_IF
+				IF Ax^.PxHome THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				END_IF
+				IF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogNeg  := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.MoveJogNeg  := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.MoveJogNeg  := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 25 ;
+				END_IF
+				
+			(* Jog fino a liberare il sensore *)	
+			61:
+				Ax^.Parameter.Torque		:= AxisPar^.MaxTorque;
+				Ax^.Parameter.TorqueMax		:= 100;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+				Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+				Ax^.Parameter.JogVelocity 	:=  5/100.0 * AxisPar^.MaxVel;
+				IF AxHomingParameters^.InvertiDirezione THEN
+					Ax^.Command.MoveJogNeg := TRUE;
+				ELSE
+					Ax^.Command.MoveJogPos := TRUE;
+				END_IF
+				IF NOT Ax^.PxHome THEN
+					Ax^.Command.MoveJogNEG := FALSE;
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				END_IF
+				IF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogNeg  := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.MoveJogNeg  := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.MoveJogNeg  := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 26 ;
+				END_IF
+				
+			(* Eseguo Homing *)	
+			62:
+				(*Ax^.Command.HomeAbsEnc := TRUE;
+				Ax^.Parameter.HomePosition  := AxisPar^.HomeDefine;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				IF Ax^.Status.HomeAbsEncDone THEN
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFTimerSet(ADR(Timeout),120000,TRUE);
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF*)
+				Ax^.Parameter.HomeVelocity  := AxisPar^.HomeVelocity;
+				Ax^.Command.HomeAbsEnc 		:= TRUE;
+				Ax^.Parameter.HomePosition  := AxisPar^.HomeDefine;
+				Ax^.Parameter.HomeInvertDirection  := AxHomingParameters^.InvertiDirezione;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				IF Ax^.Status.HomeAbsEncDone THEN
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFTimerSet(ADR(Timeout),120000,TRUE);
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 27 ;
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout))THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			(* Case 89 - HomeDirect *)
+			89:	Ax^.Command.Home 			:= TRUE;
+				Ax^.Parameter.HomePosition  := LREAL_TO_REAL(Ax^.AxRef^.NcToPlc.ActPos);
+				Ax^.Parameter.HomeMode 		:= HomeModeDirect;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				IF Ax^.Status.HomeDone THEN
+					Ax^.Command.Home := FALSE;
+					TFTimerSet(ADR(Timeout),120000,TRUE);
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 28 ;
+				END_IF
+	
+			(* Case 90 - Mi porto in posizione di Home *)
+			90:	Ax^.Command.MoveAbsolute := TRUE;
+				Ax^.Parameter.Position 		:= AxisPar^.HomePosition;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+				Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				Ax^.Parameter.Velocity 		:= AxisPar^.MaxVel * 0.1 ;
+
+				IF Ax^.Status.MoveAbsoluteDone THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					Ax^.Command.Home := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 29 ;
+				END_IF
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateHOME_END);
+				HomeDirect:=FALSE;
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+	(* ******************************************************************************************************** *)
+	(* Manual *)
+	(* ******************************************************************************************************** *)
+	CmdMAN:
+		CASE CmdExe.CmdCase OF
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateMAN_RUN);
+				TFTimerSet(ADR(Timeout),10,TRUE);
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),2) THEN
+					MAN_Actuator	:= STRING_TO_UINT(ParametersArray.Parameters[0]);
+					MAN_Cmd		:= STRING_TO_UINT(ParametersArray.Parameters[1]);
+					IF ManCmd^.JogFast THEN
+						Ax^.Parameter.JogVelocity := AxisPar^.ManFastVel / 100.0 * AxisPar^.MaxVel;
+					ELSE
+						Ax^.Parameter.JogVelocity := AxisPar^.ManSlowVel / 100.0 * AxisPar^.MaxVel;
+					END_IF
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF;
+
+				CASE MAN_Actuator OF
+					(* Case 0..99 for Actuators *)
+					(* Case 100..199  for Axis *)
+
+					(* Case Nop *)
+					0:	;
+
+					(* Case 1: *)
+					1:	CASE MAN_Cmd OF
+							0:	;
+
+							ELSE
+								TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					100:CASE MAN_Cmd OF
+							0:	;
+
+							(* Case 10: *)
+							10:	;
+								
+							(* Case 11: Jog + *)
+							11:	
+								Ax^.Parameter.Torque		:= 100;//AxisPar^.MaxTorque;
+								Ax^.Parameter.TorqueMax		:= 100;
+								Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+								Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+								Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+								IF Ax^.Status.ActPosition >= AxisPar^.MaxPosition AND IN.Enable_TouchEmergency^ THEN
+									Ax^.Command.MoveJogPos := FALSE;
+								ELSE
+									Ax^.Command.MoveJogPos := TRUE;
+								END_IF
+								IF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+									Ax^.Command.MoveJogPos := FALSE;
+									TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+									RegistroAlarma2205 := 30 ;
+								END_IF			
+								
+							(* Case 12: Jog - *)
+							12:	IF Ax^.Status.ActPosition <= AxisPar^.MinPosition AND IN.Enable_TouchEmergency^ THEN
+									Ax^.Command.MoveJogNeg := FALSE;
+								ELSE
+									Ax^.Command.MoveJogNeg := TRUE;
+								END_IF
+								Ax^.Parameter.Torque		:= 100;//AxisPar^.MaxTorque;
+								Ax^.Parameter.TorqueMax		:= 100;
+								Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+								Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+								Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+								//IF ManCmd^.JogFast THEN
+								//	Ax^.Parameter.JogVelocity := AxisPar^.ManFastVel / 100.0 * AxisPar^.MaxVel;
+								//ELSE
+								//	Ax^.Parameter.JogVelocity := AxisPar^.ManSlowVel / 100.0 * AxisPar^.MaxVel;
+								//END_IF
+								IF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+									Ax^.Command.MoveJogNEG := FALSE;
+									TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+									RegistroAlarma2205 := 31 ;
+								END_IF	
+							
+							(* Case 13 - Move Absolute a posizione data *)
+							13:
+								TFTimerSet(ADR(Timeout),30000,TRUE);	
+								Ax^.Command.MoveAbsolute 	:= TRUE;
+								Ax^.Parameter.Position 		:= LREAL_TO_REAL(AxisPar^.Quota_Destinazione);
+								Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+								Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+								Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+								Ax^.Parameter.Torque		:= 50;
+								Ax^.Parameter.TorqueMax		:= 100;
+								Ax^.Parameter.Velocity := AxisPar^.MaxVel * 0.1 ;
+								TFCommandCase(ADR(CmdExe),13,CommandCase_JMP);
+								
+							(* Esecuzione Homing Asse*)
+							20: TFTimerSet(ADR(Timeout),120000,TRUE);
+								CASE Ax^.EncoderType OF
+									INCREMENTAL_ENCODER:
+										TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);
+									ABSOLUTE_ENCODER:
+										IF AxHomingParameters^.TipoHoming = HOMING_STANDARD THEN
+											TFCommandCase(ADR(CmdExe),30,CommandCase_JMP);
+										ELSIF AxHomingParameters^.TipoHoming = HOMING_ASSE_PINZA THEN
+											TFCommandCase(ADR(CmdExe),30,CommandCase_JMP);
+										END_IF	
+								ELSE
+									TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+								END_CASE
+	
+						ELSE
+							TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					ELSE
+						TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_CASE
+				IF CmdExe.CmdCase = 0 THEN
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				END_IF
+
+			(* Case 1 *)
+			1: 	IF (MAN_Cmd = 0) OR TFTimerDone(ADR(Timeout)) THEN
+					(* Clear All Output Here *)
+					Ax^.Command.Home := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					
+					TFStateUpdate(ADR(State),StateMAN_END);
+					TFCommandExeClear(ADR(CmdExe));
+				END_IF
+				IF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN
+					Ax^.Command.Home := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFCommandExeClear(ADR(CmdExe));
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 32 ;
+				END_IF	
+				
+				IF Ax^.Status.ErrorID <> ErrNULL THEN
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+			(* Case 13 - Attesa completamento comando *)	
+			13:
+				TFTimerSet(ADR(TempoFiltroTastatoriOFF),10,Px_Touch);
+				IF Ax^.Status.MoveAbsoluteDone THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF  Ax^.Status.MoveAbsoluteDone OR (NOT Programma^.DisabilitaTasteggio AND (NOT Px_Touch) AND TFTimerDone(ADR(TempoFiltroTastatoriOFF))) THEN  
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 33 ;
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout))THEN
+					Ax^.Command.MoveAbsolute := FALSE;
+					TFError(ErrTOMOVE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+			(* Jog fino alla lettura del sensore *)
+			30:
+				(*Ax^.Parameter.Torque		:= AxisPar^.MaxTorque;
+				Ax^.Parameter.TorqueMax		:= 100;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+				Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+				Ax^.Parameter.JogVelocity 	:= AxisPar^.HomeVelocity / 100.0 * AxisPar^.MaxVel;
+				IF AxHomingParameters^.InvertiDirezione THEN
+					Ax^.Command.MoveJogPos := TRUE;
+				ELSE
+					Ax^.Command.MoveJogNeg := TRUE;
+				END_IF
+				IF Ax^.PxHome THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout))THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF*)
+				
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				
+			(* Jog fino a liberare il sensore *)	
+			31:
+				(*Ax^.Parameter.Torque		:= AxisPar^.MaxTorque;
+				Ax^.Parameter.TorqueMax		:= 100;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.JOGAcc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.JOGDec;
+				Ax^.Parameter.Jerk 			:= AxisPar^.Jerk;
+				Ax^.Parameter.JogVelocity 	:= (AxisPar^.HomeVelocity/2)/100.0 * AxisPar^.MaxVel;
+				IF AxHomingParameters^.InvertiDirezione THEN
+					Ax^.Command.MoveJogNeg := TRUE;
+				ELSE
+					Ax^.Command.MoveJogPos := TRUE;
+				END_IF
+				IF NOT Ax^.PxHome THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout))THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF*)
+				
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				
+			(* Eseguo Homing *)	
+			32:
+				Ax^.Parameter.HomeVelocity  := AxisPar^.HomeVelocity;
+				Ax^.Command.HomeAbsEnc 		:= TRUE;
+				Ax^.Parameter.HomePosition  := AxisPar^.HomeDefine;
+				Ax^.Parameter.HomeInvertDirection := AxHomingParameters^.InvertiDirezione;
+				Ax^.Parameter.Torque		:= 50;
+				Ax^.Parameter.TorqueMax		:= 100;
+				IF Ax^.Status.HomeAbsEncDone THEN
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFTimerSet(ADR(Timeout),120000,TRUE);
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 34 ;
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout))THEN
+					Ax^.Command.MoveJogPos := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					Ax^.Command.HomeAbsEnc := FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+	
+			(* Case 100 - End *)
+			100:(* Clear All Output Here *)
+				Ax^.Command.Home := FALSE;
+				Ax^.Command.MoveJogPos := FALSE;
+				Ax^.Command.MoveJogNeg := FALSE;
+				Ax^.Command.MoveAbsolute := FALSE;
+				Ax^.Command.HomeAbsEnc := FALSE;
+				
+				TFStateUpdate(ADR(State),StateMAN_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+
+	(* ******************************************************************************************************** *)
+	(* MOVETOPOS *)
+	(* ******************************************************************************************************** *)
+		CmdMOVETOPOS:
+			CASE CmdExe.CmdCase OF
+				
+				(* Case 0 - Init Command*)
+				0: 	TFStateUpdate(ADR(State),StateMOVETOPOS_RUN);
+					TFTimerSet(ADR(Timeout),180000,TRUE);
+					Ax^.Command.Power := TRUE;
+					LancioNuovaMove := FALSE;
+					Programma^.Stato := IN_ESECUZIONE;					// Aggiornamento dello stato del programma
+					ProgrammaLanciatoTrig := FALSE;
+					DirezionePositivaRicercaTasteggio := AxisPar^.Quota_Destinazione >= Ax^.Status.ActPosition;
+					IF Programma^.ControlloCoppiaAbilitato THEN
+						TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+					ELSE
+						TFCommandCase(ADR(CmdExe),1,CommandCase_JMP);
+					END_IF
+					
+				(* Case 1 - Esecuzione Move Absolute*)					
+				1: 	ProgrammaLanciatoTrig := FALSE;
+					Ax^.Command.MoveJogNeg := FALSE;
+					Ax^.Command.MoveJogPos := FALSE;
+					Programma^.Stato 			:= IN_ESECUZIONE;					// Aggiornamento dello stato del programma
+					Ax^.Parameter.Position 		:= LREAL_TO_REAL(AxisPar^.Quota_Destinazione);
+					Ax^.Parameter.Velocity 		:= AxisPar^.Vel;
+					Ax^.Parameter.Acceleration 	:= AxisPar^.Acc;
+					Ax^.Parameter.Deceleration 	:= AxisPar^.Dec;
+					Ax^.Parameter.Jerk			:= AxisPar^.Jerk;
+					Ax^.Parameter.Torque		:= 100;
+					Ax^.Parameter.TorqueMax		:= AxisPar^.MaxTorque;
+					Ax^.Parameter.BufferMode 	:= MC_Aborting;
+					Ax^.Command.MoveAbsolute    := TRUE;
+					
+					TFTimerSet(ADR(TempoFiltroTastatoriOFF),20,Px_Touch);
+										
+					IF Ax^.Status.MoveAbsoluteDone (*OR TFAsseInFinestra(Posizione_Attuale := Ax^.Status.ActPosition ,Posizione_Finale := AxisPar^.Quota_Destinazione ,FinestraDiControllo := 10 )*)  THEN
+						Ax^.Command.MoveAbsolute := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := TERMINATO;					// Aggiornamento dello stato del programma
+						IF NOT Programma^.DisabilitaTasteggio AND SIMULAZIONE_NO_HW THEN
+							QuotaAsseLetturaTasteggio := Ax^.Status.ActPosition;
+							RegistroCotaApolloY := 1 ;
+						ELSIF Programma^.DisabilitaTasteggio AND Programma^.ID = 102  THEN
+							QuotaAsseLetturaTasteggio := Ax^.Status.ActPosition;
+							RegistroCotaApolloY := 2 ;
+						END_IF
+						
+						
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					ELSIF NOT Programma^.DisabilitaTasteggio AND 
+						((NOT InterventoPxASpazio AND (NOT Px_Touch) AND TFTimerDone(ADR(TempoFiltroTastatoriOFF))) OR 
+						(PxSimulatoTasteggioSpazio AND InterventoPxASpazio)) THEN  
+							Ax^.Command.MoveAbsolute := FALSE;
+							QuotaAsseLetturaTasteggio := Ax^.Status.ActPosition;
+							RegistroCotaApolloY := 3 ;
+							TFTimerSet(ADR(Timer),TempoRisalitaTastatori,TRUE);
+							TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+					ELSIF IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+						Ax^.Command.MoveAbsolute := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						RegistroAlarma2205 := 35 ;
+					ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+						Ax^.Command.MoveAbsolute := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					ELSIF TFTimerDone(ADR(Timeout))THEN
+						Ax^.Command.MoveAbsolute := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrTOMOVE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					END_IF
+				
+				2:	
+					Ax^.Parameter.Velocity 		:= VelocitaDiUscitaDaTastatori;
+					Ax^.Parameter.JogVelocity	:= VelocitaDiUscitaDaTastatori;
+					Ax^.Parameter.Acceleration 	:= AxisPar^.Acc;
+					Ax^.Parameter.Deceleration 	:= AxisPar^.Dec;
+					Ax^.Parameter.Jerk			:= AxisPar^.Jerk;
+					Ax^.Parameter.Torque		:= 100;
+					Ax^.Parameter.TorqueMax		:= AxisPar^.MaxTorque;
+					
+					IF TFTimerDone(ADR(Timer)) THEN
+						Ax^.Command.MoveJogPos    	:= NOT DirezionePositivaRicercaTasteggio;
+						Ax^.Command.MoveJogNeg    	:= DirezionePositivaRicercaTasteggio;
+					END_IF
+					TFTimerSet(ADR(TempoFiltroTastatoriON),20,NOT Px_Touch);
+					(* Offset utilizzato dopo un tasteggio, in queso modo la parte inferiore della pinza non tocca sul materiale sottostante:
+						introdotto per migliorare il centraggio della falda sul pallet *)
+					IF NOT AbilitaOffsetInUscitaTasteggio THEN
+						OffsetUscitaDaTasteggio := 0;
+					END_IF
+					
+					IF ((Px_Touch AND TFTimerDone(ADR(TempoFiltroTastatoriON))) OR ByPassTastatoriInUscitaTasteggio) AND 
+						((NOT DirezionePositivaRicercaTasteggio AND (Ax^.Status.ActPosition >= (QuotaAsseLetturaTasteggio + OffsetUscitaDaTasteggio))) OR
+						(DirezionePositivaRicercaTasteggio AND (Ax^.Status.ActPosition <= (QuotaAsseLetturaTasteggio - OffsetUscitaDaTasteggio)))) OR
+						IN.SimulazioneSenzaHW THEN  
+							Ax^.Command.MoveJogPos    	:= FALSE;
+							Ax^.Command.MoveJogNeg    	:= FALSE;
+							AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+							AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+							Programma^.Stato := TERMINATO;	
+							TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					ELSIF NOT ByPassTastatoriInUscitaTasteggio AND (NOT DirezionePositivaRicercaTasteggio AND 
+						((Ax^.Status.ActPosition >= (QuotaAsseLetturaTasteggio + OffsetUscitaDaTasteggio + 80)) OR
+						(DirezionePositivaRicercaTasteggio AND (Ax^.Status.ActPosition <= (QuotaAsseLetturaTasteggio - OffsetUscitaDaTasteggio - 80))))) AND 
+						(NOT Px_Touch AND NOT IN.SimulazioneSenzaHW AND  Temp_Bool[33]) THEN
+							Ax^.Command.MoveJogPos    	:= FALSE;
+							Ax^.Command.MoveJogNeg    	:= FALSE;
+							AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+							AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+							Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+							TFError(ErrMALFUNZIONAMENTOTASTATORI_DURANTETASTEGGIO,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					ELSIF NOT Programma^.DisabilitaTasteggio AND IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+						Ax^.Command.MoveJogPos    	:= FALSE;
+						Ax^.Command.MoveJogNeg    	:= FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						RegistroAlarma2205 := 36 ;
+					ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+						Ax^.Command.MoveJogPos    	:= FALSE;
+						Ax^.Command.MoveJogNeg    	:= FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					ELSIF TFTimerDone(ADR(Timeout))THEN
+						Ax^.Command.MoveJogPos    	:= FALSE;
+						Ax^.Command.MoveJogNeg    	:= FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrTOMOVE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					END_IF
+					
+				(* Case 10 - Esecuzione Move jog + Controllo di coppia*)					
+				10:
+					Programma^.Stato 			:= IN_ESECUZIONE;					// Aggiornamento dello stato del programma
+					Ax^.Parameter.Position 		:= LREAL_TO_REAL(AxisPar^.Quota_Destinazione) - OFFSETKPOSITION;
+					Ax^.Parameter.Velocity 		:= AxisPar^.Vel;
+					Ax^.Parameter.JogVelocity   := AxisPar^.Vel;
+					Ax^.Parameter.Acceleration 	:= AxisPar^.Acc;
+					Ax^.Parameter.Deceleration 	:= AxisPar^.Dec;
+					Ax^.Parameter.Jerk			:= AxisPar^.Jerk;
+					Ax^.Parameter.BufferMode 	:= MC_BlendingNext;
+					Ax^.Parameter.Torque		:= 100;
+					Ax^.Parameter.TorqueMax		:= AxisPar^.MaxTorque;
+					Ax^.Parameter.TorquePosition := LREAL_TO_REAL(AxisPar^.Quota_Destinazione);
+					Ax^.Command.MoveJogNeg      := TRUE;
+					
+					IF Ax^.Status.ActPosition <= AxisPar^.Quota_Destinazione + 2 THEN
+						Ax^.EnableTorqueCtrl := TRUE;
+					ELSE
+						Ax^.EnableTorqueCtrl := FALSE;
+					END_IF
+										
+					TFTimerSet(ADR(TimerControlloCoppia),TempoControlloCoppia,NOT TFCoppiaPinzaOk(Ax^.Status.ActTorque,AxisPar^.MaxTorque,10));
+					
+					IF Ax^.Status.ActPosition <= AxisPar^.Quota_Destinazione + 15 AND (TFCoppiaPinzaOk(Ax^.Status.ActTorque,AxisPar^.MaxTorque,10) AND TFTimerDone(ADR(TimerControlloCoppia))) THEN//(Ax^.AxRef^.NcToPlc.ActTorque >= -(Ax^.Parameter.Torque - 5) OR Ax^.AxRef^.NcToPlc.ActTorque <= -(Ax^.Parameter.Torque + 5)) THEN
+						Ax^.Command.MoveJogNeg := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := TERMINATO;					// Aggiornamento dello stato del programma
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					ELSIF (*Programma^.Controllo_Tastatori AND*) IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency) THEN  
+						Ax^.Command.MoveJogNeg := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						RegistroAlarma2205 := 37 ;
+					ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+						Ax^.Command.MoveJogNeg := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					ELSIF TFTimerDone(ADR(Timeout))THEN
+						Ax^.Command.MoveJogNeg := FALSE;
+						AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+						AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+						Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+						TFError(ErrTOMOVE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					END_IF
+					
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateMOVETOPOS_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+		
+	(* ******************************************************************************************************** *)
+	(* MOVEJOG *)
+	(* ******************************************************************************************************** *)
+	CmdMOVEJOG:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateMOVEJOG_RUN);
+				TFTimerSet(ADR(Timeout),120000,TRUE);
+				Programma^.Stato := IN_ESECUZIONE;					// Aggiornamento dello stato del programma
+				TFCommandCase(ADR(CmdExe),1,CommandCase_JMP);
+	
+			(* Case 1 - Esecuzione Move Absolute*)					
+			1:
+				Programma^.Stato := IN_ESECUZIONE;					// Aggiornamento dello stato del programma
+				Ax^.Parameter.Position 		:= LREAL_TO_REAL(AxisPar^.Quota_Destinazione);
+				Ax^.Parameter.Velocity 		:= AxisPar^.Vel;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.Acc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.Dec;
+				Ax^.Parameter.Jerk			:= AxisPar^.Jerk;
+				IF Ax^.Status.ActPosition <= Ax^.Parameter.Position THEN 
+					Ax^.Command.MoveJogPos    	:= TRUE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+				ELSE
+					Ax^.Command.MoveJogNeg    	:= TRUE;
+					Ax^.Command.MoveJogPos    	:= FALSE;
+				END_IF
+				IF Ax^.Status.ActPosition <= Ax^.Parameter.Position + 2 AND Ax^.Status.ActPosition >= Ax^.Parameter.Position - 2 THEN
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := TERMINATO;					// Aggiornamento dello stato del programma
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSIF NOT Programma^.DisabilitaTasteggio AND (NOT Px_Touch ) THEN  
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Ax^.Command.Stop := TRUE;
+					Ax^.Parameter.Deceleration 	:= AxisPar^.Dec;
+					Programma^.Stato := TERMINATO;
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSIF (*Programma^.Controllo_Tastatori AND *)IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency ) THEN  
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 38 ;
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout))THEN
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+					TFError(ErrTOMOVE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			2:	Ax^.Parameter.Velocity 		:= AxisPar^.Vel;
+				Ax^.Parameter.Acceleration 	:= AxisPar^.Acc;
+				Ax^.Parameter.Deceleration 	:= AxisPar^.Dec;
+				Ax^.Parameter.Jerk			:= AxisPar^.Jerk;
+				Ax^.Command.MoveJogPos    	:= TRUE;
+				Ax^.Command.MoveJogNeg    	:= FALSE;
+				
+				IF Px_Touch THEN  
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := TERMINATO;	
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF (*Programma^.Controllo_Tastatori AND *)IN.Enable_TouchEmergency^ AND (NOT Px_TouchEmergency ) THEN  
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+					TFError(ErrTOUCHEMERGENCY,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RegistroAlarma2205 := 39 ;
+				ELSIF Ax^.Status.ErrorID <> ErrNULL THEN
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+					TFError(ErrAXIS,Ax^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout))THEN
+					Ax^.Command.MoveJogPos    	:= FALSE;
+					Ax^.Command.MoveJogNeg    	:= FALSE;
+					AggiornamentoParametriDone := FALSE;			// Reset variabile per aggiornaento parametri asse
+					AggiornamentoLogProgrammiDone := FALSE; 		// Reset variabile per aggiornaento Log dei Programmi
+					Programma^.Stato := INTERROTTO;					// Aggiornamento dello stato del programma
+					TFError(ErrTOMOVE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateMOVEJOG_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+
+	ELSE
+		TFError(ErrNOCMD,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+
+END_CASE;
+
+
+(* ******************************************************************************************************** *)
+(* State Input/Output *)
+(* ******************************************************************************************************** *)
+(* Fill Input/Output bit with sensor, electrovalve, etc. status *)
+
+
+(* ******************************************************************************************************** *)
+(* Input *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Alarm *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Error Check - Clear All Output!!! *)
+(* ******************************************************************************************************** *)
+IF Error.Code > ErrNULL THEN
+	IF CmdExe.Code = CmdNOP THEN
+		IF CmdExe.Code <> CmdSTOP AND
+			CmdExe.Code <> CmdPOWER AND
+			CmdExe.Code <> CmdRESET AND
+			CmdExe.Code <> CmdMAN AND
+			CmdExe.Code <> CmdMOVETOPOS THEN
+			TFCommandClear(ADR(CmdNext));
+			TFCommandExeClear(ADR(CmdExe));
+			
+			Ax^.Command.ErrorReset 		:= FALSE;
+			Ax^.Command.Home 			:= FALSE;
+			Ax^.Command.MoveAbsolute 	:= FALSE;
+			Ax^.Command.Halt 			:= FALSE;
+			Ax^.Command.Stop 			:= FALSE;
+			Ax^.Command.MoveJogNeg		:= FALSE;
+			Ax^.Command.MoveJogPos		:= FALSE;
+			Ax^.Command.HomeAbsEnc 		:= FALSE;
+			(* Clear All Output Here *)
+			IF Programma^.Stato = IN_ESECUZIONE OR Programma^.Stato = DA_ESEGUIRE THEN					// Aggiornamento dello stato del programma
+				Programma^.Stato := INTERROTTO;
+				AggiornamentoParametriDone := FALSE;
+			END_IF
+		END_IF
+	END_IF
+END_IF
+
+
+(* ******************************************************************************************************** *)
+(* USCITE *)
+(* ******************************************************************************************************** *)
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFModulePalletizer_Ax">
+      <LineId Id="9867" Count="393" />
+      <LineId Id="11260" Count="0" />
+      <LineId Id="10261" Count="23" />
+      <LineId Id="11261" Count="0" />
+      <LineId Id="10285" Count="20" />
+      <LineId Id="11262" Count="0" />
+      <LineId Id="10306" Count="23" />
+      <LineId Id="11263" Count="0" />
+      <LineId Id="10330" Count="31" />
+      <LineId Id="11264" Count="0" />
+      <LineId Id="10362" Count="30" />
+      <LineId Id="11265" Count="0" />
+      <LineId Id="10393" Count="36" />
+      <LineId Id="11266" Count="0" />
+      <LineId Id="10430" Count="30" />
+      <LineId Id="11267" Count="0" />
+      <LineId Id="10461" Count="23" />
+      <LineId Id="11268" Count="0" />
+      <LineId Id="10485" Count="67" />
+      <LineId Id="11269" Count="0" />
+      <LineId Id="10553" Count="20" />
+      <LineId Id="11270" Count="0" />
+      <LineId Id="10574" Count="56" />
+      <LineId Id="11271" Count="0" />
+      <LineId Id="10631" Count="17" />
+      <LineId Id="11272" Count="0" />
+      <LineId Id="10649" Count="90" />
+      <LineId Id="11273" Count="0" />
+      <LineId Id="10740" Count="70" />
+      <LineId Id="11280" Count="0" />
+      <LineId Id="11191" Count="1" />
+      <LineId Id="11279" Count="0" />
+      <LineId Id="10811" Count="0" />
+      <LineId Id="11193" Count="1" />
+      <LineId Id="10812" Count="5" />
+      <LineId Id="11281" Count="0" />
+      <LineId Id="10818" Count="7" />
+      <LineId Id="11274" Count="0" />
+      <LineId Id="10826" Count="60" />
+      <LineId Id="11275" Count="0" />
+      <LineId Id="10887" Count="50" />
+      <LineId Id="11276" Count="0" />
+      <LineId Id="10938" Count="71" />
+      <LineId Id="11277" Count="0" />
+      <LineId Id="11010" Count="36" />
+      <LineId Id="11278" Count="0" />
+      <LineId Id="11047" Count="78" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

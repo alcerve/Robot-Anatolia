@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_TipologiaAreaLaser" Id="{b0c5425b-c920-484d-af8f-6a0c2287df4b}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+TYPE e_TipologiaAreaLaser :
+(
+	VarcoChiuso 			:= 1,
+	VarcoP1_VeicoloVuoto 	:= 2,
+	VarcoP1_VeicoloCarico 	:= 3,
+	VarcoP2_VeicoloVuoto 	:= 4,
+	VarcoP2_VeicoloCarico 	:= 5,
+	VarcoP3_VeicoloVuoto 	:= 6,
+	VarcoP3_VeicoloCarico 	:= 7,
+	VarcoP4_VeicoloVuoto 	:= 8,
+	VarcoP4_VeicoloCarico 	:= 9
+	
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

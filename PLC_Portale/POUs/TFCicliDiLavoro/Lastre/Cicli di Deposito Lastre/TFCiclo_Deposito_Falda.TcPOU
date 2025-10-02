@@ -1,0 +1,544 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCiclo_Deposito_Falda" Id="{895f47e0-98fa-438a-9511-62f6a62a887f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCiclo_Deposito_Falda
+VAR_INPUT
+	Ciclo 		: POINTER TO Stato_Ciclo_Lavoro;
+	Programma  : POINTER TO TFProgramma_Ciclo_Falda_Lastre;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	StartInterpolazioneAssi : POINTER TO BOOL;
+	QuotaPassModePuntoIntermedio : ARRAY [1..3] OF REAL;
+	ModulePinza : POINTER TO TFModulePalletizer_Pinza;
+	TipoDiDeposito : UINT;
+	AbilitazioneGlobalePassMode	: BOOL;
+	InterrompiCiclo : BOOL;
+	Abilita_Ciclo_Step : BOOL;
+	Command_Step : BOOL;
+	AbilitazioneAnticipoDinamicoMovimenti : BOOL;
+END_VAR
+VAR_OUTPUT
+	STEPDone	: BOOL;
+END_VAR
+VAR
+	StepInto: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Set della variabile che mi permette di fare lo STEP nel ciclo *)
+StepInto := (Abilita_Ciclo_Step AND Command_Step) OR NOT Abilita_Ciclo_Step;
+
+(* Reset Anticipo Dinamico se non ho l'abilitazione *)
+IF NOT AbilitazioneAnticipoDinamicoMovimenti  OR NOT HMI_DisabilitaAnticipiGLOBALE THEN
+	QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaY_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+END_IF
+
+IF NOT InterrompiCiclo THEN
+	IF Ciclo^.Stato = TERMINATO OR Ciclo^.Stato = ANNULLATO THEN
+		Ciclo^.Passo := 0;
+	ELSIF Ciclo^.Stato = INTERROTTO THEN
+		Ciclo^.Passo := 999;
+	END_IF
+	Ciclo^.Stato := IN_ESECUZIONE;
+	CASE Ciclo^.Passo OF
+	(* Case 0 *)
+			0:  Ciclo^.Stato := IN_ESECUZIONE;
+				Ciclo^.Passo := 10;
+				STEPDone := FALSE;
+		
+			(* Case 10 - PROGRAMMA[53] ASSE Z -> TRASLAZIONE A QUOTA DI "ATTESA CADUTA FALDA" *)	
+			10:	
+				Ciclo^.Stato := IN_ESECUZIONE;
+				IF StepInto THEN
+					Programma_Z[53].Stato := DA_ESEGUIRE;
+					Programma_Z[53].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+					ProgrammaToModule_Z := Programma_Z[53];
+					Ciclo^.Passo := 11;
+					STEPDone := FALSE;
+				END_IF
+				
+			(* Case 11 - Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione*)
+			11: 
+				IF Programma_Z[53].Stato = TERMINATO OR
+				(ModuleAX_Z^.Ax^.Status.ActPosition >= Programma^.Quota_Attesa_Caduta_Falda_Z - 50) THEN // con -30 faccio in modo che il programma successivo si innesti a quello in corso.. per non vedere lo stacco...
+					Ciclo^.Passo := 20;
+					STEPDone := TRUE;
+				ELSIF Programma_Z[53].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 10;										
+				END_IF
+				
+			(* Case 20 - PROGRAMMA[54] ASSE Z -> TRASLAZIONE A QUOTA DI FUORI INGOMBRO *)	
+			20:	Ciclo^.Stato := IN_ESECUZIONE;
+				IF StepInto THEN
+					Programma_Z[54].Stato := DA_ESEGUIRE;
+					Programma_Z[54].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+					ProgrammaToModule_Z := Programma_Z[54];
+					Ciclo^.Passo := 21;
+					STEPDone := FALSE;
+				END_IF
+				
+			(* Case 21 - Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			21: 
+				IF Programma_Z[54].Stato = TERMINATO OR
+					(ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaFuoriIngombro_Z_ConFALDA) OR 
+					(Asse_Z_InFinestraDiPassMode AND Programma_Z[54].Stato = IN_ESECUZIONE) THEN
+						IF (TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA AND ((Mission.PPick-1)=Mission.PPlace)) THEN//Vado direttamente in prelievo senza fare il fuori ingombro SE devo depositare sulla catasta e la catasta è di fronte al mag. falde 
+							Ciclo^.Passo := 40;
+							STEPDone := TRUE;
+						ELSE
+							Ciclo^.Passo := 22;
+							STEPDone := TRUE;
+						END_IF
+				ELSIF Programma_Z[54].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 20;										
+				END_IF
+				
+			(* Case 22 - Vado a quota di fuori ingombro colonne con Y *)
+			22:
+				IF Programma_Z[54].Stato = INTERROTTO THEN
+					 Ciclo^.Passo := 20;										
+				ELSE
+					IF StepInto THEN
+						Programma_Y[66].Stato := DA_ESEGUIRE;
+						Programma_Y[66].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Y := Programma_Y[66];
+						Ciclo^.Passo := 23;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+					
+			(* Case 23 - Arrivato a quota di fuori ingombro colonne con Y *)		
+			23:
+				IF Programma_Z[54].Stato = INTERROTTO OR 
+					Programma_Y[66].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 20;
+				ELSE	
+					IF Programma_Y[66].Stato = TERMINATO OR Asse_Y_InFinestraDiPassMode THEN
+						Ciclo^.Passo := 40;
+						STEPDone := TRUE;							
+					END_IF
+				END_IF
+				
+			(* Case 40 - PROGRAMMA[..] ASSE  -> TRASLAZIONE A QUOTA DI DEPOSITO FALDA  *)	
+			40:	
+				IF Programma_Z[54].Stato = INTERROTTO THEN					
+					Ciclo^.Passo := 20;										
+				ELSE
+					IF TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA THEN
+						IF StepInto THEN
+							Programma_X[52].Stato := DA_ESEGUIRE;
+							Programma_X[52].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+							ProgrammaToModule_X := Programma_X[52];
+							IF NOT Pinza_InIngombroColonne_Destinazione THEN
+								Programma_Y[52].Stato := DA_ESEGUIRE;
+								Programma_Y[52].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+								ProgrammaToModule_Y := Programma_Y[52];
+							END_IF
+							Programma_J[11].Stato := DA_ESEGUIRE;
+							Programma_J[11].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+							ProgrammaToModule_J := Programma_J[11];
+							
+							Programma_K[53].Stato := DA_ESEGUIRE;
+							Programma_K[53].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+							ProgrammaToModule_K := Programma_K[53];
+							
+							ProgrammaToModule_Z.InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;
+							
+							StartInterpolazioneAssi^ := TRUE; //Abilito l'interpolazione degli assi
+
+							Ciclo^.Passo := 41;
+							STEPDone := FALSE;
+						END_IF
+					ELSIF TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA THEN
+						IF StepInto THEN
+							Programma_X[53].Stato := DA_ESEGUIRE;
+							Programma_X[53].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+							ProgrammaToModule_X := Programma_X[53];
+							(*IF NOT Pinza_InIngombroColonne_Destinazione THEN
+								Programma_Y[53].Stato := DA_ESEGUIRE;
+								Programma_Y[53].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+								ProgrammaToModule_Y := Programma_Y[53];
+							END_IF*)
+							Programma_J[11].Stato := DA_ESEGUIRE;
+							Programma_J[11].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+							ProgrammaToModule_J := Programma_J[11];
+							
+							Programma_K[53].Stato := DA_ESEGUIRE;
+							Programma_K[53].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+							ProgrammaToModule_K := Programma_K[53];
+							
+							StartInterpolazioneAssi^ := TRUE; //Abilito l'interpolazione degli assi							
+						
+							Ciclo^.Passo := 41;
+							STEPDone := FALSE;
+						END_IF
+					ELSE
+						;
+					END_IF
+				END_IF
+			
+			41: IF Programma_Z[54].Stato = INTERROTTO THEN					
+					Ciclo^.Passo := 20;										
+				ELSE
+					STEPDone := TRUE;
+					IF QuotaX_ConsensoRotazionePinza_Raggiunta OR NOT Pinza_InIngombroColonne_Destinazione THEN
+						IF TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA THEN
+							IF StepInto THEN
+								Programma_Y[52].Stato := DA_ESEGUIRE;
+								Programma_Y[52].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+								ProgrammaToModule_Y := Programma_Y[52];
+								
+								Ciclo^.Passo := 42;
+								STEPDone := FALSE;
+							END_IF
+						ELSIF TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA THEN
+							IF StepInto THEN
+								Programma_Y[53].Stato := DA_ESEGUIRE;
+								Programma_Y[53].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//TRUE;//INTERPOLAZIONE_ASSE
+								ProgrammaToModule_Y := Programma_Y[53];
+								
+								Ciclo^.Passo := 42;
+								STEPDone := FALSE;
+							END_IF
+						ELSE
+							;
+						END_IF
+					END_IF
+				END_IF	
+						
+			(* Case 42 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			42: 
+				IF Programma_Z[54].Stato = INTERROTTO OR 
+					(TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA AND Programma_X[52].Stato = INTERROTTO) OR 
+					(TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA AND Programma_X[53].Stato = INTERROTTO) OR
+					(TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA  AND Programma_Y[52].Stato = INTERROTTO) OR
+					(TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA AND Programma_Y[53].Stato = INTERROTTO) OR
+					Programma_J[11].Stato = INTERROTTO OR
+					Programma_K[53].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 20;	
+				(* Deposito su catasta *)
+				ELSIF TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA THEN
+					IF (Programma_X[52].Stato = TERMINATO OR Asse_X_InFinestraDiPassMode) AND
+						(Programma_Y[52].Stato = TERMINATO OR Asse_Y_InFinestraDiPassMode) AND  
+					  	Programma_J[11].Stato = TERMINATO AND 
+						Programma_K[53].Stato = TERMINATO THEN 
+							Ciclo^.Passo := 50;
+							STEPDone := TRUE;
+					END_IF
+				(* Deposito Su piazzola *)
+				ELSIF (Programma_X[53].Stato = TERMINATO OR Asse_X_InFinestraDiPassMode) AND 
+					  (Programma_Y[53].Stato = TERMINATO OR Asse_Y_InFinestraDiPassMode) AND
+					  Programma_J[11].Stato = TERMINATO AND
+					  Programma_K[53].Stato = TERMINATO THEN 
+							Ciclo^.Passo := 50;
+							STEPDone := TRUE;								
+				END_IF	
+							
+			(* Case 80 - PROGRAMMA[..] ASSE Z -> TRASLAZIONE A QUOTA AMMESSA IN VELOCE DI DEPOSITO FALDA  
+			- DEPOSITO_FALDA_SU_CATASTA : PROGRAMMA[55] ASSE Z
+			- DEPOSITO_FALDA_SU_PIAZZOLA : PROGRAMMA[57] ASSE Z *)
+			50:
+				IF TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA THEN
+					IF StepInto THEN
+						Programma_Z[55].Stato := DA_ESEGUIRE;
+						Programma_Z[55].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+						ProgrammaToModule_Z := Programma_Z[55];
+						Ciclo^.Passo := 52;
+						STEPDone := FALSE;
+					END_IF
+				ELSIF TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA THEN
+					IF StepInto THEN
+						Programma_Z[57].Stato := DA_ESEGUIRE;
+						Programma_Z[57].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+						ProgrammaToModule_Z := Programma_Z[57];
+						Ciclo^.Passo := 51;	//SALTO DIRETTAMENTE AL CASE 91 DOVE SI ASPETTA LA FINE DEL MOVIMENTO DELL'ASSE Z
+						STEPDone := FALSE;
+					END_IF
+				ELSE
+					;
+				END_IF
+					
+			(* Case 51 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			51: 
+				IF (TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA AND Programma_Z[55].Stato = INTERROTTO) OR 
+				(TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA AND  Programma_Z[57].Stato = INTERROTTO) THEN
+					Ciclo^.Passo := 20;	//NON DOVREBBE ACCADERE									
+				ELSE
+					IF (TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA AND Programma_Z[55].Stato = TERMINATO) OR
+					(TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA AND  Programma_Z[57].Stato = TERMINATO)(*OR
+						(ModuleAX_Z^.Ax^.Status.ActPosition >= TFProgramma_Ciclo_Falda.Quota_Deposito_Falda_SuPiazzola_Z)*) THEN
+						Ciclo^.Passo := 110;
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+				
+			(* Case 52 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			52: 
+				IF Programma_Z[55].Stato = INTERROTTO OR Programma_Z[55].Stato = NON_ESEGUITO OR 
+				(TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA AND Programma_X[52].Stato = INTERROTTO) THEN
+					Ciclo^.Passo := 20;	//NON DOVREBBE ACCADERE									
+				ELSE
+					IF Programma_Z[55].Stato = TERMINATO OR
+						(ModuleAX_Z^.Ax^.Status.ActPosition <= Programma^.Quota_StartLenta_Deposito_Falda_SuCatastaPallet_Z + 10) AND Programma_Z[56].Stato = IN_ESECUZIONE THEN
+						Ciclo^.Passo := 100;
+						STEPDone := TRUE;
+					END_IF	
+				END_IF	
+				
+			(* Case 100 - PROGRAMMA[56] ASSE Z -> TRASLAZIONE IN LENTA A QUOTA DI DEPOSITO FALDA SU CATASTA VUOTI  *)
+			100:
+				IF Programma_Z[55].Stato = INTERROTTO OR
+				(TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA AND  Programma_X[52].Stato = INTERROTTO ) OR
+				(TipoDiDeposito = DEPOSITO_FALDA_SU_PIAZZOLA AND (Programma_X[53].Stato = INTERROTTO OR Programma_Z[57].Stato = INTERROTTO)) THEN
+					Ciclo^.Passo := 20; //NON DOVREBBE ACCADERE										
+				ELSE
+					IF StepInto THEN
+						Programma_Z[56].Stato := DA_ESEGUIRE;
+						Programma_Z[56].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+						ProgrammaToModule_Z := Programma_Z[56];
+						Ciclo^.Passo := 101;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+			(* Case 81 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			101: 
+				IF Programma_Z[56].Stato = INTERROTTO OR 
+				(TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA 	AND NOT Programma_X[52].Stato = TERMINATO) OR
+				(TipoDiDeposito = DEPOSITO_FALDA_SU_CATASTA 	AND NOT Programma_Y[52].Stato = TERMINATO) THEN
+					Ciclo^.Passo := 20; //NON DOVREBBE ACCADERE										
+				ELSE
+					IF Programma_Z[56].Stato = TERMINATO THEN
+						Ciclo^.Passo := 110;
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+				
+			(* Case 110 - UNLOAD MODULO ASPIRAZIONE  *)
+			110:
+				IF StepInto THEN
+					TFParametersArrayClear(ADR(ParametersArray));
+					TFCommandSend(CmdUNLOAD,ParametersArray,ModulePinza^.Cmd);
+					Ciclo^.Passo := 111;
+					STEPDone := FALSE;
+				END_IF
+
+			(* Case 71 -  Attesa completamento del comando UNLOAD MODULO ASPIRAZIONE *)
+			111: 
+				IF TFStateCodeGet(ModulePinza^.State) = StateERROR THEN
+					Ciclo^.Passo := 20;
+				ELSIF NOT TFStateCodeGet(ModulePinza^.State) = StateUNLOAD_RUN  THEN
+					Ciclo^.Passo := 110;										
+				ELSE
+					IF TFStateCodeGet(ModulePinza^.State) = StateUNLOAD_END THEN
+						Ciclo^.Passo := 1000;
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+
+			(* Case 1000 *)
+			1000:
+				Ciclo^.Stato := TERMINATO;
+				Ciclo^.Passo := 1000;
+				
+			(* Case 9999 - Ciclo NON annullato o NON terminato*)
+			9999:
+				Ciclo^.Stato := INTERROTTO;
+				Ciclo^.Passo := 9999;
+	ELSE						
+		;
+			
+	END_CASE;
+ELSE								//Se il ciclo deve essere interrotto, setto il suo nuovo stato
+	Ciclo^.Stato := INTERROTTO;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFCiclo_Deposito_Falda">
+      <LineId Id="1594" Count="7" />
+      <LineId Id="940" Count="0" />
+      <LineId Id="1603" Count="0" />
+      <LineId Id="330" Count="0" />
+      <LineId Id="1208" Count="3" />
+      <LineId Id="335" Count="0" />
+      <LineId Id="161" Count="1" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="588" Count="0" />
+      <LineId Id="606" Count="0" />
+      <LineId Id="1052" Count="0" />
+      <LineId Id="590" Count="0" />
+      <LineId Id="1322" Count="0" />
+      <LineId Id="591" Count="1" />
+      <LineId Id="594" Count="11" />
+      <LineId Id="607" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="1129" Count="0" />
+      <LineId Id="1131" Count="0" />
+      <LineId Id="1321" Count="0" />
+      <LineId Id="1133" Count="1" />
+      <LineId Id="1136" Count="1" />
+      <LineId Id="1054" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="288" Count="0" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="1369" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="289" Count="0" />
+      <LineId Id="1516" Count="0" />
+      <LineId Id="1522" Count="0" />
+      <LineId Id="1518" Count="1" />
+      <LineId Id="1521" Count="0" />
+      <LineId Id="1517" Count="0" />
+      <LineId Id="213" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="1395" Count="0" />
+      <LineId Id="1397" Count="5" />
+      <LineId Id="1404" Count="10" />
+      <LineId Id="1421" Count="0" />
+      <LineId Id="1415" Count="5" />
+      <LineId Id="1396" Count="0" />
+      <LineId Id="80" Count="1" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="636" Count="0" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="1056" Count="0" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="1323" Count="0" />
+      <LineId Id="1296" Count="0" />
+      <LineId Id="1335" Count="0" />
+      <LineId Id="1119" Count="0" />
+      <LineId Id="1324" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="1287" Count="0" />
+      <LineId Id="1290" Count="0" />
+      <LineId Id="1325" Count="0" />
+      <LineId Id="1291" Count="2" />
+      <LineId Id="1326" Count="0" />
+      <LineId Id="1294" Count="0" />
+      <LineId Id="1342" Count="1" />
+      <LineId Id="1295" Count="0" />
+      <LineId Id="1337" Count="1" />
+      <LineId Id="238" Count="0" />
+      <LineId Id="296" Count="0" />
+      <LineId Id="244" Count="0" />
+      <LineId Id="638" Count="1" />
+      <LineId Id="643" Count="0" />
+      <LineId Id="1327" Count="0" />
+      <LineId Id="1274" Count="0" />
+      <LineId Id="1270" Count="1" />
+      <LineId Id="1328" Count="0" />
+      <LineId Id="1121" Count="0" />
+      <LineId Id="1276" Count="0" />
+      <LineId Id="1278" Count="0" />
+      <LineId Id="1329" Count="0" />
+      <LineId Id="1279" Count="0" />
+      <LineId Id="1277" Count="0" />
+      <LineId Id="1280" Count="0" />
+      <LineId Id="1330" Count="0" />
+      <LineId Id="1281" Count="0" />
+      <LineId Id="1340" Count="1" />
+      <LineId Id="1282" Count="0" />
+      <LineId Id="645" Count="0" />
+      <LineId Id="647" Count="1" />
+      <LineId Id="641" Count="1" />
+      <LineId Id="640" Count="0" />
+      <LineId Id="1236" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="1422" Count="0" />
+      <LineId Id="1427" Count="2" />
+      <LineId Id="1486" Count="1" />
+      <LineId Id="1430" Count="1" />
+      <LineId Id="1438" Count="3" />
+      <LineId Id="1454" Count="4" />
+      <LineId Id="1465" Count="2" />
+      <LineId Id="1479" Count="0" />
+      <LineId Id="1485" Count="0" />
+      <LineId Id="1480" Count="4" />
+      <LineId Id="1488" Count="0" />
+      <LineId Id="1426" Count="0" />
+      <LineId Id="829" Count="2" />
+      <LineId Id="864" Count="0" />
+      <LineId Id="1618" Count="1" />
+      <LineId Id="865" Count="2" />
+      <LineId Id="834" Count="1" />
+      <LineId Id="1620" Count="0" />
+      <LineId Id="1092" Count="0" />
+      <LineId Id="1623" Count="0" />
+      <LineId Id="1626" Count="0" />
+      <LineId Id="1026" Count="0" />
+      <LineId Id="1625" Count="0" />
+      <LineId Id="838" Count="1" />
+      <LineId Id="1624" Count="0" />
+      <LineId Id="1621" Count="0" />
+      <LineId Id="1605" Count="0" />
+      <LineId Id="1627" Count="0" />
+      <LineId Id="1607" Count="1" />
+      <LineId Id="1617" Count="0" />
+      <LineId Id="1604" Count="0" />
+      <LineId Id="800" Count="0" />
+      <LineId Id="267" Count="0" />
+      <LineId Id="706" Count="1" />
+      <LineId Id="362" Count="1" />
+      <LineId Id="366" Count="1" />
+      <LineId Id="1334" Count="0" />
+      <LineId Id="368" Count="0" />
+      <LineId Id="1333" Count="0" />
+      <LineId Id="371" Count="1" />
+      <LineId Id="693" Count="1" />
+      <LineId Id="698" Count="0" />
+      <LineId Id="1332" Count="0" />
+      <LineId Id="699" Count="1" />
+      <LineId Id="702" Count="1" />
+      <LineId Id="695" Count="2" />
+      <LineId Id="1175" Count="0" />
+      <LineId Id="1065" Count="0" />
+      <LineId Id="374" Count="1" />
+      <LineId Id="709" Count="0" />
+      <LineId Id="376" Count="2" />
+      <LineId Id="991" Count="0" />
+      <LineId Id="379" Count="4" />
+      <LineId Id="1176" Count="0" />
+      <LineId Id="926" Count="4" />
+      <LineId Id="932" Count="6" />
+      <LineId Id="1177" Count="0" />
+      <LineId Id="356" Count="1" />
+      <LineId Id="384" Count="0" />
+      <LineId Id="901" Count="1" />
+      <LineId Id="406" Count="1" />
+      <LineId Id="1139" Count="1" />
+      <LineId Id="1331" Count="0" />
+      <LineId Id="1142" Count="0" />
+      <LineId Id="1144" Count="2" />
+      <LineId Id="394" Count="3" />
+      <LineId Id="721" Count="1" />
+      <LineId Id="579" Count="0" />
+      <LineId Id="399" Count="1" />
+      <LineId Id="402" Count="3" />
+      <LineId Id="409" Count="3" />
+      <LineId Id="416" Count="0" />
+      <LineId Id="418" Count="4" />
+      <LineId Id="1178" Count="0" />
+      <LineId Id="424" Count="1" />
+      <LineId Id="966" Count="0" />
+      <LineId Id="965" Count="0" />
+      <LineId Id="426" Count="6" />
+      <LineId Id="358" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="196" Count="1" />
+      <LineId Id="1203" Count="4" />
+      <LineId Id="156" Count="1" />
+      <LineId Id="159" Count="1" />
+      <LineId Id="208" Count="2" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

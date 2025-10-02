@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Stato_Ciclo_Lavoro" Id="{273be34a-f733-474c-b5c7-735c95b9630e}">
+    <Declaration><![CDATA[TYPE Stato_Ciclo_Lavoro :
+STRUCT
+	Stato : UINT := 0; // 0=Non eseguito 1=In Esecuzione 2=Terminato
+	Passo : UINT := 0;
+	PassoDopoInterruzzione	: UINT := 0;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,1807 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFWAM_CreaMissione_DepPrelElemento" Id="{7e03d9d8-daf6-4ed6-9ffc-959b971650c8}" SpecialFunc="None">
+    <Declaration><![CDATA[(* FB per il calcolo delle quote di deposito di un elemento *)
+FUNCTION_BLOCK TFWAM_CreaMissione_DepPrelElemento
+VAR_INPUT
+
+	NPosInLavoro	: UINT; //Numero Postazione di depositio
+	Angolo_Destinazione : LREAL; //Angolo di destinazione dell'elemento
+	
+	PosizioneAttuale_X : LREAL; //Posizione attuale asse X
+	
+	TipologiaTraiettoria : e_Tipo_Traiettoria; //Tipologia Traiettoria: con o senza approccio
+	
+	CicloDiPRelievo : BOOL;//Indica se la tipologia di ciclo è un prelievo
+		
+	Apprendimento : TFMachinePalletizer_CoordinateApprendimento;
+	
+	Offset_Apprendimento_X : REAL; //Offset X Apprendimento
+	Offset_Apprendimento_Y : REAL; //Offset Y Apprendimento
+	Offset_Apprendimento_Z : REAL; //Offset Z Apprendimento
+	Offset_Apprendimento_J : REAL; //Offset J Apprendimento
+	
+	Quota_PostX		: LREAL; //Quota X Postazione
+	Quota_PostY		: LREAL; //Quota Y Postazione
+	Quota_PostZ		: LREAL; //Quota Z Postazione
+	Quota_PostJ		: LREAL; //Quota J Postazione
+	
+	Offset_Postazione_X : REAL; //Offset X Postazione
+	Offset_Postazione_Y : REAL; //Offset Y Postazione
+	Offset_Postazione_Z : REAL; //Offset Z Postazione
+	Offset_Postazione_J : REAL; //Offset J Postazione
+	
+	Pallet_DimX				: LREAL; //Dimensione X Pallet
+	Pallet_DimY				: LREAL; //Dimensione Y Pallet
+	Pallet_DimZ				: LREAL; //Dimensione Z Pallet
+	Pallet_DimBaseUtile		: LREAL; //Dimensione Y Base Util
+
+	HmaxElemento	: LREAL;//Indica l'altezza massima dell'elemento,serve per i cicli di prelievo in cassa e pallet per determiinare le quote di approccio
+
+	
+	Offset_Pallet_X_0		: LREAL; //Offset X Pallet o Casse
+	Offset_Pallet_Y_0		: LREAL; //Offset Y Pallet o Casse 
+	Offset_Pallet_Z_0		: LREAL; //Offset Z Pallet o Casse + è grande + il deposito si distanzia dal supporto
+	Offset_Pallet_J_0		: LREAL; //Offset J Pallet o Casse + è grande + la lastra sarà inclinata verso l'angolo crescente
+	
+	Offset_Pallet_X_90		: LREAL; //Offset X Pallet lato 0-90 
+	Offset_Pallet_Y_90		: LREAL; //Offset Y Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+	Offset_Pallet_Z_90		: LREAL; //Offset Z Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+	Offset_Pallet_J_90		: LREAL; //Offset J Pallet lato 0-90 + è grande + la lastra sarà inclinata in fase di deposito
+	
+	Offset_Pallet_X_180		: LREAL; //Offset X Pallet lato 90-180
+	Offset_Pallet_Y_180		: LREAL; //Offset Y Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+	Offset_Pallet_Z_180		: LREAL; //Offset Z Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+	Offset_Pallet_J_180		: LREAL; //Offset J Pallet lato 90-180 + è grande + la lastra sarà inclinata in fase di deposito
+	
+	Quota_FormaturaX 		: LREAL; //Quota Deposito X da Formatura
+	Quota_FormaturaY 		: LREAL; //Quota Deposito Y da Formatura
+	Quota_FormaturaZ 		: LREAL; //Quota Deposito Z da Formatura
+	Quota_FormaturaJ 		: LREAL; //Quota Deposito Z da Formatura
+	
+	Distanza_ApproccioFormaturaX 		: LREAL; //Approccio in direzione X
+	Distanza_ApproccioFormaturaY 		: LREAL; //Approccio in direzione Y
+	Distanza_ApproccioFormaturaZ 		: LREAL; //Approccio in direzione Z
+	Distanza_ApproccioFormaturaJ 		: LREAL; //Approccio in direzione J
+	
+END_VAR
+VAR_OUTPUT
+	
+	Quota_DestX : LREAL; // Quota DESTINAZIONE X
+	Quota_DestY : LREAL; // Quota DESTINAZIONE Y
+	Quota_DestZ : LREAL; // Quota DESTINAZIONE Z
+	Quota_DestJ : LREAL; // Quota DESTINAZIONE J
+	
+	Quota_ApproccioDestX : LREAL; // Quota Approccio DESTINAZIONE X
+	Quota_ApproccioDestY : LREAL; // Quota Approccio DESTINAZIONE Y
+	Quota_ApproccioDestZ : LREAL; // Quota Approccio DESTINAZIONE Z
+	Quota_ApproccioDestJ : LREAL; // Quota Approccio DESTINAZIONE J
+	
+	Errore : TFError_WAM;
+END_VAR
+VAR
+	Quota_DestYEnFun0: REAL;
+	Quota_DestYEnFun180: REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Errore.Code := 0;
+
+CASE VERSO_PALLETTIZZATORE OF
+	
+	
+
+	{region " Pallettizzatore DX "}					
+	PALLETTIZZATORE_DX:
+		CASE RIFERIMENTO_POSTAZIONE_WA OF
+			{Region "ANGOLO DX" }
+			ANGOLO_DX:
+			
+				(*******************************************************************************************************************)
+(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)																		
+				IF Angolo_Destinazione > 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_180 +				(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Neg +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																								
+									//Pallet_DimY/2 -						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale)+(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+					
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF			
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY + 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z da Formatura *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J da Formatura *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+									
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_0 +					(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY - 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Pos +
+									Offset_Postazione_Y - 				(* Offset Postazione *)																							
+									Pallet_DimY/2 -						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_0 +					(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +
+									Offset_Pallet_Z_0 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+					
+					Apprendimento.Y.Lato0.Stato := APPRENDIMENTO_DA_ESEGUIRE ;		  
+										
+												  
+															
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF		
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY - 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)				
+							
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_90;// +				(* Offset Deposito Direzione X del pallet *)
+									//;Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+														
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_90;// +				(* Offset Deposito Direzione Y del pallet *)
+									//Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)										
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+					
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+				//Posizionamento lungo X
+					IF Apprendimento.X.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 90°
+					IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_DISABILITATO THEN
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaRilevata + Distanza_ApproccioFormaturaZ;
+						ELSE
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaStart + Offset_Apprendimento_Z;
+						END_IF
+					ELSE
+						Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+												Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato90.QuotaRilevata;
+					END_IF		
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					//Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+					//						Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+					
+				END_IF
+			{endregion}
+			{Region "CENTRALE" }				
+			CENTRALE :
+				(*******************************************************************************************************************)
+											(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)																		
+				IF Angolo_Destinazione > 90 THEN
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Offset_Pallet_X_180;// +				(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Neg +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet !!!!!*)
+									ABS(Quota_FormaturaY); 					(* Quota di deposito Y da Formatura !!!!!!!*)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+							
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					//IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					//END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF	
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					//Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+					IF Apprendimento.Y.Lato180.Stato <> APPRENDIMENTO_DISABILITATO THEN
+						IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestY := Apprendimento.Y.Lato180.QuotaRilevata + Distanza_ApproccioFormaturaY;
+						ELSE
+							Apprendimento.Y.Lato180.QuotaStart := Quota_DestY + (Pallet_DimY/2) +Offset_Apprendimento_Y; 		  
+							Quota_ApproccioDestY := Apprendimento.Y.Lato180.QuotaStart + Offset_Apprendimento_Y;
+						END_IF
+					ELSE
+						Quota_ApproccioDestY := Quota_DestY +						(* Quota di deposito Y *)
+												Distanza_ApproccioFormaturaY;		(* Approccio Y da Formatura *)
+					END_IF
+											
+					Quota_ApproccioDestZ 	:= Quota_DestZ; 			(* Quota di deposito Z *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)
+									
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Offset_Pallet_X_0;// +					(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									(-IngombroDestinazioneY_Pos)+
+									Offset_Postazione_Y - 				(* Offset Postazione *)																								
+									Offset_Pallet_Y_0 -					(* Offset Deposito Direzione Y del pallet *)
+									ABS(Quota_FormaturaY); 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_0 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+				
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					Quota_ApproccioDestZ 	:= Quota_DestZ; 			(* Quota di deposito Z *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)			
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Offset_Pallet_X_90;// +				(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+														
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Offset_Pallet_Y_90;// +				(* Offset Deposito Direzione Y del pallet *)
+									//Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+										
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+				
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					//IF Apprendimento.X.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestX := Apprendimento.X.Lato90.QuotaRilevata;
+					//END_IF
+					////Posizionamento lungo Y lato 90°
+					//IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata;
+					//END_IF
+					//Posizionamento lungo Z
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_DISABILITATO THEN
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaRilevata + Distanza_ApproccioFormaturaZ;
+						ELSE
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaStart + Offset_Apprendimento_Z;
+						END_IF
+					ELSE
+						Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+												Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+					END_IF
+					//Posizionamento lungo J lato 90°
+					//IF Apprendimento.J.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestJ := Apprendimento.J.Lato90.QuotaRilevata;
+					//END_IF			
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					//Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+					//						Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+					
+				END_IF
+			{endregion}
+			{Region "ANGOLO SX" }
+			ANGOLO_SX :
+				(*******************************************************************************************************************)
+											(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)
+				IF Angolo_Destinazione > 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_180 +				(* Offset Deposito Direzione X del pallet *)
+									(-Quota_FormaturaX);					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Pos +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY + 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z da Formatura *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J da Forma*)	
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_0 +					(* Offset Deposito Direzione X del pallet *)
+									(-Quota_FormaturaX);					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY - 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Pos +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																								
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_0 -					(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_0 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY - 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+							
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X - 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_90;// -				(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+										
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_90;// +				(* Offset Deposito Direzione Y del pallet *)
+									//Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+										
+					Quota_DestJ	:= Quota_FormaturaJ;// +					(* Quota di deposito Z da Formatura *)
+									//Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 90°
+					IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_DISABILITATO THEN
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaRilevata + Distanza_ApproccioFormaturaZ;
+						ELSE
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaStart + Offset_Apprendimento_Z;
+						END_IF
+					ELSE
+						Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+												Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+					END_IF
+					//Posizionamento lungo J lato 90°
+					IF Apprendimento.J.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato90.QuotaRilevata;
+					END_IF
+							
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					//Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+					//						Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+					
+				END_IF
+			{endregion}
+	
+		ELSE
+			Errore.Code := ErrWAM_FTC_PostazioneNONDefinita;
+		END_CASE	
+	{endregion}	
+	{region " Pallettizzatore SX "}	
+	PALLETTIZZATORE_SX:
+		CASE RIFERIMENTO_POSTAZIONE_WA OF
+			{Region "ANGOLO DX" }
+			ANGOLO_DX:
+			
+				(*******************************************************************************************************************)
+											(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)																		
+				IF Angolo_Destinazione > 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_180 +				(* Offset Deposito Direzione X del pallet *)
+									(-Quota_FormaturaX);					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Neg +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																								
+									//Pallet_DimY/2 -						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale)+(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+					
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF			
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY + 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z da Formatura *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J da Formatura *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+									
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_0 +					(* Offset Deposito Direzione X del pallet *)
+									(-Quota_FormaturaX);					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY - 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Pos +
+									Offset_Postazione_Y - 				(* Offset Postazione *)																							
+									Pallet_DimY/2 -						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_0 -					(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +
+									Offset_Pallet_Z_0 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+					
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF		
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY - 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)				
+							
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X - 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_90;// +				(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+														
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_90;// +				(* Offset Deposito Direzione Y del pallet *)
+									//Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)										
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+					
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+				//Posizionamento lungo X
+					IF Apprendimento.X.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 90°
+					IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_DISABILITATO THEN
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaRilevata + Distanza_ApproccioFormaturaZ;
+						ELSE
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaStart + Offset_Apprendimento_Z;
+						END_IF
+					ELSE
+						Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+												Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato90.QuotaRilevata;
+					END_IF		
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					//Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+					//						Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+					
+				END_IF
+			{endregion}
+			{Region "CENTRALE" }				
+			CENTRALE :
+				(*******************************************************************************************************************)
+											(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)																		
+				IF Angolo_Destinazione > 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Offset_Pallet_X_180;// +				(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+					(*MAX (IngombroDestinazioneY_Neg ,Dimensioni_Pinza.Spessore) + *)
+					Dimensioni_Pinza.Spessore +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											  
+					Quota_DestYEnFun180 :=	Quota_DestY ;
+
+				
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+							
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO AND Temp_Bool[20] THEN
+						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF	
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					Quota_ApproccioDestZ 	:= Quota_DestZ; 			(* Quota di deposito Z *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)
+									
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Offset_Pallet_X_0;// +					(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+						(-MAX(IngombroDestinazioneY_Pos ,Dimensioni_Pinza.Spessore)) +
+									Offset_Postazione_Y - 				(* Offset Postazione *)																								
+									Offset_Pallet_Y_0 -					(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY (*-
+									((Pallet_DimY/2 )- Pallet_DimBaseUtile)*)	; 					(* Quota di deposito Y da Formatura *)
+					Quota_DestYEnFun0 :=	Quota_DestY ;				
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_0 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+				
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+				
+	  
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO AND Temp_Bool[20] THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					 
+								   
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+					IF 	Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+					ELSE	
+						Quota_ApproccioDestY  	:= Quota_DestY (*-100*); 			(* Quota di deposito Y *)	  
+					END_IF								
+					
+											
+					Quota_ApproccioDestZ 	:= Quota_DestZ; 			(* Quota di deposito Z *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)			
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Offset_Pallet_X_90;// +				(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+														
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Offset_Pallet_Y_90;// +				(* Offset Deposito Direzione Y del pallet *)
+									//Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									//Ojo formaciones en plano la altura de la base viene calculada en la  estructura
+									// Forming
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+										
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+				
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					//IF Apprendimento.X.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestX := Apprendimento.X.Lato90.QuotaRilevata;
+					//END_IF
+					////Posizionamento lungo Y lato 90°
+					//IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata;
+					//END_IF
+					//Posizionamento lungo Z
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_DISABILITATO THEN
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaRilevata + Distanza_ApproccioFormaturaZ;
+						ELSE
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaStart + Offset_Apprendimento_Z;
+						END_IF
+					ELSE
+						Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+												Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+					END_IF
+					//Posizionamento lungo J lato 90°
+					//IF Apprendimento.J.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestJ := Apprendimento.J.Lato90.QuotaRilevata;
+					//END_IF			
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					//Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+					//						Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+					
+					
+				END_IF
+			{endregion}
+			{Region "ANGOLO SX" }
+			ANGOLO_SX :
+				(*******************************************************************************************************************)
+											(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)
+				IF Angolo_Destinazione > 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_180 +				(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Neg +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY + 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z da Formatura *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J da Forma*)	
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									//Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_0 +					(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY - 						(* Quota Y Postazione *)
+									IngombroDestinazioneY_Pos +
+									Offset_Postazione_Y + 				(* Offset Postazione *)																								
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_0 -					(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_0 + 				(* Offset Deposito Direzione Z del pallet *)
+									(-ScostamentoVerticalePuntoCentrale) +		(* Sporgenza rispetto al filo pinza quando è in orizzontale *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY - 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+							
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_90;// +				(* Offset Deposito Direzione X del pallet *)
+									//Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+										
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Y_90;// +				(* Offset Deposito Direzione Y del pallet *)
+									//Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									//Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+										
+					Quota_DestJ	:= Quota_FormaturaJ;// +					(* Quota di deposito Z da Formatura *)
+									//Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 90°
+					IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					//IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestZ := Apprendimento.Z.Lato90.QuotaRilevata + Offset_Apprendimento_Z;
+					//ELSE
+					//	Quota_DestZ := Apprendimento.Z.Lato90.QuotaStart;
+					//END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_DISABILITATO THEN
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaRilevata + Distanza_ApproccioFormaturaZ;
+						ELSE
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaStart + Offset_Apprendimento_Z;
+						END_IF
+					ELSE
+						Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+												Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+					END_IF		  
+										
+					//Posizionamento lungo J lato 90°
+					IF Apprendimento.J.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato90.QuotaRilevata;
+					END_IF
+							
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					////Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+					//						Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+					
+				END_IF
+			{endregion}
+			{Region "XDX_YCENTRALE" }
+			XDX_YCENTRALE:
+				(*******************************************************************************************************************)
+											(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)																		
+				IF Angolo_Destinazione > 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X - 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_180 +				(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																								
+									Pallet_DimY/2 -						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									//Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					//IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					//END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF
+									
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+					//Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+					IF CicloDiPrelievo THEN
+						IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestY := Apprendimento.Y.Lato90.QuotaRilevata +	(* Quota rilevata Z *)
+													Distanza_ApproccioFormaturaY;			(* Approccio Z da Formatura *)				
+						ELSIF Apprendimento.Y.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestY := Quota_DestY + 						(* Quota di deposito Y *)
+													Distanza_ApproccioFormaturaY+ 			(* Approccio Y da Formatura *)
+													Offset_Apprendimento_Y;							
+						END_IF
+					ELSE
+						//Posizionamento lungo Z lato 90°
+						IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata +
+											Distanza_ApproccioFormaturaY;
+						END_IF
+					END_IF
+					
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+									
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X - 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_0 +					(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY - 						(* Quota Y Postazione *)
+									Offset_Postazione_Y - 				(* Offset Postazione *)																							
+									Pallet_DimY/2 -						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									//Offset_Pallet_Y_0 +					(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_0 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					//IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+					//	Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					//END_IF
+					IF CicloDiPrelievo THEN
+						IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestY := Apprendimento.Y.Lato90.QuotaRilevata -	(* Quota rilevata Z *)
+													Distanza_ApproccioFormaturaY;			(* Approccio Z da Formatura *)				
+						ELSIF Apprendimento.Y.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestY := Quota_DestY - 						(* Quota di deposito Y *)
+													Distanza_ApproccioFormaturaY- 			(* Approccio Y da Formatura *)
+													Offset_Apprendimento_Y;							
+						END_IF
+					ELSE
+						//Posizionamento lungo Z lato 90°
+						IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata -
+											Distanza_ApproccioFormaturaY;
+						END_IF
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF
+									
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY - 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)				
+							
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X - 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_90 +				(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+														
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									//Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									//Offset_Pallet_Y_90 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+										
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+					
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 90°
+					IF Apprendimento.Y.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato90.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF CicloDiPrelievo THEN
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Apprendimento.Z.Lato90.QuotaRilevata +	(* Quota rilevata Z *)
+													Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)				
+						ELSIF Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+							Quota_ApproccioDestZ := Quota_PostZ + 						(* Quota Y Postazione *)
+													Offset_Postazione_Z +				(* Offset Postazione *)	
+													Offset_Pallet_Z_0 +					(* Offset Direzione Z del pall*)
+													HmaxElemento +						(* Quota di deposito Z *)
+													Offset_Apprendimento_Z;							
+						END_IF
+					ELSE
+						//Posizionamento lungo Z lato 90°
+						IF Apprendimento.Z.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+							Quota_DestZ := Apprendimento.Z.Lato90.QuotaRilevata;
+						END_IF
+						Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+												Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+					END_IF
+					//Posizionamento lungo J lato 90°
+					IF Apprendimento.J.Lato90.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato90.QuotaRilevata;
+					END_IF
+									
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					//Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+					//						Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)				
+				END_IF
+			{endregion}
+			{Region "XSX_YCENTRALE" }
+			XSX_YCENTRALE:
+				(*******************************************************************************************************************)
+											(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+				(*******************************************************************************************************************)
+				IF Angolo_Destinazione > 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_180 +				(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									//Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									//Offset_Pallet_Y_180 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_180 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_180;				(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 180°
+					IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato180.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 180°
+					IF Apprendimento.J.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato180.QuotaRilevata;
+					END_IF				
+					
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY + 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z da Formatura *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J da Forma*)	
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+				(*******************************************************************************************************************)							
+				ELSIF Angolo_Destinazione < 90 THEN
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_0 +					(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+				
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																								
+									//Pallet_DimY/2 -						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									//Offset_Pallet_Y_0 +					(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+										
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+							
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_0;					(* Offset Deposito inclinazione J del pallet *)
+									
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF		
+					
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)	
+					
+					(* Valutazione della Direzione dell'Asse X*)
+					IF PosizioneAttuale_X >= Quota_DestX THEN // La posizione attuale è maggiore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX +					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)	
+					ELSE // La posizione attuale è minore della posizione di destinazione 
+						Quota_ApproccioDestX := Quota_DestX -					(* Quota di deposito X *)
+												Distanza_ApproccioFormaturaX;		(* Approccio X da Formatura *)
+					END_IF			
+				
+					Quota_ApproccioDestY := Quota_DestY - 						(* Quota di deposito Y *)
+											Distanza_ApproccioFormaturaY; 			(* Approccio Y da Formatura *)
+										
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+							
+					Quota_ApproccioDestJ := Quota_DestJ +						(* Quota di deposito J *)
+											Distanza_ApproccioFormaturaJ;			(* Approccio J da Formatura *)
+							
+				(*******************************************************************************************************************)						
+											(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+				(*******************************************************************************************************************)
+				ELSE
+					
+					Quota_DestX	:= Quota_PostX + 						(* Quota X Postazione *)
+									Offset_Postazione_X + 				(* Offset Postazione *)
+									Pallet_DimX/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_X_90 +				(* Offset Deposito Direzione X del pallet *)
+									Quota_FormaturaX;					(* Quota di deposito X da Formatura *)
+										
+					Quota_DestY := Quota_PostY + 						(* Quota Y Postazione *)
+									Offset_Postazione_Y + 				(* Offset Postazione *)																							
+									//Pallet_DimY/2 +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									//Offset_Pallet_Y_90 +				(* Offset Deposito Direzione Y del pallet *)
+									Quota_FormaturaY; 					(* Quota di deposito Y da Formatura *)
+											
+					Quota_DestZ	:= Quota_PostZ + 						(* Quota Y Postazione *)
+									Offset_Postazione_Z +				(* Offset Postazione *)	
+									Pallet_DimZ +						(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+									Offset_Pallet_Z_90 + 				(* Offset Deposito Direzione Z del pallet *)
+									Quota_FormaturaZ;					(* Quota di deposito Z da Formatura *)
+										
+					Quota_DestJ	:= Quota_FormaturaJ +					(* Quota di deposito Z da Formatura *)
+									Offset_Pallet_J_90;					(* Offset Deposito inclinazione J del pallet *)
+					
+					(* Se ho l'abilitazione dell'utilizzo delle quote apprese,
+						LE utilizzo come quote "buone" per eseguire il posizionamento *)				
+					//Posizionamento lungo X
+					IF Apprendimento.X.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestX := Apprendimento.X.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Y lato 0°
+					IF Apprendimento.Y.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestY := Apprendimento.Y.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo Z
+					IF Apprendimento.Z.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestZ := Apprendimento.Z.Lato0.QuotaRilevata;
+					END_IF
+					//Posizionamento lungo J lato 0°
+					IF Apprendimento.J.Lato0.Stato = APPRENDIMENTO_ESEGUITO THEN
+						Quota_DestJ := Apprendimento.J.Lato0.QuotaRilevata;
+					END_IF	
+				(*****************************************************************************************************************)
+				(************************************************ QUOTE APPROCCIO ************************************************)
+				(*****************************************************************************************************************)										
+					Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+														
+					Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+											
+					Quota_ApproccioDestZ := Quota_DestZ +						(* Quota di deposito Z *)
+											Distanza_ApproccioFormaturaZ;			(* Approccio Z da Formatura *)
+										
+					Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)
+					
+				END_IF
+			{endregion}		
+							
+		ELSE
+			Errore.Code := ErrWAM_FTC_PostazioneNONDefinita;
+		END_CASE
+	{endregion}	
+	ELSE
+		Errore.Code := ErrGENERICO;		
+END_CASE
+{region " Gestione Approccio "}	
+CASE TipologiaTraiettoria OF
+	
+	TRAIETTORIA_CON_APPROCCIO:
+		RETURN;
+	
+	TRAIETTORIA_SENZA_APPROCCIO:
+		(*****************************************************************************************************************)
+		(************************************************ QUOTE APPROCCIO ************************************************)
+		(*****************************************************************************************************************)										
+		Quota_ApproccioDestX	:= Quota_DestX;				(* Quota di deposito X *)
+											
+		Quota_ApproccioDestY 	:= Quota_DestY; 			(* Quota di deposito Y *)
+								
+		Quota_ApproccioDestZ 	:= Quota_DestZ; 			(* Quota di deposito Z *)
+							
+		Quota_ApproccioDestJ	:= Quota_DestJ;				(* Quota di deposito J *)
+		RETURN;	
+END_CASE
+{endregion}	
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFWAM_CreaMissione_DepPrelElemento">
+      <LineId Id="3" Count="2" />
+      <LineId Id="2906" Count="0" />
+      <LineId Id="2904" Count="1" />
+      <LineId Id="6" Count="101" />
+      <LineId Id="2730" Count="3" />
+      <LineId Id="108" Count="109" />
+      <LineId Id="219" Count="44" />
+      <LineId Id="2148" Count="3" />
+      <LineId Id="2158" Count="0" />
+      <LineId Id="2152" Count="5" />
+      <LineId Id="264" Count="326" />
+      <LineId Id="1015" Count="0" />
+      <LineId Id="1017" Count="5" />
+      <LineId Id="2487" Count="0" />
+      <LineId Id="1024" Count="143" />
+      <LineId Id="2295" Count="54" />
+      <LineId Id="2294" Count="0" />
+      <LineId Id="1224" Count="16" />
+      <LineId Id="3075" Count="0" />
+      <LineId Id="1241" Count="2" />
+      <LineId Id="2992" Count="0" />
+      <LineId Id="1244" Count="0" />
+      <LineId Id="2990" Count="0" />
+      <LineId Id="2989" Count="0" />
+      <LineId Id="1245" Count="53" />
+      <LineId Id="2729" Count="0" />
+      <LineId Id="1299" Count="13" />
+      <LineId Id="2816" Count="1" />
+      <LineId Id="1313" Count="5" />
+      <LineId Id="2818" Count="1" />
+      <LineId Id="1319" Count="13" />
+      <LineId Id="2822" Count="0" />
+      <LineId Id="2821" Count="0" />
+      <LineId Id="2823" Count="0" />
+      <LineId Id="2820" Count="0" />
+      <LineId Id="1333" Count="9" />
+      <LineId Id="2350" Count="11" />
+      <LineId Id="2567" Count="0" />
+      <LineId Id="2362" Count="0" />
+      <LineId Id="2647" Count="0" />
+      <LineId Id="2363" Count="42" />
+      <LineId Id="1397" Count="667" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Verso_Pallettizzatore" Id="{2cb9d178-1f67-4ca5-b209-35229359267b}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Verso del Pallettizzatore
+TYPE e_Verso_Pallettizzatore :
+(
+	PALLETTIZZATORE_DX := 1, //Identifica il pallettizzatore la cui linea di trasporti rimane ALLE SPALLE e A DESTRA
+	PALLETTIZZATORE_SX := 2 //Identifica il pallettizzatore la cui linea di trasporti rimane ALLE SPALLE e A SINISTRA
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"PALLETTIZZATORE_DX"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PALLETTIZZATORE_SX"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{939d6afb-a9a4-462a-9ef6-a379f4d157ed}</v>
+          <v n="GuidReInit">{54b6fc76-3a5b-4f39-80e1-acc9449bc908}</v>
+          <v n="GuidExitX">{6bb78f15-7d88-4849-a4ac-bf5bd1e64748}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

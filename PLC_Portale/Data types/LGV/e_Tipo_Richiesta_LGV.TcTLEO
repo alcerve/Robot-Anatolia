@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Tipo_Richiesta_LGV" Id="{c7d2caad-261f-4acf-bbce-0449e8206fd9}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Tipo Richiesta LGV
+TYPE e_Tipo_Richiesta_LGV :
+(
+	REQ_PRELIEVO_LGV_PIENO	:= 1,	(* Tipo di richiesta LGV = Richiesta di Tipo "PRELIEVO DI ELEMENTO CON MATERIALE" *)
+	REQ_DEPOSITO_LGV_PIENO	:= 2,	(* Tipo di richiesta LGV = Richiesta di Tipo "DEPOSITO ELEMENTO CON MATERIALE" *)
+	REQ_PRELIEVO_LGV_VUOTO	:= 3,	(* Tipo di richiesta LGV = Richiesta di Tipo "PRELIEVO ELEMENTO SENZA MATERIALE" *)
+	REQ_DEPOSITO_LGV_VUOTO	:= 4	(* Tipo di richiesta LGV = Richiesta di Tipo "DEPOSITO ELEMENTO SENZA MATERIALE" *)
+	
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"REQ_PRELIEVO_LGV_PIENO"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"REQ_DEPOSITO_LGV_PIENO"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"REQ_PRELIEVO_LGV_VUOTO"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"REQ_DEPOSITO_LGV_VUOTO"</v>
+              <v n="TextDefault">"4"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{191d0971-0c6b-46b3-9229-8e6f6db225b2}</v>
+          <v n="GuidReInit">{7829e2cd-ef87-46fb-8d96-c09857f2564b}</v>
+          <v n="GuidExitX">{ecc842a2-5974-4846-86e8-2a7c43ad2e45}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

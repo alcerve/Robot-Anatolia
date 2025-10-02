@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFModulePalletizerRobot_AxisPar" Id="{84d98d31-c586-49cb-8376-b224712e9fe0}">
+    <Declaration><![CDATA[TYPE TFModulePalletizerRobot_AxisPar :
+STRUCT
+	
+	X	: TFMachinePalletizer_AxeParameters;	(* READ	- X Axe Parameters (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	Y	: TFMachinePalletizer_AxeParameters;	(* READ	- Y Axe Parameters (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	Z	: TFMachinePalletizer_AxeParameters;	(* READ	- Z Axe Parameters (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	J	: TFMachinePalletizer_AxeParameters;	(* READ	- J Axe Parameters (UI Position=°,  UI Velocity=°/sec  UI Acc/Dec=°/sec2) *)
+	K	: TFMachinePalletizer_AxeParameters;	(* READ	- K Axe Parameters (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

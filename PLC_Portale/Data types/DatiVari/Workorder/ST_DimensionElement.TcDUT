@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_DimensionElement" Id="{27324118-17cd-4553-b659-ed4f1a9f4f4b}">
+    <Declaration><![CDATA[(* Dimensioni Elemento *)
+TYPE ST_DimensionElement :
+STRUCT
+	XDim		: REAL	:= 0.0;	(* (mm) Dimensione X 	-> lunghezza*)
+	YDim		: REAL	:= 0.0;	(* (mm) Dimensione Y  	-> larghezza *)
+	ZDim		: REAL	:= 0.0;	(* (mm) Dimensione Z 	-> spessore *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

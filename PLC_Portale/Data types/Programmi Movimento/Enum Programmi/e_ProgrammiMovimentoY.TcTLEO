@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_ProgrammiMovimentoY" Id="{2d232fc5-20a9-4367-96d1-d7afb4802316}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+TYPE e_ProgrammiMovimentoY :
+(
+	
+	Y_PosDiRiposo						:= 0,
+	Y_PosFuoriIngombroRiposo 			:= 6,
+
+	Y_PosPrelievoFalda					:= 51,
+	Y_PosDepositoSuCatastaFalda			:= 52,
+	Y_PosDepositoFalda					:= 53,
+	//Y_PosDepositoInLentaFalda			:= 55,
+	Y_PosFuoriIngombroVuotoFalda 		:= 56,
+	Y_PosFuoriIngombroCaricoFalda		:= 66,
+
+	Y_PosStartLentaPrelievoLastra 		:= 101,
+	Y_PosPrelievoInLentaLastra 			:= 102,
+	Y_PosDistaccoLastraInLentaLastra	:= 103,
+	Y_PosStartLentaDepositoLastra 		:= 104,
+	Y_PosDepositoInLentaLastra			:= 105,
+	Y_PosFuoriIngombroVuotoLastra		:= 106,
+	Y_PosFuoriIngombroCaricoLastra		:= 126,
+	Y_PosgiroPieza						:= 127,
+	Y_PosPasillo0grados					:= 128,
+	Y_PosPasillo180grados				:= 129
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"Y_PosDiRiposo"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosFuoriIngombroRiposo"</v>
+              <v n="TextDefault">"6"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosPrelievoFalda"</v>
+              <v n="TextDefault">"51"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosDepositoSuCatastaFalda"</v>
+              <v n="TextDefault">"52"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosDepositoFalda"</v>
+              <v n="TextDefault">"53"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosFuoriIngombroVuotoFalda"</v>
+              <v n="TextDefault">"56"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosFuoriIngombroCaricoFalda"</v>
+              <v n="TextDefault">"66"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosStartLentaPrelievoLastra"</v>
+              <v n="TextDefault">"101"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosPrelievoInLentaLastra"</v>
+              <v n="TextDefault">"102"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosDistaccoLastraInLentaLastra"</v>
+              <v n="TextDefault">"103"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosStartLentaDepositoLastra"</v>
+              <v n="TextDefault">"104"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosDepositoInLentaLastra"</v>
+              <v n="TextDefault">"105"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosFuoriIngombroVuotoLastra"</v>
+              <v n="TextDefault">"106"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosFuoriIngombroCaricoLastra"</v>
+              <v n="TextDefault">"126"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosgiroPieza"</v>
+              <v n="TextDefault">"127"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosPasillo0grados"</v>
+              <v n="TextDefault">"128"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"Y_PosPasillo180grados"</v>
+              <v n="TextDefault">"129"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{7dfa6d88-19be-4477-b190-e9e3674a7200}</v>
+          <v n="GuidReInit">{0ccd6762-4d8b-4cd5-9b90-41c68825a2ca}</v>
+          <v n="GuidExitX">{747c504a-0b2a-4d96-9b59-b2ed2724cc99}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

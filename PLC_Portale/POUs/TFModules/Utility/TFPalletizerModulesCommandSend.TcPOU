@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerModulesCommandSend" Id="{d6625d92-074d-4e83-9b64-0682673dfa8f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerModulesCommandSend : BOOL (* Funzione che invia il comando a tutti i moduli della macchina *)
+VAR_INPUT
+	Cmd : UINT;
+	ParametersArray : ParametersArray;
+	Modules : POINTER TO TFPalletizerModules;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFCommandSend(Cmd,ParametersArray,Modules^.AX_X.Cmd);
+TFCommandSend(Cmd,ParametersArray,Modules^.AX_Y.Cmd);
+TFCommandSend(Cmd,ParametersArray,Modules^.AX_Z.Cmd);
+TFCommandSend(Cmd,ParametersArray,Modules^.AX_J.Cmd);
+TFCommandSend(Cmd,ParametersArray,Modules^.Pinza.Cmd);]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerModulesCommandSend">
+      <LineId Id="16" Count="3" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

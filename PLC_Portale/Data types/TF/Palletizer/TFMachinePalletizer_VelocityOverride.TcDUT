@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_VelocityOverride" Id="{8ccf1e88-cdb4-4f41-9b90-3a52e3116fec}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_VelocityOverride :
+STRUCT
+	
+	Auto		: REAL	:= 0.0;	(* READ	- (%) In Auto *)
+	Jog			: REAL	:= 0.0;	(* READ	- (%) In Jog *)
+	Pack		: REAL	:= 0.0;	(* READ	- (%) With Pack   (Durante il deposito di un pacco  / con Pacco a bordo) *)
+	Pallet		: REAL	:= 0.0;	(* READ	- (%) With Pallet (Durante il deposito di un Pallet / con Pallet a bordo) *)
+	Layer		: REAL	:= 0.0;	(* READ	- (%) With Layer  (Durante il deposito di un Layer  / con Falda a bordo) *)
+	PickRip		: REAL	:= 0.0; (* READ - (%) Grip Free (Durante il prelievo di un Layer, una Falda o un Pacco) *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

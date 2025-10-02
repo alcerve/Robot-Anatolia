@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Stato_Ingombro_EE" Id="{212e671d-653b-46d9-88b2-0a3e21f92661}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Stato dell'ingombro dell'EndEffector
+TYPE e_Stato_Ingombro_EE :
+(
+	EE_NOT_DEFINED				:= -1,
+	EE_IN_INGOMBRO				:= 0,		(* Identifica che il Piano Di aspirazione (End-Effector) E' FUORI INGOMBRO rispetto al Punto Di prelievo *)
+	EE_FUORI_INGOMBRO			:= 1		(* Identifica che il Piano Di aspirazione (End-Effector) E' IN INGOMBRO rispetto al Punto Di prelievo *)
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"EE_NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"EE_IN_INGOMBRO"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"EE_FUORI_INGOMBRO"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{cc030e08-d13f-4d95-b431-33bcdedd57a1}</v>
+          <v n="GuidReInit">{d25609d8-32f5-4741-a506-43982e88aa67}</v>
+          <v n="GuidExitX">{15bdc442-cf52-4e37-b79f-301c68dc6bdc}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

@@ -1,0 +1,113 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcolaQuotaIngombroColonneLastre" Id="{d5625752-e2c4-4910-a6dd-f27e993c65d4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCalcolaQuotaIngombroColonneLastre
+VAR_INPUT
+	QuotaY_ColonnaDX : LREAL; 		(* Quota della colonna a destra *)
+	QuotaY_ColonnaSX : LREAL; 		(* Quota della colonna a destra *)
+	QuotaAttualeAsse : LREAL; 		(* Quota attuale dell'asse Y*)
+	QuotaDestinazioneAsse : LREAL; 	(* Quota Destinazione Asse Y*)
+	IngombroOttimizzatoY_InTransito_Pos	: LREAL; (* Ingombro massimo della Y durante il ciclo in direzione POSITIVA *)
+	IngombroOttimizzatoY_InTransito_Neg	: LREAL; (* Ingombro massimo della Y durante il ciclo in direzione NEGATIVA *)
+
+	OffsetSicurezza_Y				: LREAL;  (* Offset sicurezza che si vuole mantenere dalle colonne *)
+END_VAR
+VAR_OUTPUT
+	QuotaFuoriIngombro_Attuale_Y	: LREAL;
+	QuotaFuoriIngombro_Destinazione_Y	: LREAL;
+	//QuotaFuoriIngombro_Deposito_Y	: LREAL;
+	Pinza_InIngombroColonne_Destinazione	: BOOL;
+	Pinza_InIngombroColonne_Attuale			: BOOL;
+END_VAR
+VAR
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Valutazione colonne in base al verso del pallettizzatore: verso stabilito guardando il pallettizzatore con la linea alle spalle *)
+CASE VERSO_PALLETTIZZATORE OF
+	PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+		(* Valuto la posizione attuale *)
+		Pinza_InIngombroColonne_Attuale := FALSE;
+		IF (QuotaAttualeAsse + IngombroOttimizzatoY_InTransito_Neg + OffsetSicurezza_Y <= QuotaY_ColonnaDX) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna DX
+			QuotaFuoriIngombro_Attuale_Y := QuotaY_ColonnaDX - IngombroOttimizzatoY_InTransito_Neg/2 - OffsetSicurezza_Y;
+			Pinza_InIngombroColonne_Attuale := TRUE;
+		END_IF
+		IF (QuotaAttualeAsse - IngombroOttimizzatoY_InTransito_Pos - OffsetSicurezza_Y >= QuotaY_ColonnaSX) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza >= Ingombro colonna SX
+			QuotaFuoriIngombro_Attuale_Y := QuotaY_ColonnaSX + IngombroOttimizzatoY_InTransito_Pos/2 + OffsetSicurezza_Y;
+			Pinza_InIngombroColonne_Attuale := TRUE;
+		END_IF
+		
+		(* Valuto la posizione futura - Missione di Deposito/Prelievo *)
+		Pinza_InIngombroColonne_Destinazione := FALSE;
+		IF (QuotaDestinazioneAsse + IngombroOttimizzatoY_InTransito_Neg + OffsetSicurezza_Y <= QuotaY_ColonnaDX) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna DX
+			QuotaFuoriIngombro_Destinazione_Y := QuotaY_ColonnaDX - IngombroOttimizzatoY_InTransito_Neg - OffsetSicurezza_Y; 
+			Pinza_InIngombroColonne_Destinazione := TRUE;
+		END_IF
+		IF (QuotaDestinazioneAsse - IngombroOttimizzatoY_InTransito_Pos - OffsetSicurezza_Y >= QuotaY_ColonnaSX) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza >= Ingombro colonna SX
+			QuotaFuoriIngombro_Destinazione_Y := QuotaY_ColonnaSX + IngombroOttimizzatoY_InTransito_Pos + OffsetSicurezza_Y;
+			Pinza_InIngombroColonne_Destinazione := TRUE;
+		END_IF
+					
+	PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+		(* Valuto la posizione attuale *)
+		Pinza_InIngombroColonne_Attuale := FALSE;
+		IF (QuotaAttualeAsse + IngombroOttimizzatoY_InTransito_Pos + OffsetSicurezza_Y >= QuotaY_ColonnaDX) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+			QuotaFuoriIngombro_Attuale_Y := QuotaY_ColonnaDX - IngombroOttimizzatoY_InTransito_Pos - OffsetSicurezza_Y;
+			Pinza_InIngombroColonne_Attuale := TRUE;
+		END_IF
+		IF (QuotaAttualeAsse - IngombroOttimizzatoY_InTransito_Neg - OffsetSicurezza_Y <= QuotaY_ColonnaSX) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza <= Ingombro colonna 
+			QuotaFuoriIngombro_Attuale_Y := QuotaY_ColonnaSX + IngombroOttimizzatoY_InTransito_Neg + OffsetSicurezza_Y;
+			Pinza_InIngombroColonne_Attuale := TRUE;
+		END_IF
+							
+		(* Valuto la posizione futura - Missione di prelievo *)
+		Pinza_InIngombroColonne_Destinazione := FALSE;
+		IF (QuotaDestinazioneAsse + IngombroOttimizzatoY_InTransito_Pos + OffsetSicurezza_Y >= QuotaY_ColonnaDX) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+			QuotaFuoriIngombro_Destinazione_Y := QuotaY_ColonnaDX - IngombroOttimizzatoY_InTransito_Pos - OffsetSicurezza_Y;
+			Pinza_InIngombroColonne_Destinazione := TRUE;
+		END_IF
+		IF (QuotaDestinazioneAsse - IngombroOttimizzatoY_InTransito_Neg - OffsetSicurezza_Y <= QuotaY_ColonnaSX) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza >= Ingombro colonna
+			QuotaFuoriIngombro_Destinazione_Y := QuotaY_ColonnaSX + IngombroOttimizzatoY_InTransito_Neg + OffsetSicurezza_Y; 
+			Pinza_InIngombroColonne_Destinazione := TRUE;
+		END_IF
+
+END_CASE
+
+(* Nel caso in cui la pinza non sia in ingombro, fisso come fuori ingombro la quota attuale/ quota di destinazione dell'asse *)
+IF NOT Pinza_InIngombroColonne_Attuale THEN
+	QuotaFuoriIngombro_Attuale_Y := QuotaAttualeAsse;
+END_IF
+(* Nel caso in cui la pinza non sia in ingombro, fisso come fuori ingombro la quota di destinazione dell'asse *)
+IF NOT Pinza_InIngombroColonne_Destinazione THEN
+	QuotaFuoriIngombro_Destinazione_Y := QuotaAttualeAsse;
+END_IF
+
+			
+			
+			
+			]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcolaQuotaIngombroColonneLastre">
+      <LineId Id="8" Count="7" />
+      <LineId Id="18" Count="3" />
+      <LineId Id="24" Count="6" />
+      <LineId Id="33" Count="3" />
+      <LineId Id="39" Count="1" />
+      <LineId Id="56" Count="5" />
+      <LineId Id="64" Count="3" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="129" Count="0" />
+      <LineId Id="72" Count="4" />
+      <LineId Id="79" Count="3" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="148" Count="4" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="154" Count="1" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="142" Count="4" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

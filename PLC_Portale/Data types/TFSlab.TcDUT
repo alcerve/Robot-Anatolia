@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFSlab" Id="{bcd0e0ee-e8bf-4332-a4f7-4cd17e7464ef}">
+    <Declaration><![CDATA[TYPE TFSlab :
+STRUCT
+	
+	ID			: UDINT;				(* Unic ID *)
+	Code		: UINT;					(* Production Code *)
+
+	X 			: REAL;					(* X dimension *)
+	Y 			: REAL;					(* Y dimension *)
+	Z 			: REAL;					(* Z dimension *)
+	
+	StrPos		: ARRAY [1..4] OF REAL;	(* Strapper Position, 	1..8 Straps Position on X *)
+	StrDone		: UINT;					(* Strapper Done,  		0=Null, 1..4=N° of Straps Done *)
+		
+	Centratura	: INT;    (* Stato Centratura*)
+
+	Zone		: INT := e_ElementZone.NULL; //Zona di appartenenza dell'elemento
+	Position	: LREAL; (* Posizione in mm sulla cinghia *)
+	(* Dati di Classificazione *)
+	QualitaPar 	: ARRAY [1..MAXNUMVISIONSYSTEM] OF UINT := [MAXNUMVISIONSYSTEM(0)]; (* Qualità parziale dell'i-esimo Sistema di classificazione (0=UV,1=FlowMaster,..)*)
+	TonoPar 	: ARRAY [1..MAXNUMVISIONSYSTEM] OF UINT := [MAXNUMVISIONSYSTEM(0)]; (* Tono parziale dell'i-esimo Sistema di classificazione (0=UV,1=FlowMaster,..)*)		
+	StatoLetturaUV : INT := 0; //Indica lo stato della lettura dell'UV (0= Non ancora letto,1= Lettura In Corso,2= Lettura Completata)	
+	
+	QualitaTot 	: UINT := 0; //Indica la qualità totale data dall'algoritmo impostato
+	TonoTot 	: UINT := 0; //Indica il tono totale dato dall'algoritmo impostato
+	Calibro		: UINT := 0; //Indica il calibro dato, proveniente direttamente dal sistema calibro-planar
+
+	CreazioneManuale : BOOL;//Indica che l'elemento è stato creato manualmente
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

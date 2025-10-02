@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="IO_Virtuali" Id="{a05ea4ce-d9bc-4853-b669-e51f68f70f62}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+		
+	(* LGV COMMUNICATION*)
+	ILGV_LetIn								: BOOL;//	AT %I* : BOOL; Richiesta Ingresso DA LGV
+	ILGV_Footprint							: BOOL;//	AT %I* : BOOL; LGV in Ingombro
+	OLGV_Req								: BOOL;//	AT %I* : BOOL; Chiamata A LGV
+	OLGV_LetIn								: BOOL;//	AT %I* : BOOL; Richiesta Ingresso DA LGV ricevuta e elaborata
+	
+	OLGV_ResetSW_RichiestaIngresso			(*AT %Q**) : BOOL;
+	
+	ILGV_LetIn_HW							(*AT %I**) : BOOL; //Richiesta Ingresso DA LGV segnale CABLATO
+	ILGV_Footprint_HW						(*AT %I**) : BOOL; //LGV in INGOMBRO segnale CABLATO
+	
+	ILGV_LetIn_SW							: BOOL; //Richiesta Ingresso DA LGV segnale SOFTWARE
+	ILGV_Footprint_SW						: BOOL; //LGV in INGOMBRO segnale SOFTWARE
+	
+	ISWITCH_HW_SW_LGV						: BOOL; //TRUE=segnale CABLATO,FALSE=segnale SOFTWARE
+	
+	O_PHConsensoIgressoNavetta				: ARRAY[1..MAXAREA] OF BOOL;
+	I_PHPresenzaFalde				(*AT %I**) : BOOL;	//  = Fotocellula Presenza FALDE
+
+	I_PHPresenzaMaterialePinza	: BOOL;
+	I_EncoderX_Pronto	 		: BOOL;	// 16 = Encoder X Pronto
+	I_24VAusiliariOK		 	: BOOL; 	// Presenza 24V ausiliari
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

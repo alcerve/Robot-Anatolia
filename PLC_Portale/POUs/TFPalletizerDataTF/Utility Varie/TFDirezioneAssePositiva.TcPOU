@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFDirezioneAssePositiva" Id="{84bed7a7-8de3-4255-9b76-8479445a2cd7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFDirezioneAssePositiva : BOOL (*Valuta la direzione dell'asse in base alla sua quota attuale e alla sua destinazione*)
+VAR_INPUT
+	Posizione_Attuale 	: LREAL; //Posizione in cui si trova l'Asse
+	Posizione_Finale 	: LREAL; //Posizione finale di posizionamento dell'Asse
+END_VAR
+VAR
+END_VAR
+(*Valuta la direzione dell'asse in base alla sua quota attuale e alla sua destinazione*)]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFDirezioneAssePositiva := FALSE;
+IF Posizione_Attuale < Posizione_Finale THEN
+	TFDirezioneAssePositiva := TRUE;
+	RETURN;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFDirezioneAssePositiva">
+      <LineId Id="15" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="12" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

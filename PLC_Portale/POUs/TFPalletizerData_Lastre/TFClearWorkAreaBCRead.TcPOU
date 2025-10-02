@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFClearWorkAreaBCRead" Id="{18677100-7f80-4335-9682-3d0a85ada434}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFClearWorkAreaBCRead : BOOL
+VAR_INPUT
+	WorkAreaState : POINTER TO TFMachinePalletizer_WorkAreaState;
+END_VAR
+VAR
+	i : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i:=1 TO MAXNUMBARCODE DO
+	WorkAreaState^.BCRead[i].State := LETTURA_ESEGUITA;
+	WorkAreaState^.BCRead[i].Value := ''; 
+	WorkAreaState^.BCRead[i].ErrorCode := 0;
+END_FOR
+TFClearWorkAreaBCRead := TRUE;]]></ST>
+    </Implementation>
+    <LineIds Name="TFClearWorkAreaBCRead">
+      <LineId Id="18" Count="0" />
+      <LineId Id="31" Count="2" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

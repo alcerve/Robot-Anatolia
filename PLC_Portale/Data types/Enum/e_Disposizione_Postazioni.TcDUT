@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_Disposizione_Postazioni" Id="{a287f28b-3626-47bd-8026-b9d536f57c72}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Disposizione delle postazioni di Prelievo/Deposito: indica in quale asse le postazioni sono disposte
+TYPE e_Disposizione_Postazioni :
+(
+	LUNGO_X := 0, //L'asse di tutte le postazioni di Prelievo/Deposito è parallelo all'asse X della macchina
+	LUNGO_Y := 1 //L'asse di tutte le postazioni di Prelievo/Deposito è ortogonale all'asse X della macchina 
+);
+END_TYPE
+(*
+*************************************************************
+*                                           				*
+* 		|                                   				*
+*       |                                   				*
+*       |                        |         |  		|		*
+*       |                        |         | 		|		*
+*   ----|----         ------------------------------------  *
+*       |                        |         |  		|		*
+*       |                        |         |  		|		*
+*       |                               LUNGO X 			*
+*   ----|----            					                *
+*       |                                   				*
+*       |                                   				*
+*       |                                   				*
+*   ----|----                               				*
+*       |                                   				*
+*       |                                   				*
+*       |                                   				*	^ Y
+*       |                                   				*	|
+*       |                                   				*	|
+*    LUNGO Y                        						*	|
+*************************************************************	|
+														X <-----|-
+*)]]></Declaration>
+  </DUT>
+</TcPlcObject>

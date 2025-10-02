@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_HskToSupervisor" Id="{0af4f7c5-9d6e-49fa-a4fd-d26571f3b6ab}">
+    <Declaration><![CDATA[TYPE ST_HskToSupervisor :
+STRUCT
+	(* STATO POSTAZIONE-MACCHINA *)
+	Auto				: BOOL;	//Identifica lo stato di AUTOMATICO della macchina
+	Alarm				: BOOL;	//Identifica lo stato di ERRORE della macchina
+	Block				: BOOL; //Macchina-Postazione in Blocco TRUE = ogni qualvolta la macchina non può accettare il veicolo
+	GateAccessActive	: BOOL; //Richiesta di ingresso manuale Operatore ATTIVATA (predisp)	
+	DisableLGV			: BOOL; //Esclusione chiamata veicolo
+
+	(* STATO CHIAMATA POSTAZIONE-MACCHINA *)
+	Call_EspulsionePieno	: BOOL; // Chiamata ingresso a LGV, TRUE = La una postazione è nello stato di chiamata navetta x espulsione pieno
+	Call_EspulsioneVuoto	: BOOL; // Chiamata ingresso a LGV, TRUE = La una postazione è nello stato di chiamata navetta x espulsione vuoto
+	Call_RichiestoPieno		: BOOL; // Chiamata ingresso a LGV, TRUE = La una postazione è nello stato di chiamata navetta x espulsione pieno
+	Call_RichiestaVuoto		: BOOL; // Chiamata ingresso a LGV, TRUE = La una postazione è nello stato di chiamata navetta x espulsione vuoto
+
+	InfeedOK 				: BOOL; // TRUE = OK Ingresso Nella Postazione 
+	
+	Priority				: INT; 	//Indica la priorità di asservimento della postazione 0-100
+	Saturation				: INT;	//Identifica lo stato di intasamento dei trasporti 0-100
+	WD						: INT; 	//Whatc Dog comunicazione
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

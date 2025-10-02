@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCheckPalletFull" Id="{332d31e2-cd79-4f58-b678-78ea0f4f90cd}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCheckPalletFull : INT
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	//PX_WorkArea : ARRAY [1..MAXAREA] OF BOOL;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+END_VAR
+VAR
+	i : INT;
+	k : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFCheckPalletFull := 0;
+FOR k := 1 TO MAXPICKPOINT DO
+	//IF WorkPickPointState^[k].State = 1 THEN
+		FOR i:=1 TO MAXAREA DO	
+			IF WorkArea^[i].Enable = 1 AND WorkArea^[i].Typology = TYPOLOGY_PALLET AND 
+				WorkArea^[i].Code = 0  AND 
+				//WorkAreaState^[i].State <= WORKAREA_STATE_OCCUPIED_WORKING AND 
+				(Forming^[WorkAreaState^[i].F].PackXP[WorkAreaState^[i].P].Grip <> -1 OR 
+				Forming^[WorkAreaState^[i].F].PackXN[WorkAreaState^[i].P].Grip <> -1) THEN
+				RETURN;
+			END_IF
+		END_FOR
+	//ELSE
+	//	;//RETURN;	
+	//END_IF	
+END_FOR	
+	
+TFCheckPalletFull := 1;
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCheckPalletFull">
+      <LineId Id="16" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="62" Count="1" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="35" Count="1" />
+      <LineId Id="20" Count="2" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

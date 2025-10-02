@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFWorkflowsAllEnableOrDisable" Id="{deb44fda-ba4a-47fa-ba57-8d675195c1ac}" SpecialFunc="None">
+    <Declaration><![CDATA[//Funzione che restituisce TRUE se tutti i WORFLOW sono abilitati con ValutaEnable = TRUE o TRUE se tutti i WORFLOW sono disabilitati con ValutaEnable = FALSE
+FUNCTION TFWorkflowsAllEnableOrDisable : BOOL 
+VAR_INPUT
+	WorkFlow : POINTER TO ARRAY[0..MAXWORKFLOW] OF WorkFlow;
+	ValutaEnable : BOOL; // TRUE = Verifica se sono tutti enable, FALDE = se tutti disable
+END_VAR
+VAR
+	i: UINT;
+    nDisable : UINT;
+	nEnable	: UINT;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i:=0 TO MAXWORKFLOW DO
+	IF WorkFlow^[i].Enable THEN
+		nEnable := nEnable+1;
+	ELSE
+		nDisable := nDisable+1;
+	END_IF
+END_FOR
+IF ValutaEnable THEN
+	IF nEnable >= MAXWORKFLOW THEN
+		TFWorkflowsAllEnableOrDisable := TRUE;
+		RETURN;
+	END_IF
+ELSE
+	IF nDisable >= MAXWORKFLOW THEN
+		TFWorkflowsAllEnableOrDisable := TRUE;
+		RETURN;
+	END_IF
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFWorkflowsAllEnableOrDisable">
+      <LineId Id="47" Count="17" />
+      <LineId Id="20" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

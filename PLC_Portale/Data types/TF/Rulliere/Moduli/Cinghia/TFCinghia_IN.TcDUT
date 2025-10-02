@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFCinghia_IN" Id="{136b7a64-a515-47f8-8cb3-d81c510692c1}">
+    <Declaration><![CDATA[TYPE TFCinghia_IN :
+STRUCT
+	
+	FTC_Presenza1 			: BOOL; // Fotocellula Presenza 1 "INGRESSO"
+	FTC_Presenza1Enable 	: BOOL; // Fotocellula Presenza 1 Abilitata
+	
+	FTC_Presenza2		 	: BOOL; // Fotocellula Presenza 2 "MEDIANA"
+	FTC_Presenza2Enable 	: BOOL; // Fotocellula Presenza 2 Abilitata 
+	
+	FTC_Presenza3		 	: BOOL; // Fotocellula Presenza 3 "USCITA"
+	FTC_Presenza3Enable		: BOOL; // Fotocellula Presenza 3 Abilitata 
+	
+	StopEsterno 		: BOOL;//Comando di stop rotazione dall'esterno
+	ConsensoDaValle 	: BOOL;//Consenso rotazione per invio materiale a valle
+	StopDaMacchina 		: BOOL;//Stop COmando da macchina, per tutti quei comandi che rimangono sempre in esecuzione
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

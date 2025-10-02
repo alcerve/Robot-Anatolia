@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFOVEMClearAllCommand" Id="{8d289c92-c297-4847-ba3e-b8d459ee70da}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFOVEMClearAllCommand : bool
+VAR_INPUT
+Command : POINTER TO Ovem_Command;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Command^.ErrorReset := FALSE;
+Command^.Aspirazione_OFF:=FALSE;
+Command^.Aspirazione_ON :=FALSE;
+Command^.Aspirazione_ON_ScritturaSoglia:=FALSE;
+Command^.ErrorReset := FALSE;
+Command^.ErrorReset := FALSE;
+Command^.ScriviParametri:= FALSE;
+
+TFOVEMClearAllCommand:=TRUE;
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFOVEMClearAllCommand">
+      <LineId Id="20" Count="0" />
+      <LineId Id="8" Count="3" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

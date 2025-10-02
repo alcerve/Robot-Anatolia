@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFBarcodeStatus" Id="{50572460-7c55-443d-b907-ff1b6f5a73bf}">
+    <Declaration><![CDATA[TYPE TFBarcodeStatus :
+STRUCT
+
+	Error 		: UDINT; //Errore modulo
+	ErrorExtra 	: UDINT; //Errore extra modulo
+		
+	StatoLettore : StatusDataLogic;//Stato del lettore barcode
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

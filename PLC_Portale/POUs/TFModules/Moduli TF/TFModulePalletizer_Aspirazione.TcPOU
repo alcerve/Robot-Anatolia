@@ -1,0 +1,411 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFModulePalletizer_Aspirazione" Id="{18bf5cea-b598-44c1-9159-9e3f8f3c792b}" SpecialFunc="None">
+    <Declaration><![CDATA[
+FUNCTION_BLOCK TFModulePalletizer_Aspirazione
+VAR_INPUT
+	Cmd : CommandBuffer;
+	Cfg : Config;
+	IN : Module_Palletizer_Aspirazione_IN;
+	
+	ManCmd : Module_Palletizer_Aspirazione_ManCmd;
+	
+END_VAR
+VAR_OUTPUT
+	CmdExe : CommandExe;
+	CmdExd : CommandExe;
+	CmdNext : Command;
+	CmdLog : CommandLog;
+	ProgramLog : ProgrammaLog; 
+	State : State;
+	StateLog : StateLog;
+	Error : Error;
+	ErrorLog : ErrorLog;
+	Warning : Warning;
+	WarningLog : WarningLog;
+	OUT : Module_Palletizer_Aspirazione_OUT;
+END_VAR
+VAR
+	Power : UINT;
+	Init : BOOL;
+	Timer : REAL;
+	Timeout : REAL;
+	TimerAspirazione : REAL;
+	ParametersArray : ParametersArray;
+	MAN_Actuator : UINT;
+	MAN_Cmd : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT Init THEN
+	TFCommandBufferClear(ADR(Cmd));
+	TFCommandClear(ADR(CmdNext));
+	TFCommandExeClear(ADR(CmdExe));
+	TFStateUpdate(ADR(State),StateNOP);
+	TFErrorClear(ADR(Error));
+	TFWarningClear(ADR(Warning));
+	Init := TRUE;
+	CmdExe.Code := 1;
+END_IF
+
+(* Generic Timer - Add here all your Timers *)
+TFTimerCall(ADR(Timer),Cfg.TimeBase);
+TFTimerCall(ADR(Timeout),Cfg.TimeBase);
+TFTimerCall(ADR(TimerAspirazione),Cfg.TimeBase);
+(* External To Buffered Command *)
+TFCommandToNext(ADR(Cmd),ADR(CmdNext),ADR(CmdExe),ADR(Cfg),ADR(Error),ADR(ErrorLog),ADR(State));
+
+(* Buffered To Exe Command *)
+TFCommandToExecution(ADR(CmdNext),ADR(CmdExe),ADR(Error),ADR(ErrorLog),ADR(State),ADR(CmdLog));
+
+(* Exe Command *)
+CASE CmdExe.Code OF
+
+	(* ******************************************************************************************************** *)
+	(* Nop  *)
+	(* ******************************************************************************************************** *)
+	CmdNOP:	;
+	
+	1: TFStateUpdate(ADR(State),CmdNOP);
+
+	(* ******************************************************************************************************** *)
+	(* Stop *)
+	(* ******************************************************************************************************** *)
+	CmdSTOP:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateSTOP_RUN);
+				TFTimerSet(ADR(Timeout),500,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+
+			(* Case 1 - Clear All Commands*)
+			1:	
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateSTOP_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+	
+	(* ******************************************************************************************************** *)
+	(* Error Reset *)
+	(* ******************************************************************************************************** *)
+	CmdRESET:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateRESET_RUN);
+				TFTimerSet(ADR(Timeout),2000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 1 *)
+			1: TFCommandCase(ADR(CmdExe),99,CommandCase_JMP);
+
+			
+			(* Case 99 *)
+			99:	TFErrorClear(ADR(Error));
+				TFWarningClear(ADR(Warning));
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateRESET_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+	
+	(* ******************************************************************************************************** *)
+	(* Power *)
+	(* ******************************************************************************************************** *)
+	CmdPOWER:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StatePOWER_RUN);
+				TFTimerSet(ADR(Timeout),500,TRUE);
+
+			1: TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StatePOWER_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+	
+	(* ******************************************************************************************************** *)
+	(* Home *)
+	(* ******************************************************************************************************** *)
+	CmdHOME:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateHOME_RUN);
+				TFTimerSet(ADR(Timeout),30000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+
+			(* Case 1 - Disattivazione + Salita Ventose*)
+			1: OUT.EV_Suction := FALSE;
+				OUT.EV_SuctionCupsDown := FALSE;
+				OUT.EV_SuctionCupsUP := TRUE;
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+	
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateHOME_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+
+	(* ******************************************************************************************************** *)
+	(* Manual *)
+	(* ******************************************************************************************************** *)
+	CmdMAN:
+		CASE CmdExe.CmdCase OF
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateMAN_RUN);
+				TFTimerSet(ADR(Timeout),10,TRUE);
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),2) THEN
+					MAN_Actuator	:= STRING_TO_UINT(ParametersArray.Parameters[0]);
+					MAN_Cmd		:= STRING_TO_UINT(ParametersArray.Parameters[1]);
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF;
+
+				CASE MAN_Actuator OF
+					(* Case 0..99 for Actuators *)
+					(* Case 100..199  for Axis *)
+
+					(* Case Nop *)
+					0:	;
+
+					(* Case 1: *)
+					1:	CASE MAN_Cmd OF
+							0:	;
+							
+							(* Case 10: Suction OFF *)
+							10:	OUT.EV_Suction := FALSE;
+								
+							(* Case 11: Suction ON *)
+							11:	OUT.EV_Suction := TRUE;
+
+							(* Case 10: Suction Cup Up *)
+							20:	OUT.EV_SuctionCupsUp := TRUE;
+								OUT.EV_SuctionCupsDown := FALSE;
+
+							(* Case 11: Suction Cup Down *)
+							21:	OUT.EV_SuctionCupsUp := FALSE;
+								OUT.EV_SuctionCupsDown := TRUE;
+
+							ELSE
+								TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					100:CASE MAN_Cmd OF
+							0:	;
+							ELSE
+								TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					ELSE
+						TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_CASE;
+
+				IF CmdExe.CmdCase = 0 THEN
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				END_IF
+
+			(* Case 1 *)
+			1: 	IF (MAN_Cmd = 0) OR TFTimerDone(ADR(Timeout)) THEN
+					(* Clear All Output Here *)
+					;
+					TFStateUpdate(ADR(State),StateMAN_END);
+					TFCommandExeClear(ADR(CmdExe));
+				END_IF;
+			10: ;
+			(* Case 100 - End *)
+			100:(* Clear All Output Here *)
+				TFStateUpdate(ADR(State),StateMAN_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+
+	(* ******************************************************************************************************** *)
+	(* LOAD - Attivazione aspirazione + discesa ventose *)
+	(* ******************************************************************************************************** *)
+		CmdLOAD:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateLoad_RUN);
+				TFTimerSet(ADR(Timeout),60000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				
+			(* Case 1 - Attivazione Ventosa *)					
+			1:
+				OUT.EV_Suction := TRUE;
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			(* Case 2 - Discesa Ventose *)		
+			2: 
+				OUT.EV_SuctionCupsDOWN 	:= TRUE;
+				OUT.EV_SuctionCupsUP 	:= FALSE;
+				TFTimerSet(ADR(TimerAspirazione),2000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			3:
+				IF TFTimerDone(ADR(TimerAspirazione)) THEN
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateLOAD_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+		
+	(* ******************************************************************************************************** *)
+	(* UNLOAD - Attivazione aspirazione + discesa ventose *)
+	(* ******************************************************************************************************** *)
+		CmdUNLOAD:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateUNLOAD_RUN);
+				TFTimerSet(ADR(Timeout),60000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				
+			(* Case 1 - Disattivazione Aspirazione*)					
+			1:	
+				OUT.EV_Suction := False;
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 2 - Salita Ventose *)		
+			2: 
+				OUT.EV_SuctionCupsDOWN 	:= FALSE;
+				OUT.EV_SuctionCupsUP 	:= TRUE;
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);	
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateUNLOAD_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+	ELSE
+		TFError(ErrNOCMD,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+
+END_CASE;
+
+
+(* ******************************************************************************************************** *)
+(* State Input/Output *)
+(* ******************************************************************************************************** *)
+(* Fill Input/Output bit with sensor, electrovalve, etc. status *)
+
+
+(* ******************************************************************************************************** *)
+(* Input *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Alarm *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Error Check - Clear All Output!!! *)
+(* ******************************************************************************************************** *)
+IF Error.Code > ErrNULL THEN
+	IF CmdExe.Code <> CmdNOP THEN
+		IF CmdExe.Code <> CmdSTOP AND
+			CmdExe.Code <> CmdPOWER AND
+			CmdExe.Code <> CmdRESET AND
+			CmdExe.Code <> CmdMAN AND
+			CmdExe.Code <> CmdLOAD AND
+			CmdExe.Code <> CmdUNLOAD THEN
+			TFCommandClear(ADR(CmdNext));
+			TFCommandExeClear(ADR(CmdExe));
+
+			(* Clear All Output Here *)
+
+		END_IF;
+	END_IF;
+END_IF;
+
+
+(* ******************************************************************************************************** *)
+(* Common Outputs *)
+(* ******************************************************************************************************** *)
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFModulePalletizer_Aspirazione">
+      <LineId Id="60" Count="6" />
+      <LineId Id="1058" Count="0" />
+      <LineId Id="67" Count="4" />
+      <LineId Id="756" Count="0" />
+      <LineId Id="801" Count="0" />
+      <LineId Id="79" Count="11" />
+      <LineId Id="1056" Count="1" />
+      <LineId Id="91" Count="13" />
+      <LineId Id="921" Count="0" />
+      <LineId Id="119" Count="20" />
+      <LineId Id="909" Count="0" />
+      <LineId Id="151" Count="24" />
+      <LineId Id="212" Count="20" />
+      <LineId Id="910" Count="0" />
+      <LineId Id="912" Count="1" />
+      <LineId Id="907" Count="0" />
+      <LineId Id="273" Count="33" />
+      <LineId Id="906" Count="0" />
+      <LineId Id="892" Count="2" />
+      <LineId Id="896" Count="9" />
+      <LineId Id="307" Count="6" />
+      <LineId Id="770" Count="0" />
+      <LineId Id="342" Count="12" />
+      <LineId Id="847" Count="1" />
+      <LineId Id="852" Count="1" />
+      <LineId Id="855" Count="1" />
+      <LineId Id="385" Count="2" />
+      <LineId Id="392" Count="1" />
+      <LineId Id="395" Count="7" />
+      <LineId Id="683" Count="5" />
+      <LineId Id="749" Count="0" />
+      <LineId Id="698" Count="0" />
+      <LineId Id="702" Count="0" />
+      <LineId Id="803" Count="0" />
+      <LineId Id="914" Count="0" />
+      <LineId Id="885" Count="1" />
+      <LineId Id="915" Count="1" />
+      <LineId Id="1010" Count="0" />
+      <LineId Id="1007" Count="2" />
+      <LineId Id="918" Count="0" />
+      <LineId Id="1012" Count="0" />
+      <LineId Id="891" Count="0" />
+      <LineId Id="726" Count="6" />
+      <LineId Id="861" Count="13" />
+      <LineId Id="920" Count="0" />
+      <LineId Id="919" Count="0" />
+      <LineId Id="887" Count="0" />
+      <LineId Id="876" Count="0" />
+      <LineId Id="888" Count="1" />
+      <LineId Id="917" Count="0" />
+      <LineId Id="964" Count="0" />
+      <LineId Id="890" Count="0" />
+      <LineId Id="877" Count="6" />
+      <LineId Id="515" Count="0" />
+      <LineId Id="580" Count="27" />
+      <LineId Id="884" Count="0" />
+      <LineId Id="676" Count="0" />
+      <LineId Id="609" Count="13" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

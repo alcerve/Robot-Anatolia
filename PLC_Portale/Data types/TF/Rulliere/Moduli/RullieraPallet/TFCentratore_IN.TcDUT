@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFCentratore_IN" Id="{32ecf3f3-8d60-417a-9598-c00fe4665aab}">
+    <Declaration><![CDATA[TYPE TFCentratore_IN :
+STRUCT
+	
+	TouchDX	: BOOL; //Sensore Bandella DX 1
+	TouchSX		: BOOL; //Sensore Bandella SX 1
+	
+	PX_Aperto : BOOL; //Sensore MASSIMA APERTURA 1
+	PX_Chiuso : BOOL; //Sensosre MASSIMA CHIUSURA 1
+	PX_Home   : BOOL; //Sensore HOME 1
+		
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

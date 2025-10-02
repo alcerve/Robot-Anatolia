@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_RiferimentoPostazione" Id="{d4f61f88-e658-4899-a3f2-1bb6dc6370a4}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Riferimento origine assi postazione in WA rispetto l'origine degli assi
+TYPE e_RiferimentoPostazione :
+(
+	NOT_DEFINED			:= -1,
+	ANGOLO_DX	 	:= 1,	(* Identifica che IL RISCONTRO della WorkArea è disposta nell'angolo a DX della WorkArea stessa *)
+	CENTRALE	 	:= 2,	(* Identifica che IL RISCONTRO della WorkArea è disposta sulla mediana della WorkArea stessa *)	
+	ANGOLO_SX	 	:= 3,	(* Identifica che IL RISCONTRO della WorkArea è disposta nell'angolo a SX della WorkArea stessa *)
+	XSX_YCENTRALE 	:= 4, 	(* Identifica che IL RISCONTRO della WorkArea è disposta SX della WorkArea stessa MA LASSE Y è IN CENTRO*)
+	XDX_YCENTRALE 	:= 5  	(* Identifica che IL RISCONTRO della WorkArea è disposta DX della WorkArea stessa MA LASSE Y è IN CENTRO *)
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"ANGOLO_DX"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CENTRALE"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"ANGOLO_SX"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"XSX_YCENTRALE"</v>
+              <v n="TextDefault">"4"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"XDX_YCENTRALE"</v>
+              <v n="TextDefault">"5"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{d1cd8aef-bc60-4ccd-999a-1709e416e214}</v>
+          <v n="GuidReInit">{2e75bb8c-4128-406c-a4ba-f83362e3bca3}</v>
+          <v n="GuidExitX">{703c363f-75a9-4e51-8ffd-12bb204e7fec}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

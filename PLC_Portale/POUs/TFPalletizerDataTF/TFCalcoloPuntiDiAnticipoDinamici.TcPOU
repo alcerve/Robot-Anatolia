@@ -1,0 +1,1069 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoloPuntiDiAnticipoDinamici" Id="{9f7414c4-2acb-4fca-9e74-9c04ba92298a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCalcoloPuntiDiAnticipoDinamici
+VAR_INPUT
+	Traiettoria : POINTER TO TFTraiettoria;
+	WorkSpace : POINTER TO TFMachinePalletizer_WorkSpace;
+	WorkFootprint : POINTER TO ARRAY [1..MAXFOOTPRINT] OF TFMachinePalletizer_WorkFootprint; //Ingombri
+	WorkPickPoint 				: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointState 			: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	WorkPickPointOffset 		: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointOffset;
+	WorkPickPointDimension 		: POINTER TO ARRAY [1..MAXPICKPOINT] OF Work_PickPoint_Dimension;
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	PickPlaceParameters	: POINTER TO TFMachinePalletizer_ParametersFromHMI;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	AbilitaAnticipoDinamico : BOOL;
+END_VAR
+VAR
+	f 		: INT;
+	a 		: INT;
+	P 		: UINT;
+	wa 		: UINT;
+	waDXSX 	: UINT;
+	AltezzaDiIngombroArea 			: LREAL;
+	AltezzaDiIngombroOstacoli 		: LREAL;
+	AltezzaDiIngombroPuntiPrelievo 	: LREAL;
+	AssegnaQuote 	: BOOL;
+	
+	LunghezzaMAX 	: LREAL;//LunghezzaMAX Totale pinza
+	LarghezzaMAX 	: LREAL;//Larghezza Totale pinza
+	SpessoreMAX  	: LREAL;//Spessore Totale pinza
+
+	IngombroX_Pos 	: LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroY_Pos 	: LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y
+	IngombroZ_Pos 	: LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Z
+	
+	IngombroX_Neg 	: LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroY_Neg 	: LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y
+	IngombroZ_Neg 	: LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Z
+	
+	IngombroY_Tot 	: LREAL;//Ingombro totale In direzione Y
+	
+	IngombroZ 	  : LREAL;//Ingombro della pinza lungo Z
+	
+	
+	IngombroOttimizzatoX : LREAL;
+	IngombroOttimizzatoY : LREAL;
+	IngombroOttimizzatoZ : LREAL;
+
+	IngombroVerticalePinzaMAX 		: LREAL;
+	IngombroVerticaleMaxElementi 	: LREAL;
+	
+	DirezioneZPositiva : BOOL;
+	DirezioneZNegativa : BOOL;
+	
+	WASX : UINT;
+	WADX : UINT;
+	WAPARTENZA : UINT;
+	WADESTINAZIONE : UINT;
+	LarghezzaPickPoint : REAL;
+	TFCalcolaNumeroPostazioneDXSX : TFCalcolaNumeroPostazioneDXSX;
+END_VAR	]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Calcolo gli ingombri della pinza nelle varie direzioni *)
+(*TFCalcoliIngombroPinza(Mission := Mission,
+						WorkAreaManager := WorkAreaManager,
+						ModuleAX_X := ModuleAX_X,
+						ModuleAX_Y := ModuleAX_Y,
+						ModuleAX_Z := ModuleAX_Z,
+						ModuleAX_J := ModuleAX_J,
+						ModuleAX_K := ModuleAX_K,
+						IngombroX_Pos := ADR(IngombroX_Pos),
+						IngombroY_Pos := ADR(IngombroY_Pos),
+						IngombroX_Neg := ADR(IngombroX_Neg),
+						IngombroY_Neg := ADR(IngombroY_Neg),
+						IngombroY_Tot := ADR(IngombroY_Tot),
+						IngombroZ_Pos := ADR(IngombroZ_Pos),
+						IngombroZ_Neg := ADR(IngombroZ_Neg));
+		*)										
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+(* Larhezza Pick Point + Pacco *)
+(*IF WorkPickPointState^[1].XDim >= WorkPickPointDimension[1].XDim THEN
+	LarghezzaPickPoint := WorkPickPointState^[1].XDim;
+else
+	LarghezzaPickPoint := WorkPickPointDimension[1].Xdim;
+END_IF
+*)
+(*************************** Anticipo asse X *************************************)
+QuotaAnticipoDinamicaX_Raggiunta := FALSE; 
+
+(*************************** Anticipo dell'asse Z *********************************) 
+(* Valuto la direzione della Z *)
+DirezioneZPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_Z^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.ZPick);
+DirezioneZNegativa := NOT DirezioneZPositiva;
+
+IngombroVerticaleMaxElementi := 0;
+
+(* Anticipo Y per Deposito Pacco *)
+QuotaAnticipoDinamicaY_Raggiunta := FALSE;
+
+(*
+	IF Mission^.PPick = INT_TO_UINT(TPICK_PACK) AND Mission^.State = MISSION_STATE_DEPOSITO_PACCO_RUN  THEN
+		IF (Mission^.YPlace >= Mission^.YPick) THEN //Se deposito un pacco orrizzontale e la posizione di deposito super la posizione Y di prelievo
+			QuotaAnticipoDinamicaY_Raggiunta := TRUE;
+		ELSE
+			QuotaAnticipoDinamicaY_Raggiunta := FALSE;
+		END_IF
+	ELSE
+		QuotaAnticipoDinamicaY_Raggiunta := FALSE;
+	END_IF*)
+	
+	(* Valuto se gli assi sono in finestra di prelievo, in questo modo valuto nel ciclo se devo andare fuori ingombro oppure posso partire da dove sono *)
+	//IF Mission^.TPick = TPICK_PACK THEN
+	(*	(* Valuto la posizione di X *)
+		IF (ModuleAx_X^.Ax^.AxRef^.NcToPlc.SetPos >= WorkPickPoint^[Mission^.PPick].Xv - 50) AND (ModuleAx_X^.Ax^.AxRef^.NcToPlc.SetPos <= WorkPickPoint^[Mission^.PPick].Xv + 50) THEN
+			AsseXInFinestraDiPrelievoPacco := TRUE;
+		ELSE
+			AsseXInFinestraDiPrelievoPacco := FALSE;
+		END_IF
+		
+		(* Valuto la rotazione della pinza *)
+		IF ModuleAx_J^.Ax^.AxRef^.NcToPlc.SetPos >= Mission^.JPick - 5 AND ModuleAx_J^.Ax^.AxRef^.NcToPlc.SetPos <= Mission^.JPick + 5 THEN
+			AsseJInFinestraDiPrelievoPacco := TRUE;
+		ELSE
+			AsseJInFinestraDiPrelievoPacco := FALSE;
+		END_IF
+		
+		IF Mission^.JPickVO = 0 THEN //Prelievo Verticale
+			IF (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.SetPos  >= WorkPickPoint^[Mission^.PPick].Yv - Mission^.YDim/2 - 50) AND (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.SetPos <= WorkPickPoint^[Mission^.PPick].Yv + Mission^.YDim/2 + 50) THEN
+				AsseYInFinestraDiPrelievoPacco := TRUE;
+			ELSE
+				AsseYInFinestraDiPrelievoPacco := FALSE;
+			END_IF
+		ELSIF Mission^.JPickVO = 1 THEN//Prelievo Orrizontale
+			IF (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.SetPos >= WorkPickPoint^[Mission^.PPick].Yh - Mission^.YDim/2 - 50) AND (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.SetPos <= WorkPickPoint^[Mission^.PPick].Yh + Mission^.YDim/2 + 50) THEN
+				AsseYInFinestraDiPrelievoPacco := TRUE;
+			ELSE
+				AsseYInFinestraDiPrelievoPacco := FALSE;
+			END_IF
+		END_IF
+	
+	//END_IF
+*)
+
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP,
+	
+	WAMANAGER_CICLO_RIPOSO_INIT,
+		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+		IF AbilitaAnticipoDinamico THEN
+			QuotaAnticipoDinamicaZ_VersoRiposo := 0;
+			
+			IF TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick) THEN	// Direzione Positiva 
+				TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea:=WorkArea,
+												DirezioneAsseX_Positiva:=TRUE,
+												NPostazioneDX=>WADX,
+												NPostazioneSX=>WASX,
+												PostazionePartenza=>WAPARTENZA);
+												
+				IF WorkArea^[wa].Typology <> TYPOLOGY_EXTERNAL_DEPPREL THEN
+					FOR wa := WAPARTENZA TO NumPostazioneDiPareggiatura DO
+						AltezzaDiIngombroArea := 0;
+						CASE WorkArea^[wa].Typology OF
+							
+							TYPOLOGY_PALLET:
+								CASE Forming^[WorkAreaState^[wa].F].Pallet.Tipologia OF
+										
+									PALLET_STANDARD:
+										IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+											AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+										ELSE
+											AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea THEN
+											AltezzaDiIngombroArea := WorkArea^[wa].Z;	
+										END_IF
+										
+									PALLET_ACCOPPIATI:
+										IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+											AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+										ELSE
+											AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea THEN
+											AltezzaDiIngombroArea := WorkArea^[wa].Z;	
+										END_IF	
+									
+									CASSA_STANDARD:
+										IF Forming^[WorkAreaState^[wa].F].Pallet.HMAX > WorkAreaState^[wa].H THEN
+											AltezzaDiIngombroArea := Forming^[WorkAreaState^[wa].F].Pallet.HMAX;
+										ELSE
+											AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea THEN
+											AltezzaDiIngombroArea := WorkArea^[wa].Z;	
+										END_IF
+										
+									CAVALLETTO:
+										IF Forming^[WorkAreaState^[wa].F].Pallet.HMAX > WorkAreaState^[wa].H THEN
+											AltezzaDiIngombroArea := Forming^[WorkAreaState^[wa].F].Pallet.HMAX;
+										ELSE
+											AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea THEN
+											AltezzaDiIngombroArea := WorkArea^[wa].Z;	
+										END_IF
+										
+									BUNDLE:
+										IF Forming^[WorkAreaState^[wa].F].Pallet.HMAX > WorkAreaState^[wa].H THEN
+											AltezzaDiIngombroArea := Forming^[WorkAreaState^[wa].F].Pallet.HMAX;
+										ELSE
+											AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea THEN
+											AltezzaDiIngombroArea := WorkArea^[wa].Z;	
+										END_IF
+										
+									ELSE
+										AltezzaDiIngombroArea := 1700;//Fisso l'altezza ad una quota di default
+								END_CASE
+											
+							TYPOLOGY_LAYER:
+								IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+									AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+								ELSE
+									AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+								END_IF
+								IF WorkArea^[wa].Z > AltezzaDiIngombroArea THEN
+									AltezzaDiIngombroArea := WorkArea^[wa].Z;	
+								END_IF
+							
+							TYPOLOGY_EXTERNAL_DEPPREL:
+								AltezzaDiIngombroArea := AltezzaDiIngombroArea;
+								
+							ELSE
+								AltezzaDiIngombroArea := 1700;//Fisso l'altezza ad una quota di default
+						
+						END_CASE					
+																
+						IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroArea + IngombroZ + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+							QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroArea + IngombroZ + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+						END_IF
+					END_FOR	
+					
+				END_IF	
+				(* Valuto I Pick-Point *)
+				CASE TIPOLOGIA_FUNZIONAMENTO_MACCHINA OF
+					
+					FUNZIONAMENTO_PICKING:
+						AltezzaDiIngombroPuntiPrelievo := 0;
+															
+				ELSE
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPointDimension^[P].Zdim + WorkPickPointState^[P].Element.Z >= WorkPickPointDimension^[P].Zdim THEN // Se Altezza + Zpacco >= Ingombro Verticale 
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Z + WorkPickPointState^[P].Element.Z;
+						END_IF
+						IF WorkPickPointDimension^[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension^[P].Zdim;
+						END_IF
+						//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+						IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+							QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].Element.YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+						END_IF
+					END_FOR			
+				END_CASE
+				
+			ELSE		// Direzione Negativa
+				TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea		:= WorkArea,
+												DirezioneAsseX_Positiva:=FALSE,
+												NPostazioneDX	=> WADX,
+												NPostazioneSX	=> WASX,
+												PostazionePartenza=>WAPARTENZA);
+						
+				FOR wa := WAPARTENZA TO NPOSTAZIONE_DOPODELPUNTODIPREL BY -1 DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR			
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					AltezzaDiIngombroPuntiPrelievo := 0;
+					IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+					END_IF
+					IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+					END_IF
+					IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+					END_IF
+					IF WAPARTENZA = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN //Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+						IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF
+					ELSE		//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+						IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+							QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+						END_IF
+					END_IF
+				END_FOR*)
+			END_IF
+			IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoRiposo THEN
+				QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+			ELSE
+				QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+			END_IF
+		END_IF
+					
+										
+	WAMANAGER_CICLO_RIPOSO_END,
+			
+	(*WAMANAGER_CICLO_PALL_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_PALL_RUN:
+		(* Calcolo le WA a DX e a SX della mia posizione attuale *)
+		WAPARTENZA := Mission^.PPick;
+		TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+										WorkArea		:= WorkArea,
+										NPostazioneDX	=> WADX,
+										NPostazioneSX	=> WASX);
+																
+	WAMANAGER_CICLO_PRELIEVO_PALL_END,						
+		
+	WAMANAGER_CICLO_DEPOSITO_PALL_RUN:
+		IF AbilitaAnticipoDinamico THEN
+			QuotaAnticipoDinamicaX_DepositoPallet := 0;	
+			QuotaAnticipoDinamicaZ_VersoDepPallet := 0;
+						
+			//IF DirezioneXPositiva_Dep THEN	// Direzione Positiva 
+			IF NOT TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace) THEN	// Direzione NEGATIVA 
+				FOR wa := WAPARTENZA TO Mission^.PPlace BY -1 DO //ordinamento piazzole CRESCENTE CON LA X
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoDepPallet <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoDepPallet := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR		
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					AltezzaDiIngombroPuntiPrelievo := 0;
+					IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+					END_IF
+					IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+					END_IF
+					IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+					END_IF
+					IF WAPARTENZA = NPOSTAZIONE_DOPORIBALTINO THEN //ACR:Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+						IF QuotaAnticipoDinamicaZ_VersoDepPallet <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaAnticipoDinamicaZ_VersoDepPallet := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF
+					ELSE		//ACR:Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+						IF QuotaAnticipoDinamicaZ_VersoDepPallet <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+							QuotaAnticipoDinamicaZ_VersoDepPallet := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+						END_IF
+					END_IF
+				END_FOR*)
+			ELSE		// Direzione POSITIVA
+				FOR wa := WAPARTENZA TO Mission^.PPlace DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoDepPallet <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoDepPallet := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR			
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					AltezzaDiIngombroPuntiPrelievo := 0;
+					IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+					END_IF
+					IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+					END_IF
+					IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+					END_IF
+					IF WAPARTENZA = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN //Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+						IF QuotaAnticipoDinamicaZ_VersoDepPallet <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaAnticipoDinamicaZ_VersoDepPallet := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF
+					ELSE		//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+						IF QuotaAnticipoDinamicaZ_VersoDepPallet <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+							QuotaAnticipoDinamicaZ_VersoDepPallet := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+						END_IF
+					END_IF
+				END_FOR*)
+				IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoDepPallet THEN
+					QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+				END_IF	
+			END_IF
+					
+		////////////////// ANTICIPO X ///////////////////////
+	(*	IF TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace) THEN // Direzione Positiva
+			IF Mission^.PPlace <= NPOSTAZIONE_PRIMADELPUNTODIPREL THEN
+				IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+					QuotaAnticipoDinamicaX_DepositoPallet := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+				ELSE
+					QuotaAnticipoDinamicaX_DepositoPallet := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+				END_IF	
+			ELSIF Mission^.PPlace > NPOSTAZIONE_DOPORIBALTINO THEN
+				IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+					QuotaAnticipoDinamicaX_DepositoPallet := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+				ELSE
+					QuotaAnticipoDinamicaX_DepositoPallet := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+				END_IF
+				IF QuotaAnticipoDinamicaX_DepositoPallet <= Workarea^[NPOSTAZIONE_DOPORIBALTINO].X (*+ 800*) THEN // +800 : In ACR la wa 6 è occupata da falde, questo valore ne indica l'ingombro dal centro verso la wa n° 5
+					QuotaAnticipoDinamicaX_DepositoPallet := Workarea^[NPOSTAZIONE_DOPORIBALTINO].X (*+ 800*);
+				END_IF
+			ELSIF Mission^.PPlace = NPOSTAZIONE_DOPORIBALTINO THEN //postazione 6
+				QuotaAnticipoDinamicaX_DepositoPallet := (WorkPickPoint^[Mission^.PPick].Xv + LarghezzaPickPoint/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+			END_IF
+			IF ModuleAX_X^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaX_DepositoPallet THEN
+				QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+			ELSE
+				QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+			END_IF
+		ELSE	//Direzione Negativa
+			IF Mission^.PPlace < NPOSTAZIONE_PRIMADELPUNTODIPREL OR Mission^.PPlace >= NPOSTAZIONE_DOPORIBALTINO THEN
+				IF WorkAreaState^[Mission^.PPlace - 1].P <= 1 THEN
+					QuotaAnticipoDinamicaX_DepositoPallet := (Workarea^[Mission^.PPlace - 1].X + Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+				ELSE
+					QuotaAnticipoDinamicaX_DepositoPallet := (Workarea^[Mission^.PPlace - 1].X - Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+				END_IF
+			ELSIF Mission^.PPlace = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN
+				QuotaAnticipoDinamicaX_DepositoPallet := (WorkPickPoint^[Mission^.PPick].Xv - LarghezzaPickPoint/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+			END_IF
+			IF ModuleAX_X^.Ax^.Status.ActPosition <= QuotaAnticipoDinamicaX_DepositoPallet THEN
+				QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+			ELSE
+				QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+			END_IF
+		END_IF*)
+		
+	END_IF	
+				
+	WAMANAGER_CICLO_DEPOSITO_PALL_END,
+	
+	WAMANAGER_CICLO_FALDA_VUOTI_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_RUN:
+		IF AbilitaAnticipoDinamico THEN
+			QuotaAnticipoDinamicaZ_VersoPrelFalda := 0;
+				
+			//IF DirezioneXPositiva_Prel THEN	// Direzione Positiva 
+			IF NOT TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick) THEN	// Direzione NEGATIVA 
+				TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea		:= WorkArea,
+												DirezioneAsseX_Positiva := FALSE,
+												NPostazioneDX	=> WADX,
+												NPostazioneSX	=> WASX,
+												PostazionePartenza=>WAPARTENZA);
+				
+				FOR wa := WAPARTENZA TO 1 BY -1 DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR		
+				
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					AltezzaDiIngombroPuntiPrelievo := 0;
+					IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+					END_IF
+					IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+					END_IF
+					IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+					END_IF	
+				END_FOR*)
+				
+			ELSE		// Direzione POSITIVA
+				FOR wa := WAPARTENZA TO MAXAREA DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR			
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					IF Mission^.JPickVO = 0 THEN //Ribaltino Verticale
+						IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+							QuotaAnticipoDinamicaZ_VersoPrelFalda := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+						END_IF
+					ELSIF Mission^.JPickVO = 1 THEN	//Ribaltino Orrizontale
+						IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+							QuotaAnticipoDinamicaZ_VersoPrelFalda := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+						END_IF
+					ELSE
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := ALTEZZA_CATASTA_FALDE; // Misura di sicurezza fittizzia
+					END_IF
+				END_FOR*)
+			END_IF
+			IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoPrelFalda THEN
+				QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+			ELSE
+				QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+			END_IF
+		END_IF
+		
+						
+	WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_END,
+		
+	WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_RUN:
+		IF AbilitaAnticipoDinamico THEN
+			QuotaAnticipoDinamicaX_VersoDepFalda := 0;
+			
+			IF TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace) THEN
+															
+				(*IF Mission^.PPlace <= NPOSTAZIONE_PRIMADELPUNTODIPREL THEN
+					IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					END_IF	
+				ELSIF Mission^.PPlace > NPOSTAZIONE_DOPORIBALTINO THEN
+					IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					END_IF
+					IF QuotaAnticipoDinamicaX_VersoDepFalda <= Workarea^[NPOSTAZIONE_DOPORIBALTINO].X + 800 THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := Workarea^[NPOSTAZIONE_DOPORIBALTINO].X + 800;
+					END_IF
+				ELSIF Mission^.PPlace = NPOSTAZIONE_DOPORIBALTINO THEN //postazione 6
+					QuotaAnticipoDinamicaX_VersoDepFalda := (WorkPickPoint^[Mission^.PPick].Xv + LarghezzaPickPoint/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+				END_IF
+				IF ModuleAX_X^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaX_VersoDepFalda THEN
+					QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+				END_IF
+			ELSE	//Direzione Negativa
+				IF Mission^.PPlace < NPOSTAZIONE_PRIMADELPUNTODIPREL OR Mission^.PPlace >= NPOSTAZIONE_DOPORIBALTINO THEN
+					IF WorkAreaState^[Mission^.PPlace - 1].P <= 1 OR WorkArea^[Mission^.PPlace - 1].H + 100 < WorkArea^[Mission^.PPlace].H  THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace - 1].X + Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace - 1].X - Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+					END_IF
+				ELSIF Mission^.PPlace = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN
+					QuotaAnticipoDinamicaX_VersoDepFalda := (WorkPickPoint^[Mission^.PPick].Xv - LarghezzaPickPoint/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+				END_IF
+				IF ModuleAX_X^.Ax^.Status.ActPosition <= QuotaAnticipoDinamicaX_VersoDepFalda THEN
+					QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+				END_IF*);
+			END_IF
+		END_IF
+											
+	WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_END,*)
+	
+	WAMANAGER_CICLO_FALDA_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:
+		QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+		QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+		QuotaAnticipoDinamicaZ_VersoPrelFalda := 0;
+		IF AbilitaAnticipoDinamico THEN
+			
+			//IF DirezioneXPositiva_Prel THEN	// Direzione Positiva 
+			IF NOT TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace) THEN	// Direzione NEGATIVA 
+				FOR wa := WAPARTENZA TO 1 BY -1 DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR		
+				
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					AltezzaDiIngombroPuntiPrelievo := 0;
+					IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+					END_IF
+					IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+					END_IF
+					IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+					END_IF	
+				END_FOR*)
+				
+			ELSE		// Direzione Negativa
+				FOR wa := WAPARTENZA TO MAXAREAPRESENT DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR			
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					IF Mission^.JPickVO = 0 THEN //Ribaltino Verticale
+						IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+							QuotaAnticipoDinamicaZ_VersoPrelFalda := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+						END_IF
+					ELSIF Mission^.JPickVO = 1 THEN	//Ribaltino Orrizontale
+						IF QuotaAnticipoDinamicaZ_VersoPrelFalda <= WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+							QuotaAnticipoDinamicaZ_VersoPrelFalda := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+						END_IF
+					ELSE
+						QuotaAnticipoDinamicaZ_VersoPrelFalda := ALTEZZA_CATASTA_FALDE; // Misura di sicurezza fittizzia
+					END_IF
+				END_FOR*)
+			END_IF
+			IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoPrelFalda THEN
+				QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+			ELSE
+				QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+			END_IF
+		END_IF
+		
+													
+	WAMANAGER_CICLO_PRELIEVO_FALDA_END,
+			
+	WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:
+		IF AbilitaAnticipoDinamico THEN
+			QuotaAnticipoDinamicaX_VersoDepFalda := 0;
+						
+			(*IF TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace) THEN
+				IF Mission^.PPlace <= NPOSTAZIONE_PRIMADELPUNTODIPREL THEN
+					IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					END_IF	
+				ELSIF Mission^.PPlace > NPOSTAZIONE_DOPORIBALTINO THEN
+					IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					END_IF
+					IF QuotaAnticipoDinamicaX_VersoDepFalda <= Workarea^[NPOSTAZIONE_DOPORIBALTINO].X + 800 THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := Workarea^[NPOSTAZIONE_DOPORIBALTINO].X + 800;
+					END_IF
+				ELSIF Mission^.PPlace = NPOSTAZIONE_DOPORIBALTINO THEN //postazione 6
+					QuotaAnticipoDinamicaX_VersoDepFalda := (WorkPickPoint^[Mission^.PPick].Xv + LarghezzaPickPoint/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+				END_IF
+				IF ModuleAX_X^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaX_VersoDepFalda THEN
+					QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+				END_IF
+				TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea		:= WorkArea,
+												DirezioneAsseX_Positiva := TRUE,
+												NPostazioneDX	=> WADX,
+												NPostazioneSX	=> WASX,
+												PostazionePartenza=>WAPARTENZA);
+			ELSE	//Direzione Negativa
+				IF Mission^.PPlace < NPOSTAZIONE_PRIMADELPUNTODIPREL OR Mission^.PPlace >= NPOSTAZIONE_DOPORIBALTINO THEN
+					IF WorkAreaState^[Mission^.PPlace - 1].P <= 1 OR WorkArea^[Mission^.PPlace - 1].H + 100 < WorkArea^[Mission^.PPlace].H  THEN
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace - 1].X + Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_VersoDepFalda := (Workarea^[Mission^.PPlace - 1].X - Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+					END_IF
+				ELSIF Mission^.PPlace = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN
+					QuotaAnticipoDinamicaX_VersoDepFalda := (WorkPickPoint^[Mission^.PPick].Xv - LarghezzaPickPoint/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+				END_IF
+				IF ModuleAX_X^.Ax^.Status.ActPosition <= QuotaAnticipoDinamicaX_VersoDepFalda THEN
+					QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+				END_IF
+			END_IF
+			TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea		:= WorkArea,
+												DirezioneAsseX_Positiva := FALSE,
+												NPostazioneDX	=> WADX,
+												NPostazioneSX	=> WASX,
+												PostazionePartenza=>WAPARTENZA);
+			*)
+		END_IF
+		WAPARTENZA := Mission^.PPlace;
+				
+	//WAMANAGER_CICLO_DEPOSITO_FALDA_END,
+
+	(*WAMANAGER_CICLO_PACCO_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_PACCO_RUN:
+		IF AbilitaAnticipoDinamico THEN
+			QuotaAnticipoDinamicaZ_VersoPrelPacco := 0; 
+			//IF DirezioneXPositiva_Prel THEN	// Direzione Positiva 
+			IF NOT TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick) THEN	// Direzione NEGATIVA 
+				FOR wa := WAPARTENZA TO NPOSTAZIONE_DOPORIBALTINO BY -1 DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelPacco <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoPrelPacco := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR		
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					AltezzaDiIngombroPuntiPrelievo := 0;
+					IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+					END_IF
+					IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+					END_IF
+					IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+					END_IF
+					IF WAPARTENZA = NPOSTAZIONE_DOPORIBALTINO THEN //Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+						IF QuotaAnticipoDinamicaZ_VersoPrelPacco <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaAnticipoDinamicaZ_VersoPrelPacco := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF	
+					ELSE
+						IF QuotaAnticipoDinamicaZ_VersoPrelPacco <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+							QuotaAnticipoDinamicaZ_VersoPrelPacco := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+						END_IF
+					END_IF
+				END_FOR*)
+			ELSE		// Direzione POSITIVA
+				FOR wa := WAPARTENZA TO NPOSTAZIONE_PRIMADELPUNTODIPREL DO
+					AltezzaDiIngombroArea := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaAnticipoDinamicaZ_VersoPrelPacco <= AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z THEN
+						QuotaAnticipoDinamicaZ_VersoPrelPacco := AltezzaDiIngombroArea + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z;
+					END_IF
+				END_FOR			
+								
+				(* Valuto I Pick-Point *)
+				(*FOR P:=1 TO MAXPICKPOINT DO
+					AltezzaDiIngombroPuntiPrelievo := 0;
+					IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+					END_IF
+					IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+					END_IF
+					IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+						AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+					END_IF
+					IF WAPARTENZA = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN //Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+						IF QuotaAnticipoDinamicaZ_VersoPrelPacco <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaAnticipoDinamicaZ_VersoPrelPacco := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF
+					ELSE		//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+						IF QuotaAnticipoDinamicaZ_VersoPrelPacco <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+							QuotaAnticipoDinamicaZ_VersoPrelPacco := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+						END_IF
+					END_IF
+				END_FOR	*)
+			END_IF
+				IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoPrelPacco THEN
+					QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+				END_IF
+		END_IF
+	
+				
+	WAMANAGER_CICLO_PRELIEVO_PACCO_END,
+		
+	WAMANAGER_CICLO_DEPOSITO_PACCO_RUN:
+		(*IF AbilitaAnticipoDinamico AND Forming^[WorkAreaState^[Mission^.PPlace].F].PackXN[WorkAreaState^[Mission^.PPlace].P].Trajectory <> 2 AND
+	    	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXN[WorkAreaState^[Mission^.PPlace].P].Trajectory <> 101 AND
+			Forming^[WorkAreaState^[Mission^.PPlace].F].PackXN[WorkAreaState^[Mission^.PPlace].P].Trajectory <> 201 AND
+			Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Trajectory <> 101 AND
+			Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Trajectory <> 201 THEN
+			QuotaAnticipoDinamicaX_DepositoPacco := 0;
+			
+			
+			//IF DirezioneXPositiva_Dep THEN
+			IF NOT TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace) THEN
+				IF Mission^.PPlace < NPOSTAZIONE_PRIMADELPUNTODIPREL THEN
+					IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+						QuotaAnticipoDinamicaX_DepositoPacco := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_DepositoPacco := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					END_IF	
+				ELSIF Mission^.PPlace > NPOSTAZIONE_DOPORIBALTINO THEN
+					IF WorkAreaState^[Mission^.PPlace + 1].P <= 1 THEN
+						QuotaAnticipoDinamicaX_DepositoPacco := (Workarea^[Mission^.PPlace + 1].X - Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_DepositoPacco := (Workarea^[Mission^.PPlace + 1].X + Pallet^[Workarea^[Mission^.PPlace + 1].Pallet].X/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+					END_IF
+					//IF QuotaAnticipoDinamicaX_DepositoPacco <= Workarea^[NPOSTAZIONE_DOPORIBALTINO].X + 800 + (IngombroX/2) + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X THEN
+					//	QuotaAnticipoDinamicaX_DepositoPacco := Workarea^[NPOSTAZIONE_DOPORIBALTINO].X + 800 + (IngombroX/2) + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X;
+					//END_IF
+				ELSIF Mission^.PPlace = NPOSTAZIONE_DOPORIBALTINO OR Mission^.PPlace = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN //postazione 5,6
+					QuotaAnticipoDinamicaX_DepositoPacco := (WorkPickPoint^[Mission^.PPick].Xv + LarghezzaPickPoint/2 + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X + (IngombroX/2));
+				END_IF
+				IF ModuleAX_X^.Ax^.Status.ActPosition <= QuotaAnticipoDinamicaX_DepositoPacco THEN
+					QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+				END_IF
+				TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea		:= WorkArea,
+												DirezioneAsseX_Positiva := FALSE,
+												NPostazioneDX	=> WADX,
+												NPostazioneSX	=> WASX,
+												PostazionePartenza=>WAPARTENZA);
+			ELSE	//Direzione POSITIVA
+				IF Mission^.PPlace < NPOSTAZIONE_PRIMADELPUNTODIPREL OR Mission^.PPlace > NPOSTAZIONE_DOPORIBALTINO THEN
+					IF WorkAreaState^[Mission^.PPlace - 1].P <= 1 OR WorkArea^[Mission^.PPlace - 1].H + 100 < WorkArea^[Mission^.PPlace].H  THEN
+						QuotaAnticipoDinamicaX_DepositoPacco := (Workarea^[Mission^.PPlace - 1].X + Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+					ELSE
+						QuotaAnticipoDinamicaX_DepositoPacco := (Workarea^[Mission^.PPlace - 1].X - Pallet^[Workarea^[Mission^.PPlace - 1].Pallet].X/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+					END_IF
+				ELSIF Mission^.PPlace = NPOSTAZIONE_PRIMADELPUNTODIPREL OR  Mission^.PPlace = NPOSTAZIONE_DOPORIBALTINO THEN
+					QuotaAnticipoDinamicaX_DepositoPacco := (WorkPickPoint^[Mission^.PPick].Xv - LarghezzaPickPoint/2 - OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_X - (IngombroX/2));
+				END_IF
+				IF ModuleAX_X^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaX_DepositoPacco THEN
+					QuotaAnticipoDinamicaX_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+				END_IF
+				TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea		:= WorkArea,
+												DirezioneAsseX_Positiva := TRUE,
+												NPostazioneDX	=> WADX,
+												NPostazioneSX	=> WASX,
+												PostazionePartenza=>WAPARTENZA);
+			END_IF
+		END_IF*)
+		
+		WAPARTENZA := Mission^.PPlace;
+				
+	//WAMANAGER_CICLO_DEPOSITO_PACCO_END;
+	*)
+END_CASE
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcoloPuntiDiAnticipoDinamici">
+      <LineId Id="13246" Count="0" />
+      <LineId Id="13227" Count="5" />
+      <LineId Id="13221" Count="0" />
+      <LineId Id="13235" Count="1" />
+      <LineId Id="13238" Count="1" />
+      <LineId Id="13241" Count="0" />
+      <LineId Id="13234" Count="0" />
+      <LineId Id="13312" Count="0" />
+      <LineId Id="13243" Count="0" />
+      <LineId Id="12178" Count="1" />
+      <LineId Id="10757" Count="11" />
+      <LineId Id="10770" Count="0" />
+      <LineId Id="10772" Count="1" />
+      <LineId Id="10778" Count="2" />
+      <LineId Id="10803" Count="1" />
+      <LineId Id="12472" Count="0" />
+      <LineId Id="10805" Count="0" />
+      <LineId Id="12904" Count="39" />
+      <LineId Id="10927" Count="0" />
+      <LineId Id="12944" Count="0" />
+      <LineId Id="10960" Count="8" />
+      <LineId Id="12184" Count="0" />
+      <LineId Id="10969" Count="0" />
+      <LineId Id="12194" Count="0" />
+      <LineId Id="12207" Count="0" />
+      <LineId Id="12233" Count="0" />
+      <LineId Id="12208" Count="1" />
+      <LineId Id="12232" Count="0" />
+      <LineId Id="13101" Count="0" />
+      <LineId Id="12214" Count="0" />
+      <LineId Id="10970" Count="1" />
+      <LineId Id="13001" Count="0" />
+      <LineId Id="13004" Count="0" />
+      <LineId Id="13002" Count="0" />
+      <LineId Id="12952" Count="0" />
+      <LineId Id="12962" Count="0" />
+      <LineId Id="12970" Count="4" />
+      <LineId Id="12967" Count="0" />
+      <LineId Id="13019" Count="2" />
+      <LineId Id="13381" Count="0" />
+      <LineId Id="13383" Count="7" />
+      <LineId Id="13382" Count="0" />
+      <LineId Id="12990" Count="0" />
+      <LineId Id="12992" Count="0" />
+      <LineId Id="12997" Count="3" />
+      <LineId Id="12991" Count="0" />
+      <LineId Id="13023" Count="1" />
+      <LineId Id="13022" Count="0" />
+      <LineId Id="12976" Count="5" />
+      <LineId Id="12965" Count="0" />
+      <LineId Id="13026" Count="1" />
+      <LineId Id="13025" Count="0" />
+      <LineId Id="13459" Count="0" />
+      <LineId Id="13461" Count="7" />
+      <LineId Id="13460" Count="0" />
+      <LineId Id="12982" Count="1" />
+      <LineId Id="12987" Count="0" />
+      <LineId Id="12954" Count="0" />
+      <LineId Id="13010" Count="0" />
+      <LineId Id="13006" Count="0" />
+      <LineId Id="13014" Count="3" />
+      <LineId Id="13013" Count="0" />
+      <LineId Id="13029" Count="1" />
+      <LineId Id="13028" Count="0" />
+      <LineId Id="13098" Count="2" />
+      <LineId Id="13033" Count="0" />
+      <LineId Id="13031" Count="1" />
+      <LineId Id="13007" Count="0" />
+      <LineId Id="13011" Count="0" />
+      <LineId Id="13008" Count="0" />
+      <LineId Id="10977" Count="3" />
+      <LineId Id="12951" Count="0" />
+      <LineId Id="12947" Count="0" />
+      <LineId Id="10981" Count="0" />
+      <LineId Id="13102" Count="0" />
+      <LineId Id="13109" Count="1" />
+      <LineId Id="13153" Count="0" />
+      <LineId Id="13150" Count="0" />
+      <LineId Id="13107" Count="0" />
+      <LineId Id="13114" Count="7" />
+      <LineId Id="13126" Count="3" />
+      <LineId Id="13113" Count="0" />
+      <LineId Id="13104" Count="0" />
+      <LineId Id="11002" Count="1" />
+      <LineId Id="12211" Count="1" />
+      <LineId Id="12230" Count="0" />
+      <LineId Id="12213" Count="0" />
+      <LineId Id="12210" Count="0" />
+      <LineId Id="12231" Count="0" />
+      <LineId Id="12215" Count="0" />
+      <LineId Id="11004" Count="33" />
+      <LineId Id="12330" Count="3" />
+      <LineId Id="12329" Count="0" />
+      <LineId Id="11038" Count="0" />
+      <LineId Id="11043" Count="0" />
+      <LineId Id="11052" Count="7" />
+      <LineId Id="12217" Count="3" />
+      <LineId Id="11069" Count="0" />
+      <LineId Id="11071" Count="5" />
+      <LineId Id="11084" Count="0" />
+      <LineId Id="11086" Count="68" />
+      <LineId Id="12335" Count="3" />
+      <LineId Id="12334" Count="0" />
+      <LineId Id="11155" Count="1" />
+      <LineId Id="11163" Count="34" />
+      <LineId Id="12340" Count="3" />
+      <LineId Id="12339" Count="0" />
+      <LineId Id="11198" Count="0" />
+      <LineId Id="11203" Count="12" />
+      <LineId Id="12222" Count="1" />
+      <LineId Id="12226" Count="0" />
+      <LineId Id="12224" Count="0" />
+      <LineId Id="12221" Count="0" />
+      <LineId Id="12227" Count="0" />
+      <LineId Id="12225" Count="0" />
+      <LineId Id="11216" Count="55" />
+      <LineId Id="12345" Count="3" />
+      <LineId Id="12344" Count="0" />
+      <LineId Id="11272" Count="0" />
+      <LineId Id="11277" Count="0" />
+      <LineId Id="11905" Count="0" />
+      <LineId Id="11279" Count="4" />
+      <LineId Id="12236" Count="0" />
+      <LineId Id="11293" Count="0" />
+      <LineId Id="12248" Count="0" />
+      <LineId Id="11294" Count="39" />
+      <LineId Id="11915" Count="0" />
+      <LineId Id="11348" Count="67" />
+      <LineId Id="12350" Count="3" />
+      <LineId Id="12349" Count="0" />
+      <LineId Id="11416" Count="0" />
+      <LineId Id="11421" Count="0" />
+      <LineId Id="11927" Count="0" />
+      <LineId Id="11423" Count="4" />
+      <LineId Id="11435" Count="0" />
+      <LineId Id="11437" Count="23" />
+      <LineId Id="12250" Count="4" />
+      <LineId Id="12249" Count="0" />
+      <LineId Id="11461" Count="15" />
+      <LineId Id="12256" Count="4" />
+      <LineId Id="12255" Count="0" />
+      <LineId Id="12415" Count="0" />
+      <LineId Id="11477" Count="1" />
+      <LineId Id="11490" Count="0" />
+      <LineId Id="11492" Count="77" />
+      <LineId Id="12355" Count="3" />
+      <LineId Id="12354" Count="0" />
+      <LineId Id="11570" Count="0" />
+      <LineId Id="11575" Count="0" />
+      <LineId Id="11937" Count="0" />
+      <LineId Id="11576" Count="8" />
+      <LineId Id="11592" Count="26" />
+      <LineId Id="12268" Count="4" />
+      <LineId Id="12267" Count="0" />
+      <LineId Id="11619" Count="14" />
+      <LineId Id="12262" Count="4" />
+      <LineId Id="12261" Count="0" />
+      <LineId Id="11634" Count="2" />
+      <LineId Id="11638" Count="0" />
+      <LineId Id="11648" Count="0" />
+      <LineId Id="11650" Count="2" />
+      <LineId Id="11654" Count="4" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

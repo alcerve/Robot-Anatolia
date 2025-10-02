@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFCodiciPerFormatura" Id="{184eb9e1-85e7-41a3-a7e4-c79f0ce22d62}">
+    <Declaration><![CDATA[TYPE TFCodiciPerFormatura :
+STRUCT
+	Code : ARRAY[1..MAXFORMINGCODE] OF INT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

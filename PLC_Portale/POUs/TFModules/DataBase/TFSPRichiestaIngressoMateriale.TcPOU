@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFSPRichiestaIngressoMateriale" Id="{f517be14-650a-43a5-8421-d939f967e02f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFSPRichiestaIngressoMateriale
+VAR_INPUT
+	BarcodeUDC 	: STRING;//Barcode in ingresso
+	StartRead 	: BOOL;//Start lettura dati
+	DBID		: UDINT;//ID del database, da ricavare dal configuratore
+END_VAR
+VAR_OUTPUT
+	DataFromDB 	: Record_From_DB; //Dati ricavati dal DB
+	State 		: StoredProcedureState;
+END_VAR
+VAR
+	nState: BYTE;
+	arrParaList: ARRAY [0..0] OF ST_DBParameter;
+	SP_RecordArray : FB_DBStoredProceduresRecordArray;
+	bBusy: BOOL;
+	bErr: BOOL;
+	nErrid: UDINT;
+	DataFromDB1 	: Record_From_DB; //Dati ricavati dal DB
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE nState OF
+	(*Idle*)
+	0:
+		IF StartRead THEN
+			nState := 1;
+			State.ReadRun := TRUE;
+		END_IF
+	(* Case 1 : Init Dei parametri per esecuzione SP *)
+	1:
+		arrParaList[0].sParameterName 		:= '@Udc';
+		arrParaList[0].eParameterDataType 	:= eDBColumn_NVarChar;
+		arrParaList[0].eParameterType 		:= eDBParameter_Input;
+		arrParaList[0].cbParameterValue 	:= SIZEOF(BarcodeUDC);
+		arrParaList[0].pParameterValue 		:= ADR(BarcodeUDC);
+	
+		DataFromDB.ArticleCode 	:= '';
+		DataFromDB.Caliber		:= '';
+		DataFromDB.Choice		:= '';
+		DataFromDB.Length_mm	:= 0;
+		DataFromDB.Quantity		:= 0;
+		DataFromDB.Thickness_mm	:= 0;
+		DataFromDB.Tone			:= '';
+		DataFromDB.Udc			:= '';
+		DataFromDB.Width_mm		:= 0;
+
+		SP_RecordArray.bExecute := TRUE;
+		
+		nState := 2;
+
+	(*Start stored procedure "TryUdcCheckIn"*)
+	2:
+		
+		
+		IF NOT SP_RecordArray.bBusy THEN
+			SP_RecordArray.bExecute := FALSE;
+			nState := 3;
+			State.ReadRun 	:= FALSE;
+			State.ReadDone 	:= TRUE;
+		END_IF
+	
+	(* Attesa che il comando dall'esterno venga azzerato *)	
+	3:
+		IF NOT StartRead THEN 
+			nState := 0;
+			State.ReadRun 	:= FALSE;
+			State.ReadDone 	:= FALSE;
+		END_IF	
+		
+END_CASE
+
+//Lancio FB
+SP_RecordArray(
+				sNetID	:= ,
+				hDBID	:= DBID,
+				sProcedureName	:= 'TryUdcCheckIn',
+				cbParameterList	:= SIZEOF(arrParaList),
+				pParameterList	:= ADR(arrParaList),
+				nStartIndex		:= 0,
+				nRecordCount	:= 1,
+				cbRecordArraySize	:= SIZEOF(DataFromDB1),
+				pDestAddr			:= ADR(DataFromDB1),
+				//bExecute			:= TRUE,
+				tTimeout			:= T#50S,
+				bBusy				=> bBusy,
+				bError				=> State.Error,
+				nErrID				=> State.ErrorID,
+				sSQLState			=> State.Sqlstate,
+				nRecords			=> State.NumeroRecordLetti);
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFSPRichiestaIngressoMateriale">
+      <LineId Id="196" Count="67" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

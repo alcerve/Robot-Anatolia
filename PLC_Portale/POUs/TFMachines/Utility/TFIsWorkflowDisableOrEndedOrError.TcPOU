@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFIsWorkflowDisableOrEndedOrError" Id="{7cdab8e6-e6e8-4442-aeed-fee484ff8c82}" SpecialFunc="None">
+    <Declaration><![CDATA[// Funzione che ritorna TRUE tutti i WORKFLOW sono almeno in uno dei seguenti stati: Disabilitato,Errore,Terminato
+FUNCTION TFIsWorkflowDisableOrEndedOrError : BOOL 
+VAR_INPUT
+	NumWFPresence : UINT;
+	WorkFlow : POINTER TO ARRAY[0..MAXWORKFLOW] OF WorkFlow;
+END_VAR
+VAR
+	i: UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+FOR i:=0 TO NumWFPresence DO
+	IF WorkFlow^[i].Enable = FALSE OR WorkFlow^[i].State = StateWF_END OR WorkFlow^[i].State = StateWF_END THEN
+		TFIsWorkflowDisableOrEndedOrError := TRUE;
+	ELSE
+		TFIsWorkflowDisableOrEndedOrError := FALSE;
+		RETURN;
+	END_IF
+END_FOR
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFIsWorkflowDisableOrEndedOrError">
+      <LineId Id="41" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="28" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

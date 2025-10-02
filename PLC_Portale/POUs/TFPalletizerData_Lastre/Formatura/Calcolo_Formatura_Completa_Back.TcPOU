@@ -1,0 +1,871 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="Calcolo_Formatura_Completa_Back" Id="{d175e346-aef2-453c-8956-6db39cc0cecc}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Calcolo_Formatura_Completa_Back
+VAR_INPUT
+	
+	Supporto : TFMachinePalletizer_Pallet;
+	
+	//Materiale : ARRAY [0..MAXTYPE_SLABLAYER] OF Type_SlabLayer;	// Tipo di materiale, Lastra, Falda e dimensioni
+	Materiale 		: ARRAY [0..MAXTYPE_SLABLAYER] OF TFMachinePalletizer_PlaceElement;	// Tipo di materiale, Lastra, Falda e dimensioni
+	TipoElementoDep 	: ARRAY [1..MAXFORMINGSLAB] OF e_Tipo_Elemento_Da_Lavorare;	// Tipologia del n-esimo elemento di Materiale da depositare (Lstra-falda-terminatore)
+	
+	TipoRisultato 		: UINT := 3;// Punto utilizzato per coordinate finali di deposito lastra/falda, 1 interno, 2 centro, 3 esterno(default)
+	TipoOrdinamento 	: UINT := 1;//Tipologia di ordinamento in deposito 1= alternato (lastra DX-Lastra SX), 2 = consecutivo(prima un lato, poi l'altro lato), 3 = solo lato 0°, 4 = solo lato 180°
+	NumeroElementiDaDepositare : UINT;
+
+	PulisciMemoria : BOOL;
+	CalcolaFormatura : BOOL;
+END_VAR
+
+VAR_OUTPUT
+	(* Variabili di uscita della posizione finale del punto di deposito della lastra/falda *)
+	XFinale : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto finale n-esima lastra/falda depositata
+	YFinale : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto finale n-esima lastra/falda depositata
+	ZFinale : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto finale n-esima lastra/falda depositata
+	JFinale : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata J punto finale n-esima lastra/falda depositata
+	
+	FormingSlab 			: TFMachinePalletizer_FormingForSlab;
+	PulisciMemoriaDone		: BOOL;
+	CalcolaFormaturaDone 	: BOOL;
+	Errore 					: UINT;
+END_VAR
+VAR
+	TipoDeposito : e_TipologiaDeposito;				// ORIZZONTALE O INCLINATO
+	OrdineDepositoSxDx : ARRAY [1..MAXFORMINGSLAB] OF e_Tipo_Elemento_Da_Lavorare;	// Ordine deposito materiale per i due lati, sx e dx (considero di avere il medesimo ordine di deposito dai due lati) (CAVALLINA-INCLINATO)
+	
+	Spessore_Lastra_Inclinata : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;				// Occupazione in larghezza della singola lastra (CAVALLINA-INCLINATO)
+	Spessore_Lastra_Inclinata_Cumulato : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Occupazione in larghezza delle nlastre lastre cumulate (CAVALLINA)
+	Spessore_Lastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;							// Occupazione in altezza della singola lastra (CASSA-ORIZZONTALE)
+	Spessore_Lastra_Cumulato : ARRAY [1..MAXFORMINGSLAB] OF LREAL;					// Occupazione in altezza delle nlastre lastre cumulate (CASSA-ORIZZONTALE)
+	
+	YCoordinataAppoggioLastra :  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Y del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
+	ZCoordinataAppoggioLastra :  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Z del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
+	
+	B 	: LREAL;	// Base della cavallina (include i due lati)  (CAVALLINA-INCLINATO)
+	B2	: LREAL;	// Base della cavallina (include i due lati)  (CAVALLINA-INCLINATO)
+	CorYIz  : LREAL;
+	CorYDe : LREAL;
+	BaseAlgulo : LREAL ;
+	b1 : LREAL;	// base del triangolo rettangolo dell'angolo alfa  (CAVALLINA-INCLINATO)
+	h1 : LREAL; // altezza del triangolo rettangolo dell'angolo alfa  (CAVALLINA-INCLINATO)
+	Yd1 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Centro lastra da inizio lastra in Y  (CAVALLINA-INCLINATO)
+	Zd1 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Centro lastra da inizio lastra in Z  (CAVALLINA-INCLINATO)
+	Yd2 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Esterno lastra da inizio lastra in Y  (CAVALLINA-INCLINATO)
+	Zd2 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Esterno lastra da inizio lastra in Z  (CAVALLINA-INCLINATOCAVALLINA)
+	Yd3 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Y dovuto al lato inclinato base appoggio  (CAVALLINA-INCLINATO)
+	Zd3 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Z dovuto al lato inclinato base appoggio  (CAVALLINA-INCLINATO)
+	CI : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Proiezione mancante della lastra dovuta al piano inclinato (CI) - Valorizzata solo se Beta >0  (CAVALLINA-INCLINATO)
+	rad90 : LREAL;		// 90° in radianti
+	
+	(* Angoli piani appoggio lastre, laterale (alfa) e base (beta) cavallina *)
+	AngoloAlfa_rad : LREAL;		// Angolo superiore laterale appoggio della lastra (in radianti)  (CAVALLINA-INCLINATO)
+	AlgoloAlfa_gradi : LREAL; 	// Angolo superiore laterale appoggio della lastra (in gradi)  (CAVALLINA-INCLINATO)
+	AngoloBeta_rad : LREAL;		// Angolo del piano inclinato di appoggio della lastra in radianti  (CAVALLINA-INCLINATO)
+	AngoloBeta_gradi : LREAL; 	// Angolo del piano inclinato di appoggio della lastra in gradi  (CAVALLINA-INCLINATO)
+	
+	QuotaYinizioLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;	// Quota Y inizio prima lastra  (CAVALLINA-INCLINATO)
+	QuotaZinizioLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;	// Quota Z inizio prima lastra  (CAVALLINA-INCLINATO)
+	numeroLastre_int : UINT;									// Numero lastre per lato cavallina considerando la dimensione L_Utile1 (int)  (CAVALLINA-CASSA)
+	
+	(* Variabili di supporto *)
+	counter1: UINT := 0;	// contatore per ciclo creazione formatura
+	counter2: UINT := 0;	// contatore per ciclo creazione formatura
+	varEven : UINT := 0;	// Pari o dispari per lato destro (dispari) o lato sinistro (pari) cavallina
+	
+	(* Variabili di uscita della posizione del punto interno, centrale ed esterno della lastra *)
+	XInternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YInternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZInternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	XCentroLastra  : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	YCentroLastra  : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZCentroLastra  : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	XEsternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YEsternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZEsternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+
+	P_TextModeWrite : P_TextModeWrite;
+	MemoriaInizializzata : BOOL;
+END_VAR
+
+VAR CONSTANT
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Pulisco le variabili interne e le variabili di uscita del FB
+IF PulisciMemoria AND NOT PulisciMemoriaDone THEN		// Pulizia delle variabili locali e di uscita
+	memset(ADR(XFinale), 0 , SIZEOF(XFinale));memset(ADR(YFinale), 0 , SIZEOF(YFinale));memset(ADR(ZFinale), 0 , SIZEOF(ZFinale));memset(ADR(JFinale), 0 , SIZEOF(JFinale));
+	memset(ADR(FormingSlab), 0 , SIZEOF(FormingSlab));
+	memset(ADR(Errore), 0 , SIZEOF(Errore));
+	memset(ADR(OrdineDepositoSxDx), 0 , SIZEOF(OrdineDepositoSxDx));
+	memset(ADR(Spessore_Lastra_Inclinata), 0 , SIZEOF(Spessore_Lastra_Inclinata));memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
+	memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));memset(ADR(Spessore_Lastra_Cumulato), 0 , SIZEOF(Spessore_Lastra_Cumulato));
+	memset(ADR(YCoordinataAppoggioLastra), 0 , SIZEOF(YCoordinataAppoggioLastra));memset(ADR(ZCoordinataAppoggioLastra), 0 , SIZEOF(ZCoordinataAppoggioLastra));
+	memset(ADR(B), 0 , SIZEOF(B));memset(ADR(b1), 0 , SIZEOF(b1));memset(ADR(h1), 0 , SIZEOF(h1));
+	memset(ADR(Yd1), 0 , SIZEOF(Yd1));memset(ADR(Zd1), 0 , SIZEOF(Zd1));
+	memset(ADR(Yd2), 0 , SIZEOF(Yd2));memset(ADR(Zd2), 0 , SIZEOF(Zd2));
+	memset(ADR(Yd3), 0 , SIZEOF(Yd3));memset(ADR(Zd3), 0 , SIZEOF(Zd3));
+	memset(ADR(CI), 0 , SIZEOF(CI));
+	memset(ADR(AngoloAlfa_rad), 0 , SIZEOF(AngoloAlfa_rad));memset(ADR(AngoloBeta_rad), 0 , SIZEOF(AngoloBeta_rad));
+	memset(ADR(QuotaYinizioLastra), 0 , SIZEOF(QuotaYinizioLastra));memset(ADR(QuotaZinizioLastra), 0 , SIZEOF(QuotaZinizioLastra));
+	memset(ADR(numeroLastre_int), 0 , SIZEOF(numeroLastre_int));
+	memset(ADR(XInternoLastra), 0 , SIZEOF(XInternoLastra));memset(ADR(YInternoLastra), 0 , SIZEOF(YInternoLastra));memset(ADR(ZInternoLastra), 0 , SIZEOF(ZInternoLastra));
+	memset(ADR(XCentroLastra), 0 , SIZEOF(XCentroLastra));memset(ADR(YCentroLastra), 0 , SIZEOF(YCentroLastra));memset(ADR(ZCentroLastra), 0 , SIZEOF(ZCentroLastra));
+	memset(ADR(XEsternoLastra), 0 , SIZEOF(XEsternoLastra));memset(ADR(YEsternoLastra), 0 , SIZEOF(YEsternoLastra));memset(ADR(ZEsternoLastra), 0 , SIZEOF(ZEsternoLastra));
+	memset(ADR(Supporto), 0 , SIZEOF(Supporto));
+	memset(ADR(Materiale), 0 , SIZEOF(Materiale));
+	memset(ADR(TipoElementoDep), 99 , SIZEOF(TipoElementoDep));
+	Errore := 0;
+	PulisciMemoriaDone := TRUE;
+	MemoriaInizializzata := TRUE;
+ELSIF NOT PulisciMemoria AND PulisciMemoriaDone THEN
+	PulisciMemoriaDone := FALSE;
+END_IF
+
+// Calcolo la Formatura, tipo Cassa o Cavallina e salvo su file i risultati ottenuti
+IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
+	// Pulisco le variabili interne e le variabili di uscita del FB
+	memset(ADR(XFinale), 0 , SIZEOF(XFinale));memset(ADR(YFinale), 0 , SIZEOF(YFinale));memset(ADR(ZFinale), 0 , SIZEOF(ZFinale));memset(ADR(JFinale), 0 , SIZEOF(JFinale));
+	memset(ADR(FormingSlab), 0 , SIZEOF(FormingSlab));
+	memset(ADR(Errore), 0 , SIZEOF(Errore));
+	memset(ADR(OrdineDepositoSxDx), 0 , SIZEOF(OrdineDepositoSxDx));
+	memset(ADR(Spessore_Lastra_Inclinata), 0 , SIZEOF(Spessore_Lastra_Inclinata));memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
+	memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));memset(ADR(Spessore_Lastra_Cumulato), 0 , SIZEOF(Spessore_Lastra_Cumulato));
+	memset(ADR(YCoordinataAppoggioLastra), 0 , SIZEOF(YCoordinataAppoggioLastra));memset(ADR(ZCoordinataAppoggioLastra), 0 , SIZEOF(ZCoordinataAppoggioLastra));
+	memset(ADR(B), 0 , SIZEOF(B));memset(ADR(b1), 0 , SIZEOF(b1));memset(ADR(h1), 0 , SIZEOF(h1));
+	memset(ADR(Yd1), 0 , SIZEOF(Yd1));memset(ADR(Zd1), 0 , SIZEOF(Zd1));
+	memset(ADR(Yd2), 0 , SIZEOF(Yd2));memset(ADR(Zd2), 0 , SIZEOF(Zd2));
+	memset(ADR(Yd3), 0 , SIZEOF(Yd3));memset(ADR(Zd3), 0 , SIZEOF(Zd3));
+	memset(ADR(CI), 0 , SIZEOF(CI));
+	memset(ADR(AngoloAlfa_rad), 0 , SIZEOF(AngoloAlfa_rad));memset(ADR(AngoloBeta_rad), 0 , SIZEOF(AngoloBeta_rad));
+	memset(ADR(QuotaYinizioLastra), 0 , SIZEOF(QuotaYinizioLastra));memset(ADR(QuotaZinizioLastra), 0 , SIZEOF(QuotaZinizioLastra));
+	memset(ADR(numeroLastre_int), 0 , SIZEOF(numeroLastre_int));
+	memset(ADR(XInternoLastra), 0 , SIZEOF(XInternoLastra));memset(ADR(YInternoLastra), 0 , SIZEOF(YInternoLastra));memset(ADR(ZInternoLastra), 0 , SIZEOF(ZInternoLastra));
+	memset(ADR(XCentroLastra), 0 , SIZEOF(XCentroLastra));memset(ADR(YCentroLastra), 0 , SIZEOF(YCentroLastra));memset(ADR(ZCentroLastra), 0 , SIZEOF(ZCentroLastra));
+	memset(ADR(XEsternoLastra), 0 , SIZEOF(XEsternoLastra));memset(ADR(YEsternoLastra), 0 , SIZEOF(YEsternoLastra));memset(ADR(ZEsternoLastra), 0 , SIZEOF(ZEsternoLastra));
+
+	// Definizione del tipo di deposito a seconda del tipo di supporto utilizzato
+	CASE Supporto.Tipologia OF
+		PALLET_STANDARD : TipoDeposito := ORIZZONTALE;
+		CASSA_STANDARD 	: TipoDeposito := ORIZZONTALE;
+		CAVALLETTO 		: TipoDeposito := INCLINATO;
+		BUNDLE 			: TipoDeposito := INCLINATO;//INCLINATO_LATOSINGOLO;
+	END_CASE
+	
+	CASE TipoDeposito OF
+		ORIZZONTALE:				// Tipo deposito Orizzontale (Cassa o Pallet)
+			(* CASO DELLA CASSA/PALLET CON DEPOSITO ORIZZONTALE *)
+			
+			(* Creo un ordine di deposito generico, per effettuare i test del singolo lato della cavallina, per debug  *)
+			numeroLastre_int := 0;
+			FOR counter1:=1 TO MAXFORMINGSLAB BY 1 DO
+				IF (TipoElementoDep[counter1] <> e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED AND TipoElementoDep[counter1] <> TERMINATORE) THEN
+					numeroLastre_int := numeroLastre_int+1;
+				END_IF;
+			END_FOR
+			
+			(* Controlli dati coerenti *)
+			IF (Supporto.HMAX <= 0 ) 	OR (Supporto.YDim <= 0 ) THEN
+				Errore := ErrValori;
+			END_IF
+			
+			IF (Supporto.ZDim <= 0) THEN
+				Errore := ErrHBaseInternaNulla;
+				RETURN;
+			END_IF
+			
+			IF (Supporto.XDim <= 0) THEN
+				Errore := ErroreLBaseNulla;
+				RETURN;
+			END_IF
+			
+			FOR counter1 :=1 TO numeroLastre_int DO
+				IF (Supporto.YDim+30 <= Materiale[TipoElementoDep[counter1]].YDim) OR (Supporto.XDim+30 <= Materiale[TipoElementoDep[counter1]].XDim) THEN
+					Errore := ErrDimensioneCassa;
+				RETURN;
+				END_IF
+			END_FOR
+			
+			memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));
+			FOR counter2 := 1 TO MAXFORMINGSLAB BY 1 DO
+				Spessore_Lastra[counter2] := Materiale[TipoElementoDep[counter2]].ZDim;
+			END_FOR
+			
+			// Calcola lo spessore complessivo fino al passo n delle lastre/falde depositate sul singolo lato della cavallina 
+			memset(ADR(Spessore_Lastra_Cumulato), 0 , SIZEOF(Spessore_Lastra_Cumulato));
+			IF (Spessore_Lastra_Cumulato[1] = 0) THEN
+				FOR counter2:=1 TO MAXFORMINGSLAB BY 1 DO
+					FOR counter1 := 1 TO counter2 BY 1 DO
+						Spessore_Lastra_Cumulato[counter2] := Spessore_Lastra_Cumulato[counter2] + Spessore_Lastra[counter1];
+					END_FOR
+				END_FOR
+			END_IF
+			
+			// Numero di possibili lastre sulla cassa (minore dell'altezza massima)
+			FOR counter1:=1 TO MAXFORMINGSLAB BY 1 DO
+				IF (TipoElementoDep[counter1] <> e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED AND TipoElementoDep[counter1] <> TERMINATORE) AND ((Spessore_Lastra_Cumulato[counter1] >0) AND 
+					(Spessore_Lastra_Cumulato[counter1]+Supporto.ZDim < Supporto.HMAX)) THEN
+						numeroLastre_int := counter1;
+				END_IF
+				IF (Spessore_Lastra_Cumulato[counter1]+Supporto.ZDim >= Supporto.HMAX) AND Supporto.Tipologia <> PALLET_STANDARD AND counter1 <= numeroLastre_int THEN
+					Errore := ErrNumeroPezzi;
+				END_IF
+			END_FOR
+			
+			// Calcolo il punto Z interno, centrale ed esterno per ogni lastra posizionata sulla cassa
+			FOR counter1:=1 TO numeroLastre_int BY 1 DO
+				ZInternoLastra[counter1] := Supporto.ZDim + Spessore_Lastra_Cumulato[counter1-1];
+				ZCentroLastra[counter1] := Supporto.ZDim + (Spessore_Lastra_Cumulato[counter1-1] + Spessore_Lastra_Cumulato[counter1]) / 2;
+				ZEsternoLastra[counter1] := Supporto.ZDim + Spessore_Lastra_Cumulato[counter1];
+			END_FOR
+			
+			(* Pulisco le uscite e setto a TERMINATORE tutti gli elementi di FormingSlab *)
+			memset(ADR(XFinale),0,SIZEOF(XFinale));memset(ADR(YFinale),0,SIZEOF(YFinale));memset(ADR(ZFinale),0,SIZEOF(ZFinale));memset(ADR(JFinale),0,SIZEOF(JFinale));
+			memset(ADR(FormingSlab),0,SIZEOF(FormingSlab));
+			FOR counter1 := 1 TO MAXFORMINGSLAB DO
+				FormingSlab.PElement[counter1].Typology := TERMINATORE;
+			END_FOR
+			
+			(* Calcolo delle coordinate X,Y,Z del punto finale sulla base del TipoRisultato *)
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				XInternoLastra[counter2] := 0; YInternoLastra[counter2] := 0;
+				XCentroLastra[counter2] := 0;  YCentroLastra[counter2] := 0;
+				XEsternoLastra[counter2] := 0; YEsternoLastra[counter2] := 0;
+				
+				CASE TipoRisultato OF
+					1:	XFinale[counter2] := XInternoLastra[counter2] + Supporto.OFSDE_X90;
+						YFinale[counter2] := YInternoLastra[counter2] + Supporto.OFSDE_Y90;
+						ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z90;
+						JFinale[counter2] := 90 + Supporto.OFSDE_J90;
+					2:	XFinale[counter2] := XCentroLastra[counter2] + Supporto.OFSDE_X90;
+						YFinale[counter2] := YCentroLastra[counter2] + Supporto.OFSDE_Y90;
+						ZFinale[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z90;
+						JFinale[counter2] := 90  + Supporto.OFSDE_J90;
+					3:	XFinale[counter2] := XEsternoLastra[counter2] + Supporto.OFSDE_X90;
+						YFinale[counter2] := YEsternoLastra[counter2] + Supporto.OFSDE_Y90;
+						ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z90;
+						JFinale[counter2] := 90 + Supporto.OFSDE_J90;	
+				END_CASE
+				
+			END_FOR;
+			FOR counter1:=1 TO numeroLastre_int BY 1 DO
+				FormingSlab.Enable := 1;										// Abilitato
+				//FormingSlab.Code[1] := 1;
+				//FormingSlab.PElement[counter1].Typology := Materiale[OrdineDeposito[counter1]].Typology;
+
+				//Indico la tipologia di elemnto che vado a depositare in base all'ordine passato dall'esterno
+				CASE TipoElementoDep[counter1] OF
+					LASTRA:
+						FormingSlab.PElement[counter1].Typology := LASTRA;
+
+					FALDA:
+						FormingSlab.PElement[counter1].Typology := FALDA;
+
+					TERMINATORE:
+						FormingSlab.PElement[counter1].Typology := TERMINATORE;
+				
+				ELSE
+					FormingSlab.PElement[counter1].Typology := e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED;
+
+				END_CASE
+				
+				FormingSlab.PElement[counter1].XDim := Materiale[TipoElementoDep[counter1]].XDim;		// Dimensione X Lastra		
+				FormingSlab.PElement[counter1].YDim := Materiale[TipoElementoDep[counter1]].YDim;		// Dimensione Y Lastra
+				FormingSlab.PElement[counter1].ZDim := Materiale[TipoElementoDep[counter1]].ZDim;		// Dimensione Z Lastra
+				FormingSlab.PElement[counter1].X := XFinale[counter1];
+				FormingSlab.PElement[counter1].Y := YFinale[counter1];
+				FormingSlab.PElement[counter1].Z := ZFinale[counter1];
+				FormingSlab.PElement[counter1].J := JFinale[counter1];
+			END_FOR
+		
+			
+		
+		INCLINATO:					// Tipo deposito inclinato ( Cavallina)
+			(* CASO DELLA CAVALLINA CON DEPOSITO INCLINATO DAI DUE LATI*)
+			
+			numeroLastre_int := 0;
+			FOR counter1:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+				IF (TipoElementoDep[counter1] <> e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED AND TipoElementoDep[counter1] <> TERMINATORE) THEN
+					numeroLastre_int := numeroLastre_int+1;
+				END_IF;
+			END_FOR
+	
+			(* Replico l'ordine di deposito del singolo lato su entrambi i lati, sx e dx della cavallina *)
+			FOR counter1:=1 TO MAXFORMINGSLAB BY 1 DO
+				varEven := counter1 MOD 2;
+				CASE varEven OF
+					0:	
+						OrdineDepositoSxDx[counter1] := TipoElementoDep[counter1];//OrdineDeposito[counter1/2];
+					1:	
+						OrdineDepositoSxDx[counter1] := TipoElementoDep[counter1];//OrdineDeposito[(counter1+varEven)/2];
+				END_CASE;
+			END_FOR;
+			
+			(* Controlli dati coerenti *)
+			FOR counter1:=1 TO MAXFORMINGSLAB DO
+				IF(Materiale[TipoElementoDep[counter1]].XDim <0) OR (Materiale[TipoElementoDep[counter1]].YDim <0) OR 
+					(Materiale[TipoElementoDep[counter1]].ZDim <0)  OR (Materiale[TipoElementoDep[counter1]].Typology <0) THEN
+						Errore := Errvalori;
+						RETURN;
+				END_IF
+			END_FOR
+					
+			IF Supporto.ZDim <= 0 THEN//OR (Supporto.ZDim_Int2 <=0) THEN
+				Errore := ErrHBaseInternaNulla;
+				RETURN;
+			END_IF
+			
+			IF Supporto.ZDim_Ext1 <= 0 AND Supporto.TipoPianoAppoggio = 1 THEN//OR (Supporto.ZDim_Ext2 <=0) THEN
+				Errore := ErrHBaseEsternaNulla;
+				RETURN;
+			END_IF
+			
+			IF Supporto.ZDim > Supporto.ZDim_Ext1 AND Supporto.TipoPianoAppoggio = 1 THEN//OR (Supporto.ZDim_Int2 > Supporto.ZDim_Ext2) THEN
+				Errore := ErrBaseInclinata;
+				RETURN;
+			END_IF
+			
+			IF (Supporto.HMAX <= 0) THEN		// altezza cavallina
+				Errore := ErrHTotaleNulla;
+				RETURN;
+			END_IF
+			
+			IF (Supporto.YDim <= 0) THEN		// larghezza Y cavallina
+				Errore := ErroreLBaseNulla;
+				RETURN;
+			END_IF
+			
+			// Base centrale non utilizzata della cavallina
+			IF Supporto.Tipologia = CAVALLETTO    THEN
+				B := Supporto.YDim - Supporto.DimBaseUtile - Supporto.DimBaseUtile;
+				B2 := ( Supporto.YDim / 2 )-supporto.DimBaseUtile ;
+				CorYIz := supporto.DimBaseUtile ;
+				CorYDe := Supporto.YDim - supporto.DimBaseUtile ;
+				BaseAlgulo := ( Supporto.YDim /2) - (Supporto.DimVertice /2)- supporto.DimBaseUtile;
+			ELSE
+				B := Supporto.YDim - Supporto.DimBaseUtile - Supporto.DimBaseUtile;
+				B2 := ( Supporto.YDim / 2 )-supporto.DimBaseUtile ;
+			END_IF
+			
+			//B := Supporto.YDim - Supporto.DimBaseUtile - Supporto.DimBaseUtile;
+			//B2 := ( Supporto.YDim / 2 )-supporto.DimBaseUtile ;
+			IF (B <= 0 ) THEN
+				Errore := ErrBase;
+				RETURN;
+			END_IF
+			
+			IF (Supporto.DimBaseUtile <= 0 ) OR (Supporto.DimBaseUtile <= 0 ) THEN
+				Errore := ErrLUtile;
+			END_IF
+			
+			b1 := (B - Supporto.DimVertice) / 2;	// base del triangolo rettangolo dell'angolo alfa
+			IF (b1 <= 0 ) THEN
+				Errore := ErrBaseAlfa;
+				RETURN;
+			END_IF
+			
+			h1 := Supporto.HMAX - Supporto.ZDim; // Altezza del triangolo rettangolo dell'angolo alfa
+			IF h1 <= 0 THEN
+				Errore := ErrAltezzaAlfa;
+				RETURN;
+			END_IF
+			
+			(* calcolo angolo alfa dell'inclinazione appoggio della lastra *)
+			AngoloAlfa_rad := ATAN( b1 / h1); // Angolo superiore appoggio cavallina (in radianti)
+			AlgoloAlfa_gradi := rad_to_deg(AngoloAlfa_rad); 
+			
+			IF (AlgoloAlfa_gradi >= 90) THEN
+				Errore := ErrAngolo;
+				RETURN;
+			END_IF
+			
+			(* Calcolo angolo beta dell'eventuale piano di appoggio inclinato della cavallina*)
+			AngoloBeta_rad := ATAN( (Supporto.ZDim_Ext1 - Supporto.ZDim) / Supporto.DimBaseUtile); 	// Angolo del piano di appoggio inclinato della cavallina (in radianti)
+			AngoloBeta_gradi := rad_to_deg(AngoloBeta_rad);					// Angolo del piano di appoggio inclinato della cavallina (in gradi)
+			rad90 := deg_to_rad(90);
+			
+			IF (AlgoloAlfa_gradi < AngoloBeta_gradi) THEN
+				Errore := ErrPendenzaBase;					// Angolo alfa deve essere maggiore dell'angolo beta
+				RETURN;
+			END_IF
+			
+			// Calcolo lo spessore di ogni singola lastra/falda depositata sul lato della cavallina
+			Spessore_Lastra_Inclinata[1] := 0;
+			FOR counter2:=2 TO MAXFORMINGSLAB/2 BY 1 DO
+				Spessore_Lastra_Inclinata[counter2] := Materiale[TipoElementoDep[counter2-1]].ZDim / COS(AngoloAlfa_rad);
+			END_FOR;
+			
+			// Calcola lo spessore complessivo fino al passo n delle lastre/falde depositate sul singolo lato della cavallina 
+			//memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
+			
+			IF (Spessore_Lastra_Inclinata_Cumulato[2] = 0) THEN
+				FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+					FOR counter1 := 1 TO counter2 BY 1 DO
+						Spessore_Lastra_Inclinata_Cumulato[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2]+Spessore_Lastra_Inclinata[counter1];
+					END_FOR
+				END_FOR
+			END_IF
+			
+			// Numero di possibili lastre sul singolo lato
+			//FOR counter1:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+				//IF (OrdineDeposito[counter1] <> e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED AND OrdineDeposito[counter1] <> TERMINATORE) AND 
+				//	((Spessore_Lastra_Inclinata_Cumulato[counter1] >0) AND (Spessore_Lastra_Inclinata_Cumulato[counter1] < Supporto.DimBaseUtile)) THEN
+				//		numeroLastre_int := counter1;
+				//END_IF
+				//IF (OrdineDeposito[counter1] <> e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED AND OrdineDeposito[counter1] <> TERMINATORE) AND 
+				//	(Spessore_Lastra_Inclinata_Cumulato[counter1] >= Supporto.DimBaseUtile) THEN
+				//		Errore := ErrNumeroPezzi;	// il supervisore mi ha passato troppe lastre rispetto allo spazio utile
+				//END_IF
+			//END_FOR
+			IF (Spessore_Lastra_Inclinata_Cumulato[numeroLastre_int] >= Supporto.DimBaseUtile*2) THEN
+				Errore := ErrNumeroPezzi;	// il supervisore mi ha passato troppe lastre rispetto allo spazio utile
+			END_IF
+			
+			// Calcolo lo spostamento del punto centrale e del punto esterno della singola lastra/falda rispetto al punto interno(iniziale) della medesima lastra/falda
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				Yd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * COS (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Y
+				Zd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * SIN (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Z
+				Yd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * COS (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Y
+				Zd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * SIN (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Z
+			END_FOR
+			
+			// Calcolo la proiezione mancante di ogni singola lastra/falda; Tramite CI posso calcolare lo spostamento Yd3,Zd3 dovuto al piano inclinato
+			// dovuto all'angolo beta. Utilizzo il teorema dei seni per calcolare ogni CI da SLIC
+			FOR counter1:=1 TO numeroLastre_int BY 1 DO
+				CI[counter1] := (Spessore_Lastra_Inclinata_Cumulato[counter1] * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
+				Yd3[counter1] := -CI[counter1] * SIN(AngoloAlfa_rad);
+				Zd3[counter1] := CI[counter1] * COS(AngoloAlfa_rad);
+			END_FOR;
+			
+			// Quota Y e Z del punto di appoggio di ogni lastra sulla cavallina
+			// Quota Y e Z del punto interno centrale di ogni lastra; corrisponde a YInternoLastra e ZInternoLastra
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				XInternoLastra[counter2] := Supporto.XDim/2;
+				YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+				//YCoordinataAppoggioLastra[counter2] := (*(B2) +*) Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+				YInternoLastra[counter2] := YCoordinataAppoggioLastra[counter2] - (Materiale[TipoElementoDep[counter2]].YDim / 2) * SIN (AngoloAlfa_rad);
+				ZCoordinataAppoggioLastra[counter2] := Supporto.ZDim + Zd3[counter2];
+				ZInternoLastra[counter2] := ZCoordinataAppoggioLastra[counter2] + (Materiale[TipoElementoDep[counter2]].YDim / 2) * COS (AngoloAlfa_rad); 
+			END_FOR
+	
+			(* Calcolo delle coordinate X,Y,Z di ogni singola lastra/falda, centrale o esterno *)
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				XCentroLastra[counter2] := Supporto.XDim/2;
+				YCentroLastra[counter2] := YInternoLastra[counter2] + Yd1[counter2];
+				ZCentroLastra[counter2] := ZInternoLastra[counter2] + Zd1[counter2];
+				
+				XEsternoLastra[counter2] := Supporto.XDim/2;
+				YEsternoLastra[counter2] := YInternoLastra[counter2] + Yd2[counter2];	
+				ZEsternoLastra[counter2] := ZInternoLastra[counter2] + Zd2[counter2];
+			END_FOR;
+			
+			(* Pulisco le uscite e setto a TERMINATORE tutti gli elementi di FormingSlab*)
+			FOR counter1 := 1 TO MAXFORMINGSLAB DO
+				FormingSlab.PElement[counter1].Typology := TERMINATORE;
+			END_FOR
+			
+			(* Calcolo delle coordinate X,Y,Z,J del punto finale sulla base del TipoRisultato *)
+			CASE TipoOrdinamento OF
+				(* Ordinamento alternato Dx-SX *)	
+				1: 
+					FOR counter2:=1 TO numeroLastre_int*2 BY 1 DO
+						varEven := counter2 MOD 2;	
+						CASE varEven OF
+							0:	// Lato DX della cavallina
+								XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+								CASE TipoRisultato OF
+									1:	
+										YFinale[counter2] := -YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
+										ZFinale[counter2] := ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
+									2:	
+										YFinale[counter2] := -YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
+										ZFinale[counter2] := ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
+									3:	
+										YFinale[counter2] := -YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
+										ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
+								END_CASE
+								JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
+							1:	// Lato SX della cavallina
+								XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+								CASE TipoRisultato OF
+									1:	
+										YFinale[counter2] := YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
+										ZFinale[counter2] := ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
+									2:	
+										YFinale[counter2] := YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
+										ZFinale[counter2] := ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
+									3:	
+										YFinale[counter2] := YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
+										ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
+								END_CASE
+								JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
+						END_CASE
+					END_FOR
+					
+				(* Ordinamento consecutivo prima un lato poi l'altro *)
+				2:
+					FOR counter2:=1 TO numeroLastre_int BY 1 DO
+						IF counter2 <= numeroLastre_int/2 THEN // Lato DX della cavallina
+							varEven := counter2 MOD 2;
+							XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+							CASE TipoRisultato OF
+								1:	
+									YFinale[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
+									ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
+								2:	
+									YFinale[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
+									ZFinale[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
+								3:	
+									YFinale[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
+									ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
+							END_CASE
+									JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
+						ELSE// Lato SX della cavallina
+							XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+							CASE TipoRisultato OF
+								1:	
+									YFinale[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+									ZFinale[counter2] := ZInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+								2:	
+									YFinale[counter2] := YCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+									ZFinale[counter2] := ZCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+								3:	
+									YFinale[counter2] := YEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+									ZFinale[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+							END_CASE
+							JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
+						END_IF
+					END_FOR
+				
+				(* Ordinamento consecutivo prima SOLO lato 0° *)
+				3:
+					FOR counter2:=1 TO numeroLastre_int BY 1 DO
+						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+						CASE TipoRisultato OF
+							1:	
+								YFinale[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+								ZFinale[counter2] := ZInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+							2:	
+								YFinale[counter2] := YCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+								ZFinale[counter2] := ZCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+							3:	
+								YFinale[counter2] := YEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+								ZFinale[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+						END_CASE
+						JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
+					END_FOR
+
+				(* Ordinamento consecutivo SOLO lato 180 *)
+				4:
+					FOR counter2:=1 TO numeroLastre_int BY 1 DO
+						varEven := counter2 MOD 2;
+						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+						CASE TipoRisultato OF
+							1:	
+								YFinale[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
+							2:	
+								YFinale[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinale[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
+							3:	
+								YFinale[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
+								//YFinale[counter2] := YCoordinataAppoggioLastra[counter2] ;
+								ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
+						END_CASE
+						JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
+					END_FOR
+			END_CASE						
+				
+			// Alimentazione della struttura FormingSlab
+			FOR counter1:=1 TO MAXFORMINGSLAB DO// numeroLastre_int*2 BY 1 DO
+				IF counter1 <= numeroLastre_int THEN
+					FormingSlab.Enable := 1;										// Abilitato
+					//FormingSlab.Code[1] := 1;
+					FormingSlab.PElement[counter1].Typology := OrdineDepositoSxDx[counter1];
+					FormingSlab.PElement[counter1].X 		:= XFinale[counter1];
+					FormingSlab.PElement[counter1].XDim 	:= Materiale[OrdineDepositoSxDx[counter1]].XDim;		// Dimensione X Lastra
+					FormingSlab.PElement[counter1].Y 		:= YFinale[counter1];
+					FormingSlab.PElement[counter1].YDim 	:= Materiale[OrdineDepositoSxDx[counter1]].YDim;		// Dimensione Y Lastra
+					FormingSlab.PElement[counter1].Z 		:= ZFinale[counter1];
+					FormingSlab.PElement[counter1].ZDim 	:= Materiale[OrdineDepositoSxDx[counter1]].ZDim;		// Dimensione Z Lastra
+					FormingSlab.PElement[counter1].J 		:= JFinale[counter1];
+				ELSE
+					FormingSlab.PElement[counter1].Typology := OrdineDepositoSxDx[counter1];
+					FormingSlab.PElement[counter1].X 		:= -1;
+					FormingSlab.PElement[counter1].XDim 	:= -1;	
+					FormingSlab.PElement[counter1].Y 		:= -1;
+					FormingSlab.PElement[counter1].YDim 	:= -1;		
+					FormingSlab.PElement[counter1].Z 		:= -1;
+					FormingSlab.PElement[counter1].ZDim 	:= -1;	
+					FormingSlab.PElement[counter1].J 		:= -1;
+				END_IF
+			END_FOR		
+		
+
+		INCLINATO_LATOSINGOLO:		// Tipo deposito inclinato singolo lato (Bundle)
+			numeroLastre_int := 0;
+			FOR counter1:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+				IF (TipoElementoDep[counter1] > 0) THEN
+				numeroLastre_int := numeroLastre_int+1;
+				END_IF;
+			END_FOR
+	
+			(* Controlli dati coerenti --- DA FARE --- *)
+						
+			(* calcolo angolo alfa dell'inclinazione appoggio della lastra *)
+			AngoloAlfa_rad := deg_to_rad(Supporto.AngoloAlfaBundle); // Angolo superiore appoggio cavallina (in radianti)
+			AlgoloAlfa_gradi := Supporto.AngoloAlfaBundle; 
+			
+			
+			(* Calcolo angolo beta dell'eventuale piano di appoggio inclinato della cavallina*)
+			AngoloBeta_rad := AngoloAlfa_rad; 	// Angolo del piano di appoggio inclinato della cavallina (in radianti)
+			AngoloBeta_gradi := AlgoloAlfa_gradi;					// Angolo del piano di appoggio inclinato della cavallina (in gradi)
+	
+			
+			// Calcolo lo spessore di ogni singola lastra/falda depositata sul lato della cavallina
+			Spessore_Lastra_Inclinata[1] := 0;
+			FOR counter2:=2 TO MAXFORMINGSLAB/2 BY 1 DO
+				Spessore_Lastra_Inclinata[counter2] := Materiale[TipoElementoDep[counter2-1]].ZDim / COS(AngoloAlfa_rad);
+			END_FOR;
+			
+			// Calcola lo spessore complessivo fino al passo n delle lastre/falde depositate sul singolo lato della cavallina 
+			//memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
+			
+			IF (Spessore_Lastra_Inclinata_Cumulato[2] = 0) THEN
+				FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+					FOR counter1 := 1 TO counter2 BY 1 DO
+						Spessore_Lastra_Inclinata_Cumulato[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2]+Spessore_Lastra_Inclinata[counter1];
+					END_FOR
+				END_FOR
+			END_IF
+			
+			// Numero di possibili lastre sul singolo lato
+			FOR counter1:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+				IF (TipoElementoDep[counter1] > 0) AND ((Spessore_Lastra_Inclinata_Cumulato[counter1] >0) AND (Spessore_Lastra_Inclinata_Cumulato[counter1] < Supporto.DimBaseUtile)) THEN
+					numeroLastre_int := counter1;
+				END_IF
+				IF (Spessore_Lastra_Inclinata_Cumulato[counter1] >= Supporto.DimBaseUtile) THEN
+					Errore := ErrNumeroPezzi;	// il supervisore mi ha passato troppe lastre rispetto allo spazio utile
+				END_IF
+			END_FOR
+			
+			// Calcolo lo spostamento del punto centrale e del punto esterno della singola lastra/falda rispetto al punto interno(iniziale) della medesima lastra/falda
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				Yd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * COS (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Y
+				Zd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * SIN (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Z
+				Yd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * COS (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Y
+				Zd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * SIN (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Z
+			END_FOR
+			
+			// Calcolo la proiezione mancante di ogni singola lastra/falda; Tramite CI posso calcolare lo spostamento Yd3,Zd3 dovuto al piano inclinato
+			// dovuto all'angolo beta. Utilizzo il teorema dei seni per calcolare ogni CI da SLIC
+			FOR counter1:=1 TO numeroLastre_int BY 1 DO
+				CI[counter1] := (Spessore_Lastra_Inclinata_Cumulato[counter1] * SIN (AngoloBeta_rad));
+				Yd3[counter1] := -CI[counter1] * SIN(AngoloAlfa_rad);
+				Zd3[counter1] := CI[counter1] * COS(AngoloAlfa_rad);
+			END_FOR;
+			
+			// Quota Y e Z del punto di appoggio di ogni lastra sulla cavallina
+			// Quota Y e Z del punto interno centrale di ogni lastra; corrisponde a YInternoLastra e ZInternoLastra
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				XInternoLastra[counter2] := Supporto.XDim/2;
+				YCoordinataAppoggioLastra[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+				YInternoLastra[counter2] := YCoordinataAppoggioLastra[counter2] - (Materiale[TipoElementoDep[counter2]].YDim / 2) * SIN (AngoloAlfa_rad);
+				ZCoordinataAppoggioLastra[counter2] := Supporto.ZDim + Zd3[counter2];
+				ZInternoLastra[counter2] := ZCoordinataAppoggioLastra[counter2] + (Materiale[TipoElementoDep[counter2]].YDim / 2) * COS (AngoloAlfa_rad); 
+			END_FOR
+	
+			(* Calcolo delle coordinate X,Y,Z di ogni singola lastra/falda, centrale o esterno *)
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				XCentroLastra[counter2] := Supporto.XDim/2;
+				YCentroLastra[counter2] := YInternoLastra[counter2] + Yd1[counter2];
+				ZCentroLastra[counter2] := ZInternoLastra[counter2] + Zd1[counter2];
+				
+				XEsternoLastra[counter2] := Supporto.XDim/2;
+				YEsternoLastra[counter2] := YInternoLastra[counter2] + Yd2[counter2];	
+				ZEsternoLastra[counter2] := ZInternoLastra[counter2] + Zd2[counter2];
+			END_FOR;
+			
+			(* Pulisco le uscite e setto a TERMINATORE tutti gli elementi di FormingSlab*)
+			//memset(ADR(XFinale),0,SIZEOF(XFinale));memset(ADR(YFinale),0,SIZEOF(XFinale));memset(ADR(ZFinale),0,SIZEOF(XFinale));memset(ADR(JFinale),0,SIZEOF(XFinale));
+			//memset(ADR(FormingSlab),0,SIZEOF(FormingSlab));
+			FOR counter1 := 1 TO MAXFORMINGSLAB DO
+				FormingSlab.PElement[counter1].Typology := TERMINATORE;
+			END_FOR
+			
+			(* Calcolo delle coordinate X,Y,Z,J del punto finale sulla base del TipoRisultato *)
+			FOR counter2:=1 TO numeroLastre_int BY 1 DO
+				CASE supporto.LatoDeposito OF
+					180:		// Lato DX della cavallina
+						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+						CASE TipoRisultato OF
+							1:	
+								YFinale[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
+							2:	
+								YFinale[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinale[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
+							3:	
+								YFinale[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
+						END_CASE
+						JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
+					0:	// Lato SX della cavallina
+						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+						CASE TipoRisultato OF
+							1:	
+								YFinale[counter2] := YInternoLastra[counter2] + Supporto.OFSDE_Y0;
+								ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z0;
+							2:	
+								YFinale[counter2] := YCentroLastra[counter2] + Supporto.OFSDE_Y0;
+								ZFinale[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z0;
+							3:	
+								YFinale[counter2] := YEsternoLastra[counter2] + Supporto.OFSDE_Y0;
+								ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z0;
+						END_CASE
+						JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
+				END_CASE
+
+				
+				// Alimentazione della struttura FormingSlab
+				FOR counter1:=1 TO numeroLastre_int BY 1 DO
+					FormingSlab.Enable := 1;										// Abilitato
+					FormingSlab.Code[1] := 1;
+					FormingSlab.PElement[counter1].Typology := Materiale[OrdineDepositoSxDx[counter1]].Typology;
+					FormingSlab.PElement[counter1].X := XFinale[counter1];
+					FormingSlab.PElement[counter1].XDim := Materiale[OrdineDepositoSxDx[counter1]].XDim;		// Dimensione X Lastra
+					FormingSlab.PElement[counter1].Y := YFinale[counter1];
+					FormingSlab.PElement[counter1].YDim := Materiale[OrdineDepositoSxDx[counter1]].YDim;		// Dimensione Y Lastra
+					FormingSlab.PElement[counter1].Z := ZFinale[counter1];
+					FormingSlab.PElement[counter1].ZDim := Materiale[OrdineDepositoSxDx[counter1]].ZDim;		// Dimensione Z Lastra
+					FormingSlab.PElement[counter1].J := JFinale[counter1];
+				END_FOR		
+			END_FOR;	
+	END_CASE
+
+
+	// Salvataggio su file della Formatura 
+	{region "Salvataggio File Formatura"}
+	P_TextModeWrite.database[0,0] := 'X Finale';
+	P_TextModeWrite.database[0,1] := 'Y Finale';
+	P_TextModeWrite.database[0,2] := 'Z Finale';
+	P_TextModeWrite.database[0,3] := 'J Finale';
+	CASE TipoDeposito OF
+		ORIZZONTALE :	
+			P_TextModeWrite.database[0,4] := 'ORIZZONTALE';
+			P_TextModeWrite.database[0,5] := UINT_TO_STRING(numeroLastre_int);
+		INCLINATO : 
+			P_TextModeWrite.database[0,4] := 'INCLINATO';
+			P_TextModeWrite.database[0,5] := UINT_TO_STRING(numeroLastre_int*2);
+		INCLINATO_LATOSINGOLO :
+			P_TextModeWrite.database[0,4] := 'INCLINATO_LATOSINGOLO';
+			P_TextModeWrite.database[0,5] := UINT_TO_STRING(numeroLastre_int);	  
+	END_CASE
+	CASE TipoRisultato OF
+		1:	P_TextModeWrite.database[0,6] := 'PUNTO INTERNO';
+		2:	P_TextModeWrite.database[0,6] := 'PUNTO CENTRALE';
+		3:	P_TextModeWrite.database[0,6] := 'PUNTO ESTERNO';
+	END_CASE
+	
+	FOR counter1 :=1 TO MAXFORMINGSLAB DO
+		P_TextModeWrite.database[counter1,0] := LREAL_TO_STRING(XFinale[counter1]);
+		P_TextModeWrite.database[counter1,1] := LREAL_TO_STRING(YFinale[counter1]);
+		P_TextModeWrite.database[counter1,2] := LREAL_TO_STRING(ZFinale[counter1]);
+		P_TextModeWrite.database[counter1,3] := LREAL_TO_STRING(JFinale[counter1]);
+	END_FOR
+	
+	CASE TipoDeposito OF	// Numero di righe da scrivere sul file a seconda che sia CASSA o CAVALLINA
+		ORIZZONTALE :	
+			P_TextModeWrite.num_Row := numeroLastre_int;
+		INCLINATO : 
+			P_TextModeWrite.num_Row := numeroLastre_int * 2;
+		INCLINATO_LATOSINGOLO : 
+			P_TextModeWrite.num_Row := numeroLastre_int;
+	END_CASE
+	
+	{endregion}
+	CalcolaFormaturaDone := TRUE;	
+	P_TextModeWrite.bWrite := TRUE; //Scrivo log per calcoli
+ELSIF NOT CalcolaFormatura AND CalcolaFormaturaDone THEN
+	CalcolaFormaturaDone := FALSE;
+END_IF
+
+//chiamata fb per log calcoli	
+P_TextModeWrite();
+IF P_TextModeWrite.bWriteDone AND P_TextModeWrite.bWrite THEN
+	P_TextModeWrite.bWrite := FALSE; 
+END_IF
+
+
+
+
+
+
+
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="Calcolo_Formatura_Completa_Back">
+      <LineId Id="4883" Count="243" />
+      <LineId Id="6026" Count="0" />
+      <LineId Id="6031" Count="1" />
+      <LineId Id="6034" Count="0" />
+      <LineId Id="6036" Count="0" />
+      <LineId Id="6039" Count="1" />
+      <LineId Id="6028" Count="0" />
+      <LineId Id="6033" Count="0" />
+      <LineId Id="6029" Count="0" />
+      <LineId Id="6027" Count="0" />
+      <LineId Id="5127" Count="0" />
+      <LineId Id="5933" Count="0" />
+      <LineId Id="5128" Count="92" />
+      <LineId Id="5936" Count="0" />
+      <LineId Id="5221" Count="21" />
+      <LineId Id="5552" Count="0" />
+      <LineId Id="5594" Count="0" />
+      <LineId Id="5553" Count="0" />
+      <LineId Id="5551" Count="0" />
+      <LineId Id="5514" Count="0" />
+      <LineId Id="5516" Count="11" />
+      <LineId Id="5937" Count="0" />
+      <LineId Id="5529" Count="12" />
+      <LineId Id="5938" Count="0" />
+      <LineId Id="5543" Count="1" />
+      <LineId Id="5275" Count="1" />
+      <LineId Id="5596" Count="0" />
+      <LineId Id="5559" Count="0" />
+      <LineId Id="5554" Count="0" />
+      <LineId Id="5561" Count="0" />
+      <LineId Id="5597" Count="0" />
+      <LineId Id="5562" Count="0" />
+      <LineId Id="5566" Count="12" />
+      <LineId Id="5684" Count="0" />
+      <LineId Id="5580" Count="12" />
+      <LineId Id="5598" Count="0" />
+      <LineId Id="5560" Count="0" />
+      <LineId Id="5770" Count="0" />
+      <LineId Id="5847" Count="0" />
+      <LineId Id="5772" Count="0" />
+      <LineId Id="5777" Count="0" />
+      <LineId Id="5796" Count="12" />
+      <LineId Id="5774" Count="0" />
+      <LineId Id="5844" Count="0" />
+      <LineId Id="5775" Count="0" />
+      <LineId Id="5845" Count="0" />
+      <LineId Id="5811" Count="0" />
+      <LineId Id="5815" Count="10" />
+      <LineId Id="5939" Count="0" />
+      <LineId Id="5826" Count="2" />
+      <LineId Id="5843" Count="0" />
+      <LineId Id="5556" Count="0" />
+      <LineId Id="5277" Count="24" />
+      <LineId Id="5303" Count="2" />
+      <LineId Id="5308" Count="203" />
+      <LineId Id="4072" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

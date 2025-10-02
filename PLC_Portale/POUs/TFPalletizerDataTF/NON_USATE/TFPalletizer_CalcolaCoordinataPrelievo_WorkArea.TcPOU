@@ -1,0 +1,226 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizer_CalcolaCoordinataPrelievo_WorkArea" Id="{b8b7160a-d5db-4369-b0da-f12089d24c7d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFPalletizer_CalcolaCoordinataPrelievo_WorkArea
+VAR_INPUT
+	WorkArea 		: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState 	: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	WorkAreaOffset	: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaOffset;
+	
+	Forming 		: POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+	Pallet 			: POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer 			: POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Mission 		: POINTER TO TFMachinePalletizer_Mission;
+	
+	WADiPrelievo				: UINT;
+	NLastraDaPrelevare			: UINT;
+END_VAR
+VAR_OUTPUT
+	Errore : TFError_WAM;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Errore.Code := 0;
+
+CASE DISPOSIZIONE_FTC_WA OF
+	FTC_PRESENZA_ANGOLO_DX :
+		(*******************************************************************************************************************)
+									(* Deposito LASTRA con rotazione piano >90° e < 180°*)
+		(*******************************************************************************************************************)																		
+		IF Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J > 90 THEN
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X -  																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X+	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X180;	
+		
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y - 																																				(* Quota Y del Cavaletto *)		
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y + 
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y180;
+								
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z180;
+					
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[WorkAreaState^[WADiPrelievo].PackPointer].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J180;
+								
+		(*******************************************************************************************************************)						
+									(* Deposito LASTRA con rotazione piano < 90° e >0°*)	
+		(*******************************************************************************************************************)							
+		ELSIF Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[WorkAreaState^[WADiPrelievo].PackPointer].J < 90 THEN
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X - 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X+	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X0;
+								
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y + 																																				(* Quota Y del Cavaletto *)						
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y0;
+								
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z0;
+					
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[1].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J0;
+		(*******************************************************************************************************************)						
+									(* Deposito LASTRA in cassa con rotazione piano = 90° *)
+		(*******************************************************************************************************************)
+		ELSE
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X + 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X+	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X90;
+								
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y + 																																				(* Quota Y del Cavaletto *)						
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y + 
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y90;
+									
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z90;
+								
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J90;
+		END_IF
+		
+	FTC_PRESENZA_CENTRALE :
+		(*******************************************************************************************************************)
+									(* Deposito LASTRA con rotazione piano >90° e < 180°*)
+		(*******************************************************************************************************************)																		
+		IF Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[WorkAreaState^[WADiPrelievo].PackPointer].J > 90 THEN
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X + 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X180;		
+		
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y - 																																				(* Quota Y del Cavaletto *)		
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y180;
+									
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z180;
+					
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[WorkAreaState^[WADiPrelievo].PackPointer].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J180;
+								
+		(*******************************************************************************************************************)						
+									(* Deposito LASTRA con rotazione piano < 90° e >0°*)	
+		(*******************************************************************************************************************)							
+		ELSIF Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J < 90 THEN
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X + 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X0;
+								
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].X + 																	(* Quota di deposito Y Ultima Lastra Depositata *)
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y0;
+									
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z0;
+					
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J0;
+		(*******************************************************************************************************************)						
+									(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+		(*******************************************************************************************************************)
+		ELSE
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X + 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X+	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X90;
+								
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y + 																																				(* Quota Y del Cavaletto *)						
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y + 																	(* Quota di deposito Y Ultima Lastra Depositata *)
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y90;
+									
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[1].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z90;
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J90;
+		END_IF
+		
+	FTC_PRESENZA_ANGOLO_SX :
+		(*******************************************************************************************************************)
+									(* Deposito su LASTRA con rotazione piano >90° e < 180°*)
+		(*******************************************************************************************************************)
+		IF Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J > 90 THEN
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X + 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X180;	
+		
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y - 																																				(* Quota Y del Cavaletto *)		
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y180;
+									
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z180;
+					
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J180;
+		(*******************************************************************************************************************)						
+									(* Deposito su LASTRA con rotazione piano < 90° e >0°*)	
+		(*******************************************************************************************************************)
+		ELSIF Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[WorkAreaState^[WADiPrelievo].PackPointer].J < 90 THEN
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X + 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X180;
+								
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y + 																																				(* Quota Y del Cavaletto *)						
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y +
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y0;
+									
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z0;
+					
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J0;
+		(*******************************************************************************************************************)						
+									(* Deposito su LASTRA in cassa con rotazione piano = 90° *)
+		(*******************************************************************************************************************)
+		ELSE
+			
+			Mission^.XPick	:= WorkArea^[WADiPrelievo].X + WorkAreaOffset^[WADiPrelievo].X + 																																					(* Quota X del Cavaletto *)	
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].X+	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_X90;
+								
+			Mission^.YPick := WorkArea^[WADiPrelievo].Y + WorkAreaOffset^[WADiPrelievo].Y + 																																				(* Quota Y del Cavaletto *)						
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].Y + 																	(* Quota di deposito Y Ultima Lastra Depositata *)
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Y90;
+									
+			Mission^.ZPick	:= WorkArea^[WADiPrelievo].Z + WorkAreaOffset^[WADiPrelievo].Z +
+								Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[WADiPrelievo].Z +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_Z90;
+								
+			Mission^.JPick	:= Forming^[WorkAreaState^[WADiPrelievo].F].PackXP[NLastraDaPrelevare].J +	
+								Pallet^[Forming^[WorkAreaState^[WADiPrelievo].F].Pallet].OFSDE_J90;
+		END_IF
+ELSE
+	Errore.Code := ErrWAM_FTC_PostazioneNONDefinita;
+END_CASE
+
+
+ 	]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizer_CalcolaCoordinataPrelievo_WorkArea">
+      <LineId Id="117" Count="0" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="427" Count="177" />
+      <LineId Id="404" Count="0" />
+      <LineId Id="605" Count="0" />
+      <LineId Id="405" Count="0" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="100" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

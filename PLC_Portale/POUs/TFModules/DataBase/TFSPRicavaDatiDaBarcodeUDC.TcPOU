@@ -1,0 +1,358 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFSPRicavaDatiDaBarcodeUDC" Id="{5ecb0841-bad0-4c37-a1c2-3bee1393666e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFSPRicavaDatiDaBarcodeUDC
+VAR_INPUT
+	BarcodeUDC 	: STRING;//Barcode in ingresso
+	IDUDC 		: UDINT;//ID univoco che la macchina genera per ogni elemento depositato
+	StartRead 	: BOOL;//Start lettura dati
+	DBID		: UDINT;//ID del database, da ricavare dal configuratore
+	AbilitaSTHere : BOOL;
+	ResetError : bool;
+END_VAR
+VAR_OUTPUT
+	DataFromDB 	: Record_From_DB; //Dati ricavati dal DB
+	RecordID    : DINT; //se <> da 0 significa che l'elemento può entrare e rappresenta l'ordine di lavoro
+	State 		: ARRAY [1..2] OF StoredProcedureState;
+END_VAR
+VAR
+	nState: BYTE;
+	arrParaList1: ARRAY [0..0] OF ST_DBParameter;
+	arrParaList2: ARRAY [0..6] OF ST_DBParameter;
+	SP_TryUdcCheckIn : FB_DBStoredProceduresRecordArray;
+	SP_TryQtyCheckIn : FB_DBStoredProceduresRecordArray;
+
+	bBusy: BOOL;
+	bErr: BOOL;
+	nErrid: UDINT;
+
+	StateSP1 		: StoredProcedureState;
+	StateSP2 		: StoredProcedureState;
+
+	CalibroLocal : STRING;
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE nState OF
+	(*Idle*)
+	0:
+		IF StartRead THEN
+			nState := 1;
+			State[1].ReadRun := TRUE;
+			DataFromDB.ArticleCode 	:= '';
+			DataFromDB.Caliber		:= '';
+			DataFromDB.Choice		:= '';
+			DataFromDB.Length_mm	:= 0;
+			DataFromDB.Quantity		:= 0;
+			DataFromDB.Thickness_mm	:= 0;
+			DataFromDB.Tone			:= '';
+			DataFromDB.Udc			:= '';
+			DataFromDB.Width_mm		:= 0;
+		END_IF
+	(* Case 1 : Init Dei parametri per esecuzione SP *)
+	1:
+		arrParaList1[0].sParameterName 		:= '@Udc';
+		arrParaList1[0].eParameterDataType 	:= eDBColumn_NVarChar;
+		arrParaList1[0].eParameterType 		:= eDBParameter_Input;
+		arrParaList1[0].cbParameterValue 	:= SIZEOF(BarcodeUDC);
+		arrParaList1[0].pParameterValue 		:= ADR(BarcodeUDC);
+		SP_TryUdcCheckIn.bExecute := TRUE;
+		
+		(*SP_TryUdcCheckIn(
+				sNetID	:= ,
+				hDBID	:= DBID,
+				sProcedureName	:= 'TryUdcCheckIn',
+				cbParameterList	:= SIZEOF(arrParaList1),
+				pParameterList	:= ADR(arrParaList1),
+				nStartIndex		:= 0,
+				nRecordCount	:= 1,
+				cbRecordArraySize	:= SIZEOF(DataFromDB),
+				pDestAddr			:= ADR(DataFromDB),
+				//bExecute			:= TRUE,
+				tTimeout			:= T#50S,
+				bBusy				=> bBusy,
+				bError				=> State[1].Error,
+				nErrID				=> State[1].ErrorID,
+				sSQLState			=> State[1].Sqlstate,
+				nRecords			=> State[1].NumeroRecordLetti);	*)
+		//IF NOT SP_TryUdcCheckIn.bBusy THEN
+			nState := 2;
+		//	SP_TryUdcCheckIn.bExecute := FALSE;
+		//END_IF
+
+	(*Start stored procedure "TryUdcCheckIn"*)
+	2:
+		IF NOT SP_TryUdcCheckIn.bBusy THEN
+			SP_TryUdcCheckIn.bExecute := FALSE;
+			IF AbilitaSTHere THEN
+				nState := 10;
+				RecordID := 0;
+			ELSE
+				nState := 12;
+				State[2].ReadRun 	:= FALSE;
+				State[2].ReadDone 	:= TRUE;
+			END_IF
+			State[1].ReadRun 	:= FALSE;
+			State[1].ReadDone 	:= TRUE;
+		END_IF
+	
+	10:
+		//Parametro UDC generato dalla linea di ingresso
+		arrParaList2[0].sParameterName 		:= '@IdEnteringUnit';
+		arrParaList2[0].eParameterDataType 	:= eDBColumn_BigInt;
+		arrParaList2[0].eParameterType 		:= eDBParameter_Input;
+		arrParaList2[0].cbParameterValue 	:= SIZEOF(IDUDC);
+		arrParaList2[0].pParameterValue 		:= ADR(IDUDC);
+
+		//Parametro BARCODE
+		arrParaList2[1].sParameterName 		:= '@UDC';
+		arrParaList2[1].eParameterDataType 	:= eDBColumn_NVarChar;
+		arrParaList2[1].eParameterType 		:= eDBParameter_Input;
+		arrParaList2[1].cbParameterValue 	:= SIZEOF(BarcodeUDC);
+		arrParaList2[1].pParameterValue 	:= ADR(BarcodeUDC);
+		
+		//Parametro Articolo
+		arrParaList2[2].sParameterName 		:= '@Articolo';
+		arrParaList2[2].eParameterDataType 	:= eDBColumn_NVarChar;
+		arrParaList2[2].eParameterType 		:= eDBParameter_Input;
+		arrParaList2[2].cbParameterValue 	:= SIZEOF(DataFromDB.ArticleCode);
+		arrParaList2[2].pParameterValue 		:= ADR(DataFromDB.ArticleCode);
+		//Parametro Scelta
+		arrParaList2[3].sParameterName 		:= '@Scelta';
+		arrParaList2[3].eParameterDataType 	:= eDBColumn_NVarChar;
+		arrParaList2[3].eParameterType 		:= eDBParameter_Input;
+		arrParaList2[3].cbParameterValue 	:= SIZEOF(DataFromDB.Choice);
+		arrParaList2[3].pParameterValue 		:= ADR(DataFromDB.Choice);
+
+		//Parametro tono
+		arrParaList2[4].sParameterName 		:= '@Tono';
+		arrParaList2[4].eParameterDataType 	:= eDBColumn_NVarChar;
+		arrParaList2[4].eParameterType 		:= eDBParameter_Input;
+		arrParaList2[4].cbParameterValue 	:= SIZEOF(DataFromDB.Tone);
+		arrParaList2[4].pParameterValue 		:= ADR(DataFromDB.Tone);
+
+		//Parametro Calibro
+		arrParaList2[5].sParameterName 		:= '@Calibro';
+		arrParaList2[5].eParameterDataType 	:= eDBColumn_NVarChar;
+		arrParaList2[5].eParameterType 		:= eDBParameter_Input;
+
+		arrParaList2[5].cbParameterValue 	:= SIZEOF(DataFromDB.Caliber);
+		arrParaList2[5].pParameterValue 		:= ADR(DataFromDB.Caliber);
+		//Parametro Quantità
+		arrParaList2[6].sParameterName 		:= '@Quantity';
+		arrParaList2[6].eParameterDataType 	:= eDBColumn_Float;
+		arrParaList2[6].eParameterType 		:= eDBParameter_Input;
+		arrParaList2[6].cbParameterValue 	:= SIZEOF(DataFromDB.Quantity);
+		arrParaList2[6].pParameterValue 	:= ADR(DataFromDB.Quantity);
+		//Reset variabile risultante
+		//RecordID := 0;
+		//Lancio Comando
+		SP_TryQtyCheckIn.bExecute := TRUE;
+
+		(*SP_TryQtyCheckIn(
+				sNetID	:= ,
+				hDBID	:= DBID,
+				sProcedureName	:= 'TryQtyCheckIn',
+				cbParameterList	:= SIZEOF(arrParaList2),
+				pParameterList	:= ADR(arrParaList2),
+				nStartIndex		:= 0,
+				nRecordCount	:= 1,
+				cbRecordArraySize	:= SIZEOF(RecordID),
+				pDestAddr			:= ADR(RecordID),
+				//bExecute			:= TRUE,
+				tTimeout			:= T#50S,
+				bBusy				=> bBusy,
+				bError				=> State[2].Error,
+				nErrID				=> State[2].ErrorID,
+				sSQLState			=> State[2].Sqlstate,
+				nRecords			=> State[2].NumeroRecordLetti);*)
+		
+		State[2].ReadRun 	:= TRUE;
+		State[2].ReadDone 	:= FALSE;
+
+		//IF NOT SP_TryQtyCheckIn.bBusy THEN
+		//	SP_TryQtyCheckIn.bExecute := FALSE;
+			nState := 11;
+		//END_IF
+
+	(*Start stored procedure "TryUdcCheckIn"*)
+	11:
+		IF NOT SP_TryQtyCheckIn.bBusy THEN
+			SP_TryQtyCheckIn.bExecute := FALSE;
+			nState := 12;//3;
+			State[2].ReadRun 	:= FALSE;
+			State[2].ReadDone 	:= TRUE;
+		END_IF
+
+	(* Attesa che il comando dall'esterno venga azzerato *)	
+	12:
+		IF NOT StartRead OR ResetError THEN 
+			nState := 0;
+			State[1].ReadRun 	:= FALSE;
+			State[2].ReadRun 	:= FALSE;
+			State[1].ReadDone 	:= FALSE;
+			State[2].ReadDone 	:= FALSE;
+			SP_TryUdcCheckIn.bExecute := FALSE;
+			SP_TryQtyCheckIn.bExecute := FALSE;
+			
+		END_IF	
+		
+END_CASE
+
+//Lancio SP
+(*
+IF ResetError THEN
+	IF SP_TryUdcCheckIn.bError AND NOT SP_TryUdcCheckIn.bBusy THEN
+		SP_TryUdcCheckIn.bExecute := FALSE;
+		//SP_TryUdcCheckIn(bExecute := FALSE);
+	END_IF
+	IF  SP_TryQtyCheckIn.bError AND NOT SP_TryUdcCheckIn.bBusy THEN 
+		SP_TryQtyCheckIn.bExecute := FALSE;
+		//SP_TryQtyCheckIn(bExecute := FALSE);
+	END_IF
+	ResetError := FALSE;
+END_IF
+*)
+
+SP_TryUdcCheckIn(
+				sNetID	:= ,
+				hDBID	:= DBID,
+				sProcedureName	:= 'TryUdcCheckIn',
+				cbParameterList	:= SIZEOF(arrParaList1),
+				pParameterList	:= ADR(arrParaList1),
+				nStartIndex		:= 0,
+				nRecordCount	:= 1,
+				cbRecordArraySize	:= SIZEOF(DataFromDB),
+				pDestAddr			:= ADR(DataFromDB),
+				//bExecute			:= TRUE,
+				tTimeout			:= T#50S,
+				bBusy				=> bBusy,
+				bError				=> State[1].Error,
+				nErrID				=> State[1].ErrorID,
+				sSQLState			=> State[1].Sqlstate,
+				nRecords			=> State[1].NumeroRecordLetti);
+
+//Lancio SP
+SP_TryQtyCheckIn(
+				sNetID	:= ,
+				hDBID	:= DBID,
+				sProcedureName	:= 'TryQtyCheckIn',
+				cbParameterList	:= SIZEOF(arrParaList2),
+				pParameterList	:= ADR(arrParaList2),
+				nStartIndex		:= 0,
+				nRecordCount	:= 1,
+				cbRecordArraySize	:= SIZEOF(RecordID),
+				pDestAddr			:= ADR(RecordID),
+				//bExecute			:= TRUE,
+				tTimeout			:= T#50S,
+				bBusy				=> bBusy,
+				bError				=> State[2].Error,
+				nErrID				=> State[2].ErrorID,
+				sSQLState			=> State[2].Sqlstate,
+				nRecords			=> State[2].NumeroRecordLetti);
+
+//reset errori SP				
+IF ResetError THEN
+	IF State[1].Error THEN
+		State[1].Error := FALSE;
+	END_IF
+	IF State[2].Error THEN 
+		State[2].Error := FALSE;
+	END_IF
+	ResetError := FALSE;
+END_IF
+
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFSPRicavaDatiDaBarcodeUDC">
+      <LineId Id="196" Count="5" />
+      <LineId Id="560" Count="7" />
+      <LineId Id="559" Count="0" />
+      <LineId Id="202" Count="7" />
+      <LineId Id="221" Count="1" />
+      <LineId Id="515" Count="15" />
+      <LineId Id="514" Count="0" />
+      <LineId Id="509" Count="0" />
+      <LineId Id="223" Count="0" />
+      <LineId Id="552" Count="1" />
+      <LineId Id="224" Count="2" />
+      <LineId Id="229" Count="1" />
+      <LineId Id="408" Count="0" />
+      <LineId Id="231" Count="0" />
+      <LineId Id="558" Count="0" />
+      <LineId Id="409" Count="0" />
+      <LineId Id="411" Count="2" />
+      <LineId Id="410" Count="0" />
+      <LineId Id="232" Count="3" />
+      <LineId Id="310" Count="0" />
+      <LineId Id="354" Count="0" />
+      <LineId Id="314" Count="3" />
+      <LineId Id="311" Count="0" />
+      <LineId Id="451" Count="6" />
+      <LineId Id="450" Count="0" />
+      <LineId Id="323" Count="4" />
+      <LineId Id="322" Count="0" />
+      <LineId Id="329" Count="4" />
+      <LineId Id="328" Count="0" />
+      <LineId Id="468" Count="0" />
+      <LineId Id="461" Count="5" />
+      <LineId Id="459" Count="0" />
+      <LineId Id="335" Count="3" />
+      <LineId Id="632" Count="0" />
+      <LineId Id="339" Count="0" />
+      <LineId Id="334" Count="0" />
+      <LineId Id="341" Count="4" />
+      <LineId Id="340" Count="0" />
+      <LineId Id="352" Count="0" />
+      <LineId Id="313" Count="0" />
+      <LineId Id="319" Count="1" />
+      <LineId Id="532" Count="0" />
+      <LineId Id="534" Count="16" />
+      <LineId Id="321" Count="0" />
+      <LineId Id="379" Count="1" />
+      <LineId Id="557" Count="0" />
+      <LineId Id="554" Count="1" />
+      <LineId Id="318" Count="0" />
+      <LineId Id="556" Count="0" />
+      <LineId Id="356" Count="0" />
+      <LineId Id="358" Count="6" />
+      <LineId Id="357" Count="0" />
+      <LineId Id="309" Count="0" />
+      <LineId Id="236" Count="3" />
+      <LineId Id="716" Count="1" />
+      <LineId Id="378" Count="0" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="718" Count="2" />
+      <LineId Id="242" Count="4" />
+      <LineId Id="499" Count="0" />
+      <LineId Id="498" Count="0" />
+      <LineId Id="505" Count="0" />
+      <LineId Id="672" Count="0" />
+      <LineId Id="501" Count="0" />
+      <LineId Id="506" Count="1" />
+      <LineId Id="673" Count="0" />
+      <LineId Id="503" Count="0" />
+      <LineId Id="508" Count="0" />
+      <LineId Id="504" Count="0" />
+      <LineId Id="500" Count="0" />
+      <LineId Id="551" Count="0" />
+      <LineId Id="502" Count="0" />
+      <LineId Id="247" Count="16" />
+      <LineId Id="640" Count="0" />
+      <LineId Id="290" Count="17" />
+      <LineId Id="715" Count="0" />
+      <LineId Id="370" Count="0" />
+      <LineId Id="705" Count="2" />
+      <LineId Id="709" Count="2" />
+      <LineId Id="713" Count="1" />
+      <LineId Id="371" Count="6" />
+      <LineId Id="369" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

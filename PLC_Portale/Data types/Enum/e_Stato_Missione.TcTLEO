@@ -1,0 +1,247 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Stato_Missione" Id="{a9cd9038-ffbe-4280-b665-9117a7faa144}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Stato della Missione Della Macchina
+TYPE e_Stato_Missione :
+(
+	NOT_DEFINED									:= -1,
+	(*********************************************************************)
+	MISSION_STATE_NOP							:= 0,
+	(*********************************************************************)
+	MISSION_STATE_INIT							:= 10,
+	(*********************************************************************)
+	MISSION_STATE_VAIaRIPOSO_RUN				:= 20,
+	MISSION_STATE_VAIaRIPOSO_END				:= 21,
+	(*********************************************************************)
+	//MISSION_STATE_PRELIEVO_PALLET_RUN			:= 30,
+	//MISSION_STATE_PRELIEVO_PALLET_END			:= 31,
+	(*********************************************************************)
+	//MISSION_STATE_DEPOSITO_PALLET_RUN			:= 40,
+	//MISSION_STATE_DEPOSITO_PALLET_END			:= 41,
+	(*********************************************************************)
+	MISSION_STATE_PRELIEVO_FALDA_RUN			:= 50,
+	MISSION_STATE_PRELIEVO_FALDA_END			:= 51,
+	(*********************************************************************)
+	MISSION_STATE_DEPOSITO_FALDA_RUN			:= 60,
+	MISSION_STATE_DEPOSITO_FALDA_END			:= 61,
+	(*********************************************************************)
+//	MISSION_STATE_PRELIEVO_PACCO_RUN			:= 70,
+	//MISSION_STATE_PRELIEVO_PACCO_END			:= 71,
+	(*********************************************************************)
+	//MISSION_STATE_DEPOSITO_PACCO_RUN			:= 80,
+	//MISSION_STATE_DEPOSITO_PACCO_END			:= 81,
+	(*********************************************************************)
+	(*********************************************************************)
+	
+	MISSION_STATE_PRELIEVO_LASTRA_PP_RUN		:= 90,
+	MISSION_STATE_PRELIEVO_LASTRA_PP_END		:= 91,
+	(*********************************************************************)
+	MISSION_STATE_DEPOSITO_LASTRA_PP_RUN		:= 100,
+	MISSION_STATE_DEPOSITO_LASTRA_PP_END		:= 101,
+	(*********************************************************************)
+	MISSION_STATE_PRELIEVO_LASTRA_WA_RUN		:= 110,
+	MISSION_STATE_PRELIEVO_LASTRA_WA_END		:= 111,
+	(*********************************************************************)
+	MISSION_STATE_DEPOSITO_LASTRA_WA_RUN		:= 120,
+	MISSION_STATE_DEPOSITO_LASTRA_WA_END		:= 121,
+	(*********************************************************************)
+	MISSION_STATE_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN		:= 130,
+	MISSION_STATE_DEPOSITO_LASTRA_SU_PAREGGIATORE_END		:= 131,
+	(*********************************************************************)
+	MISSION_STATE_PAREGGIATURA_RUN		:= 132,
+	MISSION_STATE_PAREGGIATURA_END		:= 133,
+	(*********************************************************************)
+	MISSION_STATE_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN		:= 134,
+	MISSION_STATE_PRELIEVO_LASTRA_DA_PAREGGIATORE_END		:= 135,
+	(*********************************************************************)
+	MISSION_STATE_PRELIEVO_LASTRA_DEPAL_RUN		:= 136,
+	MISSION_STATE_PRELIEVO_LASTRA_DEPAL_END		:= 137,
+	(*********************************************************************)
+	MISSION_STATE_DEPOSITO_LASTRA_DEPAL_RUN	:= 138,
+	MISSION_STATE_DEPOSITO_LASTRA_DEPAL_END	:= 139,
+	(*********************************************************************)
+	MISSION_STATE_DEPOSITO_FALDA_DEPAL_RUN	:= 140,
+	MISSION_STATE_DEPOSITO_FALDA_DEPAL_END	:= 141,
+	
+	MISSION_STATE_ERROR							:= 999
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_NOP"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_INIT"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_VAIaRIPOSO_RUN"</v>
+              <v n="TextDefault">"20"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_VAIaRIPOSO_END"</v>
+              <v n="TextDefault">"21"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_FALDA_RUN"</v>
+              <v n="TextDefault">"50"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_FALDA_END"</v>
+              <v n="TextDefault">"51"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_FALDA_RUN"</v>
+              <v n="TextDefault">"60"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_FALDA_END"</v>
+              <v n="TextDefault">"61"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_PP_RUN"</v>
+              <v n="TextDefault">"90"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_PP_END"</v>
+              <v n="TextDefault">"91"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_PP_RUN"</v>
+              <v n="TextDefault">"100"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_PP_END"</v>
+              <v n="TextDefault">"101"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_WA_RUN"</v>
+              <v n="TextDefault">"110"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_WA_END"</v>
+              <v n="TextDefault">"111"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_WA_RUN"</v>
+              <v n="TextDefault">"120"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_WA_END"</v>
+              <v n="TextDefault">"121"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN"</v>
+              <v n="TextDefault">"130"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_SU_PAREGGIATORE_END"</v>
+              <v n="TextDefault">"131"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PAREGGIATURA_RUN"</v>
+              <v n="TextDefault">"132"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PAREGGIATURA_END"</v>
+              <v n="TextDefault">"133"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN"</v>
+              <v n="TextDefault">"134"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_DA_PAREGGIATORE_END"</v>
+              <v n="TextDefault">"135"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_DEPAL_RUN"</v>
+              <v n="TextDefault">"136"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_PRELIEVO_LASTRA_DEPAL_END"</v>
+              <v n="TextDefault">"137"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_DEPAL_RUN"</v>
+              <v n="TextDefault">"138"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_LASTRA_DEPAL_END"</v>
+              <v n="TextDefault">"139"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_FALDA_DEPAL_RUN"</v>
+              <v n="TextDefault">"140"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_DEPOSITO_FALDA_DEPAL_END"</v>
+              <v n="TextDefault">"141"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MISSION_STATE_ERROR"</v>
+              <v n="TextDefault">"999"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{cc030e08-d13f-4d95-b431-33bcdedd57a1}</v>
+          <v n="GuidReInit">{d25609d8-32f5-4741-a506-43982e88aa67}</v>
+          <v n="GuidExitX">{15bdc442-cf52-4e37-b79f-301c68dc6bdc}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFWAM_RicavaListaInLavoro" Id="{6dbf3cf6-7f0a-491a-9cb7-298528952c04}" SpecialFunc="None">
+    <Declaration><![CDATA[(*Funzione che restituisce il numero della postazione avente una lista in lavorazione*)
+FUNCTION TFWAM_RicavaListaInLavoro : UINT
+VAR_INPUT
+	WorkAreaProductionList : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_ListaProduzione_WAM; //Lista di produzione che devo Svolgere PER ogni POSTAZIONE
+END_VAR
+VAR
+	i:UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Ciclo tutte le Liste *)
+FOR i:=1 TO MAXAREAPRESENT DO
+	(* Se Lista NON è già stata avviata e NON è TERMINATA*)
+	IF WorkAreaProductionList^[i].Stato >= LISTA_PROD_IN_ESECUZIONE AND WorkAreaProductionList^[i].Stato < LISTA_PROD_ESEGUITA THEN
+		TFWAM_RicavaListaInLavoro := i;
+		RETURN;
+	END_IF
+END_FOR
+TFWAM_RicavaListaInLavoro:=0;
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFWAM_RicavaListaInLavoro">
+      <LineId Id="11" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="22" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

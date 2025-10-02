@@ -1,0 +1,468 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="GateAccessLGV" Id="{7b8aad35-994b-4908-8344-d11dbd9212d1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK GateAccessLGV
+VAR_INPUT
+	WorkArea 				: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState 			: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;//WorkAreaState 			: POINTER TO TFMachinePalletizer_WorkAreaState;
+	PH_WorkArea 			: BOOL;//FTC Presenza elemento
+	LGV_InfeedReq_HW 		: BOOL;//Richiesta ingresso cablata
+	LGV_Encumbrance_HW 		: BOOL;//Ingombro cablato
+	LGV_InfeedReq_SW 		: BOOL;//Richiesta ingresso SW
+	LGV_Encumbrance_SW 		: BOOL;//Ingombro SW
+	LGV_HW_SW_SWITCH 		: BOOL := FALSE;//tipologia di scambio consensi true= cablata, false= software
+	Machine					: POINTER TO TFMachinePalletizer_TF; //Macchina
+	TimeBase 				: REAL;//Tempo base PLC
+	OtherAccessActive 		: BOOL;//Altri gate access attivi
+	Modules	 				: POINTER TO TFPalletizerModules;
+	OtherMachineStopPresent	: BOOL; //presenza altra macchina per considerare il suo stop in fase
+	OtherMachineStopDone 	: BOOL;//stop eseguito di altre macchine collegate 	
+	LGV_Data 				: POINTER TO ARRAY [1..MAXAREA] OF ST_SupervisorData;//Puntatore alla struttura dati relativi alla chiamata della postazione
+	IndicePostazione		: UINT;
+END_VAR
+VAR_OUTPUT
+	Logic_Req 			: BOOL;	(* Bit di richiesta logia da parte della postazione *)
+	LGV_InfeedRequest 	: BOOL; (* Bit di segnalazione di richiesta ingresso da veicolo *)
+	LGV_InfeedOk 		: BOOL; (* Segnalazione accesso consentito *)
+	LGVAccessLamp 		: BOOL; (* Access Lamp: 	OFF = No Access Consent,
+										ON = Access Consent,
+										FLASH (1sec) = Access Requested (Machine Stopping)
+										FLASH (0.5sec) = Waiting Restart
+										FLASH (0.1sec) = Access Error *)
+										
+	LGVAccesActive 		: BOOL; (* Gate Acces Sequence in Execution *)
+	OtherMachineStopReq : BOOL;	
+	
+	LGVResetHSKSUPNAV 	: BOOL;	
+	LGV_ResetSW_RicIng 	: BOOL;
+	
+	ErrAck 			: BOOL; //Error Acknowledge Safaty
+	ErrAckDriver 	: BOOL; //Error Acknowledge Drive
+	ErrorCode 		: UINT; //Codice di errore
+	ReqPowerOffSimulation : bool;//Richiesta di power OFF x simulazione senza HW
+END_VAR
+VAR
+	LGVCase : INT;
+	j : UINT;
+	k : UINT; 
+	LGV_REQIN : BOOL;// bit di richiesta utilizzato all'interno del FB
+	LGV_Encumbrance : BOOL;//Bit di ingombro utilizzato all'interno del FB
+	Power 				: BOOL;
+	
+	
+	ParametersArray : ParametersArray;
+	//LGVAccessOK : BOOL;
+	LGVAccessERROR : BOOL;	
+	LGVAccessReqIN : BOOL;
+	MachineWasRunning : BOOL;
+	Timer100 : REAL;
+	Timer200 : REAL;
+	Timer1000 : REAL;
+	Clock100 : BOOL;
+	Clock200 : BOOL;
+	Clock1000 : BOOL;
+	TimerMachineWaitRunning : REAL;
+	TimerPowerOFF : REAL;
+	TimeoutControlloBarriereSicurezza : REAL;
+	TimerOkBarriereSicurezze : REAL;
+	TimeoutAnomaliaConsensi : REAL;
+	TimerRitardoPower:REAL;
+	AggiornaDatiPostazione : BOOL;//se true, quando va via la richiesta e l'ingombro aggiorniamo i dati
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFTimerCall(ADR(Timer100),TimeBase);
+TFTimerCall(ADR(Timer200),TimeBase);
+TFTimerCall(ADR(Timer1000),TimeBase);
+TFTimerCall(ADR(TimerMachineWaitRunning),TimeBase);
+TFTimerCall(ADR(TimerPowerOFF),TimeBase);
+TFTimerCall(ADR(TimeoutControlloBarriereSicurezza),TimeBase);
+TFTimerCall(ADR(TimerOkBarriereSicurezze),TimeBase);
+TFTimerCall(ADR(TimeoutAnomaliaConsensi),TimeBase);
+TFTimerCall(ADR(TimerRitardoPower),TimeBase);
+
+(* A seconda della tipologia dei consensi, valorizzo le variabili interne*)
+IF NOT LGV_HW_SW_SWITCH THEN
+	LGV_REQIN 		:= LGV_InfeedReq_HW;
+	LGV_Encumbrance := LGV_Encumbrance_HW;
+ELSE	
+	LGV_REQIN 		:= LGV_InfeedReq_SW;
+	LGV_Encumbrance := LGV_Encumbrance_SW;
+END_IF
+
+(* Setto il bit interno di Power *)
+Power := Machine^.IN.PowerOk;
+(* Setto il valore dello stop in fase della macchina esterna se non è presente *)
+IF NOT OtherMachineStopPresent THEN
+	OtherMachineStopDone := OtherMachineStopReq;
+END_IF
+
+IF IndicePostazione <= 0 THEN
+	RETURN;
+END_IF
+
+CASE LGVCase OF
+
+	(* Case 0 *)
+	0:	
+		ReqPowerOffSimulation       := FALSE;
+		ErrorCode 					:= 0;
+		LGVResetHSKSUPNAV 			:= FALSE;
+		LGVAccesActive 				:= FALSE;
+		LGV_InfeedOk 				:= FALSE;
+		LGVAccessReqIN 				:= FALSE;
+		OtherMachineStopReq 		:= FALSE;
+		Logic_Req 					:= FALSE;
+		IF (WorkAreaState^[IndicePostazione].State = WORKAREA_STATE_OCCUPIED_LGVREQ OR WorkAreaState^[IndicePostazione].State = WORKAREA_STATE_FREE_LGVREQ) AND 
+			WorkArea^[IndicePostazione].Enable = 1 AND WorkAreaState^[IndicePostazione].LGV_Req = 1 AND NOT LGV_Data^[IndicePostazione].HskToSupervisor.DisableLGV THEN
+				Logic_Req 				:= TRUE;
+		END_IF		
+		// Command Case = 15 is WorkFlowsRunning after Homing WorkFlow NOTES: State=DO_RUN+1 it will be better!!!!
+		MachineWasRunning := Machine^.CmdExe.Code = CmdDO AND Machine^.CmdExe.CmdCase = 15 AND Machine^.CmdExe.PhaseStopRequest = 0 AND Machine^.CmdExe.RapidStopRequest = 0;
+		TFTimerSet(ADR(TimerMachineWaitRunning),1000,NOT MachineWasRunning);
+		
+		IF LGV_REQIN AND Logic_Req AND NOT OtherAccessActive AND MachineWasRunning AND TFTimerDone(ADR(TimerMachineWaitRunning)) THEN
+			LGVAccesActive 	:= TRUE;
+			LGVAccessERROR 	:= FALSE;
+			LGVAccessReqIN 	:= TRUE;
+			(* Machine Was Running if CmdDO and No Stop Request *)
+			LGVCase 		:= LGVCase + 1;
+			AggiornaDatiPostazione := TRUE;
+		END_IF	
+			
+	(* Case 1 - Phase Stop *)
+	1:	TFParametersArrayClear(ADR(ParametersArray));
+		TFCommandSend(CmdSTOPPHASE,ParametersArray,Machine^.Cmd);
+		OtherMachineStopReq 		:= TRUE;
+		AggiornaDatiPostazione 		:= TRUE;
+		LGVCase 					:= LGVCase + 1;
+		
+	(* Case 2 - Cmd DO END *)	
+	2:	IF ((TFStateCodeGet(Machine^.State) = StateDO_END AND NOT
+			TFIsModuleError(Machine^.Error)) OR
+			Machine^.CmdExe.Code = CmdNOP)  THEN
+			TFTimerSet(ADR(TimerPowerOFF),1000,TRUE);
+			LGVCase := LGVCase + 1;
+		ELSIF TFIsModuleError(Machine^.Error) OR 
+			TFPalletizerIsModuleError(Modules) THEN
+			LGVCase := 0; 
+		END_IF
+
+	(* Case 3 - Power Off *)
+	3:	IF TFTimerDone(ADR(TimerPowerOFF)) AND OtherMachineStopDone THEN
+			TFParametersArrayClear(ADR(ParametersArray));
+			ParametersArray.Parameters[0] := '0';
+			TFCommandSend(CmdPOWER,ParametersArray,Machine^.Cmd);
+			LGVCase := LGVCase + 1;
+		END_IF	
+
+	(* Case 4 - Power Off OK *)	
+	4:	ReqPowerOffSimulation := TRUE;
+		IF (TFStateCodeGet(Machine^.State) = StatePOWER_END) AND// OR NOT Power) AND
+			NOT TFIsModuleError(Machine^.Error) AND 
+			NOT TFPalletizerIsModuleError(Modules) AND 
+			NOT OtherAccessActive THEN
+			LGVCase := LGVCase + 1;
+		ELSIF NOT LGV_REQIN THEN
+			LGVCase := 6;
+		ELSIF TFIsModuleError(Machine^.Error) THEN
+			LGVCase := 0;
+		END_IF
+		TFTimerSet(ADR(TimeoutAnomaliaConsensi),120000,TRUE);
+		
+	(* Case 5  LGV IN *)
+	5:	
+		
+		IF LGV_REQIN AND Logic_Req AND NOT TFIsModuleError(Machine^.Error)THEN
+			LGV_InfeedRequest := TRUE;
+			LGVAccessReqIN := FALSE;
+			LGV_InfeedOk := TRUE;
+			TFTimerSet(ADR(TimeoutAnomaliaConsensi),300000,TRUE);
+		ELSE
+			LGV_InfeedRequest := FALSE;
+			LGV_InfeedOk := FALSE;
+			LGVAccessReqIN := FALSE;
+		END_IF
+		
+		IF NOT LGV_REQIN AND NOT LGV_Encumbrance THEN
+			LGV_InfeedRequest := FALSE;
+			LGVCase := LGVCase + 1;
+		ELSIF TFTimerDone(ADR(TimeoutAnomaliaConsensi)) AND ((LGV_REQIN AND NOT LGV_Encumbrance) OR (NOT LGV_REQIN AND LGV_Encumbrance)) THEN
+			LGV_InfeedReq_SW := FALSE;
+			LGV_Encumbrance_SW := FALSE;
+			LGV_REQIN := LGV_InfeedReq_SW;
+			LGV_Encumbrance := LGV_Encumbrance_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			ErrorCode := ErrMACHINEPALLETIZER_ANOMALIA_CONSENSI_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF
+		IF TFIsModuleError(Machine^.Error) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_InfeedReq_SW 	:= FALSE;
+			LGV_Encumbrance_SW 	:= FALSE;
+			LGV_REQIN 			:= LGV_InfeedReq_SW;
+			LGV_Encumbrance 	:= LGV_Encumbrance_SW;
+			LGVResetHSKSUPNAV 	:= TRUE;
+			ErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF	
+		TFTimerSet(ADR(TimeoutControlloBarriereSicurezza),20000,TRUE);
+
+	(* Case 6 - *)
+	6:	
+		IF TFIsModuleError(Machine^.Error) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_InfeedReq_SW := FALSE;
+			LGV_Encumbrance_SW := FALSE;
+			LGV_REQIN := LGV_InfeedReq_SW;
+			LGV_Encumbrance := LGV_Encumbrance_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			ErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		ELSE
+			LGVCase := 10;	
+		END_IF
+		
+	(* Case 7 - Power ON *)
+	10:	IF NOT OtherAccessActive AND TFTimerDone(ADR(TimerOkBarriereSicurezze))  THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			LGVCase := LGVCase + 1;	
+		ELSIF OtherAccessActive THEN
+			LGVCase := 0;
+		ELSIF TFTimerDone(ADR(TimeoutControlloBarriereSicurezza)) THEN
+			ErrorCode := ErrMACHINEPALLETIZER_BARRIEREOCCUPATE_LGVREQ_OFF;
+			LGVCase := 0;
+		END_IF
+		IF TFIsModuleError(Machine^.Error) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_InfeedReq_SW := FALSE;
+			LGV_Encumbrance_SW := FALSE;
+			LGV_REQIN := LGV_InfeedReq_SW;
+			LGV_Encumbrance := LGV_Encumbrance_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			ErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF
+(**************************************************************************)
+(**************** Error Acknowledge Safety + AZIONAMENTI ***************************)
+	11:
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAck := TRUE;
+			LGVCase := LGVCase + 1;	
+		END_IF
+	
+	12:	
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAck := FALSE;
+			LGVCase := LGVCase + 1;	
+		END_IF
+
+	13:
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAckDriver := TRUE;
+			LGVCase := LGVCase+1;
+		END_IF
+		
+	14:
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAckDriver := FALSE;
+			LGVCase := LGVCase+1;
+		END_IF
+
+	15: 
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			LGVCase := 20;
+		END_IF
+(**************************************************************************)
+(**************************************************************************)		
+	(* Case 20 - Power ON *)
+	20:	IF NOT OtherAccessActive AND TFTimerDone(ADR(TimerOkBarriereSicurezze)) THEN
+			TFParametersArrayClear(ADR(ParametersArray));
+			ParametersArray.Parameters[0] := '1';
+			TFCommandSend(CmdPOWER,ParametersArray,Machine^.Cmd);
+			LGV_ResetSW_RicIng := TRUE;
+			LGVCase := LGVCase + 1;	
+		ELSIF TFTimerDone(ADR(TimeoutControlloBarriereSicurezza)) THEN
+			ErrorCode := ErrMACHINEPALLETIZER_BARRIEREOCCUPATE_LGVREQ_OFF;
+			LGVCase := 0;
+		END_IF	
+		IF TFIsModuleError(Machine^.Error) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_InfeedReq_SW := FALSE;
+			LGV_Encumbrance_SW := FALSE;
+			LGV_REQIN := LGV_InfeedReq_SW;
+			LGV_Encumbrance := LGV_Encumbrance_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			ErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF
+			
+	(* Case 21 - Power On OK *)
+	21:	
+		ReqPowerOffSimulation := FALSE;
+		IF TFStateCodeGet(Machine^.State) = StatePOWER_END OR
+			TFIsModuleError(Machine^.Error) THEN
+			LGV_ResetSW_RicIng := FALSE;
+			LGVCase := LGVCase + 1;	
+		END_IF
+		
+	(* Case 22 - Cmd DO *)
+	22:	
+		IF MachineWasRunning AND
+			Machine^.IN.Mode.Auto AND
+			NOT Machine^.IN.Mode.StopRequest AND
+			NOT Machine^.IN.Mode.RapidStopRequest AND NOT OtherAccessActive THEN
+			(*AND (SecurityGateStatus OR NOT ControlGateSecurity^*) 
+			TFParametersArrayClear(ADR(ParametersArray));
+			TFCommandSend(CmdDO,ParametersArray,Machine^.Cmd);
+			OtherMachineStopReq := FALSE;
+		END_IF
+		LGVCase := 0;
+	
+	ELSE
+		LGVAccessERROR := TRUE;
+		LGVCase := 0;
+	
+END_CASE
+
+(* In base allo stato dell'ingombro del veicolo e delle ftc vado a valorizzare/sbiancare i valori *)
+IF NOT LGV_REQIN AND NOT LGV_Encumbrance AND AggiornaDatiPostazione THEN
+	AggiornaDatiPostazione := FALSE;//Abbasso la richiesta di aggiornamento dati postazione
+	CASE WorkAreaState^[IndicePostazione].LGV_GetIn_GetOut OF
+		REQ_PRELIEVO_LGV_PIENO:
+								IF NOT PH_WorkArea THEN
+									// Pulisco piazzola in seguito ad estrazione
+									TFClearWorkAreaArray(WorkArea,WorkAreaState,IndicePostazione);
+									I_PHPresenzaPalletVirtuale[IndicePostazione]:=FALSE;
+								ELSE
+									;
+								END_IF	
+		REQ_PRELIEVO_LGV_VUOTO:
+								IF NOT PH_WorkArea THEN
+									// Pulisco piazzola in seguito ad estrazione
+									TFClearWorkAreaArray(WorkArea,WorkAreaState,IndicePostazione);
+									I_PHPresenzaPalletVirtuale[IndicePostazione]:=FALSE;
+								ELSE
+									;
+								END_IF
+			
+		REQ_DEPOSITO_LGV_VUOTO:
+								IF NOT PH_WorkArea AND NOT SIMULAZIONE_NO_HW THEN
+									// Pulisco piazzola in seguito ad estrazione
+									TFClearWorkAreaArray(WorkArea,WorkAreaState,IndicePostazione);
+									I_PHPresenzaPalletVirtuale[IndicePostazione]:=FALSE;
+								ELSE
+									CASE WorkArea^[IndicePostazione].Typology OF
+		
+										TYPOLOGY_PALLET:
+														WorkAreaState^[IndicePostazione].Supporto.Code 	:= LGV_Data^[IndicePostazione].DataElementFromSupervisor.SupportType;
+										
+										TYPOLOGY_WASTE:
+														WorkAreaState^[IndicePostazione].Supporto.Code 		:= CodeWasteSupport;//LGV_Data^.DataElementFromSupervisor.SupportType;
+														WorkAreaState^[IndicePostazione].Supporto.Tipologia  	:= TYPOLOGY_WASTE;
+														WorkAreaState^[IndicePostazione].Supporto.Code		:= CodeWasteSupport;	//Codice del pallet	
+														WorkAreaState^[IndicePostazione].Code					:= 3;
+																																			 
+										TYPOLOGY_LAYER:
+														WorkAreaState^[IndicePostazione].Supporto.Code 	:= LGV_Data^[IndicePostazione].DataElementFromSupervisor.LayerData.Code;
+														WorkAreaState^[IndicePostazione].LayerData		:= LGV_Data^[IndicePostazione].DataElementFromSupervisor.LayerData;
+										
+									END_CASE
+									ProgressiveNrWA 	:= ProgressiveNrWA+1;
+									WorkAreaState^[IndicePostazione].ID 	:= ProgressiveNrWA; 
+								END_IF
+								
+			
+		REQ_DEPOSITO_LGV_PIENO:
+								IF NOT PH_WorkArea AND NOT SIMULAZIONE_NO_HW THEN
+									// Pulisco piazzola in seguito ad estrazione
+									TFClearWorkAreaArray(WorkArea,WorkAreaState,IndicePostazione);
+									I_PHPresenzaPalletVirtuale[IndicePostazione]:=FALSE;
+								ELSE
+									CASE WorkArea^[IndicePostazione].Typology OF
+	
+										TYPOLOGY_PALLET:
+														WorkAreaState^[IndicePostazione].Supporto.Code 	:= LGV_Data^[IndicePostazione].DataElementFromSupervisor.SupportType;
+										
+										TYPOLOGY_WASTE:
+														WorkAreaState^[IndicePostazione].Supporto.Code 		:= CodeWasteSupport;//LGV_Data^.DataElementFromSupervisor.SupportType;
+														WorkAreaState^[IndicePostazione].Supporto.Tipologia  	:= TYPOLOGY_WASTE;
+														WorkAreaState^[IndicePostazione].Supporto.Code		:= CodeWasteSupport;	//Codice del pallet	
+														WorkAreaState^[IndicePostazione].Code					:= CodeWasteSupport;
+																																			 
+										TYPOLOGY_LAYER:
+														WorkAreaState^[IndicePostazione].Supporto.Code 	:= LGV_Data^[IndicePostazione].DataElementFromSupervisor.LayerData.Code;
+														WorkAreaState^[IndicePostazione].LayerData		:= Actual_WorkOrder.Layer;//  LGV_Data^[IndicePostazione].DataElementFromSupervisor.LayerData;
+										
+									END_CASE
+									ProgressiveNrWA 	:= ProgressiveNrWA+1;
+									WorkAreaState^[IndicePostazione].ID 	:= ProgressiveNrWA; 
+								END_IF
+	END_CASE
+END_IF
+
+(* Clocks *)
+IF TFTimerDone(ADR(Timer100)) THEN
+	TFTimerSet(ADR(Timer100),100,TRUE);
+	Clock100 := NOT Clock100;
+END_IF
+IF TFTimerDone(ADR(Timer200)) THEN
+	TFTimerSet(ADR(Timer200),200,TRUE);
+	Clock200 := NOT Clock200;
+END_IF
+IF TFTimerDone(ADR(Timer1000)) THEN
+	TFTimerSet(ADR(Timer1000),1000,TRUE);
+	Clock1000 := NOT Clock1000;
+END_IF
+
+(* Access Lamp *)
+LGVAccessLamp := ((LGV_InfeedOk AND Clock200) OR
+				//(AccessReqOUT AND Clock500) OR
+				(LGVAccessReqIN AND Clock1000))AND
+				NOT LGVAccessERROR OR (LGVAccessERROR AND Clock100);
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="GateAccessLGV">
+      <LineId Id="8327" Count="24" />
+      <LineId Id="9370" Count="3" />
+      <LineId Id="8352" Count="4" />
+      <LineId Id="8659" Count="0" />
+      <LineId Id="8658" Count="0" />
+      <LineId Id="8357" Count="6" />
+      <LineId Id="8969" Count="0" />
+      <LineId Id="8364" Count="11" />
+      <LineId Id="9442" Count="0" />
+      <LineId Id="8376" Count="5" />
+      <LineId Id="9513" Count="0" />
+      <LineId Id="8382" Count="22" />
+      <LineId Id="8660" Count="0" />
+      <LineId Id="8405" Count="12" />
+      <LineId Id="9366" Count="0" />
+      <LineId Id="8418" Count="4" />
+      <LineId Id="8431" Count="16" />
+      <LineId Id="8813" Count="0" />
+      <LineId Id="8448" Count="12" />
+      <LineId Id="8469" Count="21" />
+      <LineId Id="8814" Count="0" />
+      <LineId Id="8491" Count="54" />
+      <LineId Id="8816" Count="7" />
+      <LineId Id="8815" Count="0" />
+      <LineId Id="8546" Count="2" />
+      <LineId Id="8662" Count="0" />
+      <LineId Id="8661" Count="0" />
+      <LineId Id="8549" Count="22" />
+      <LineId Id="9198" Count="0" />
+      <LineId Id="9190" Count="0" />
+      <LineId Id="9199" Count="0" />
+      <LineId Id="9368" Count="0" />
+      <LineId Id="9295" Count="39" />
+      <LineId Id="9443" Count="1" />
+      <LineId Id="9335" Count="1" />
+      <LineId Id="9338" Count="25" />
+      <LineId Id="9200" Count="1" />
+      <LineId Id="8572" Count="20" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachineTransportOUT" Id="{5a34d243-f48c-45c3-ad44-ed34c4c4c9a6}">
+    <Declaration><![CDATA[TYPE TFMachineTransportOUT :
+STRUCT
+	Run : BOOL;
+	Warning : BOOL;
+	Error : BOOL;
+	Horn : BOOL;
+	StartHorn : BOOL;
+
+	PowerActive : BOOL;
+	
+	HomeDone : BOOL;
+	
+	ClockSegnalazioni : BOOL;//Clock per segnalazioni varie
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

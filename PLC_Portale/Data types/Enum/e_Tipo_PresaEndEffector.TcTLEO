@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Tipo_PresaEndEffector" Id="{c7919730-0437-43f1-ba63-8566b7564986}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Tipologia Di Presa dell' Elemento da parte dell'End Effector
+TYPE e_Tipo_PresaEndEffector :
+(
+	TPICK_NOT_DEFINED							:= -1,      (* Tipo di prelievo indefinito *)
+	TPICK_PACK									:= 0,		(* Identifica la presa di tipo PACCO *)
+	TPICK_PALLET								:= 1,		(* Identifica la presa di tipo PALLET *)
+	TPICK_LAYER									:= 2,		(* Identifica la presa di tipo FALDA (CLASSICA A VENTOSE,uitlizzata nel pal. pacchi) *)
+	TPICK_LASTRA								:= 3,		(* Identifica la presa di tipo LASTRA (CLASSICA A VENTOSE) *)
+	
+	
+	
+	(* Tipologia di presa della falda *)
+	TPICK_LAY_VENTOSE							:= 4,		(* Identifica la presa di tipo FALDA A VENTOSE, utilizzata nel pal. Lastre *)
+	TPICK_LAY_ARPIONI							:= 5,		(* Identifica la presa di tipo FALDA CON ARPIONI, utilizzata nel pal. Lastre per il polistirolo *)
+	
+	TPICK_QUADROTTA								:= 10		(* Identifica la presa di tipo LASTRA (CLASSICA A VENTOSE) *)
+
+	//TPICK_UNDEFINED								 := 99     
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"TPICK_NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TPICK_PACK"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TPICK_PALLET"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TPICK_LAYER"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TPICK_LASTRA"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TPICK_LAY_VENTOSE"</v>
+              <v n="TextDefault">"4"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TPICK_LAY_ARPIONI"</v>
+              <v n="TextDefault">"5"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TPICK_QUADROTTA"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{c7e8325f-d94a-4386-acc7-c6495983d35b}</v>
+          <v n="GuidReInit">{c7718f48-afb8-4d14-8646-875d67321367}</v>
+          <v n="GuidExitX">{8749f376-b6ed-40e2-a9dd-349510f63822}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

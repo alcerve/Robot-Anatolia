@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerCheckPalletLayerCode" Id="{f8839450-75fa-4316-85f7-8d0fa0a7337d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerCheckPalletLayerCode : UINT
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+END_VAR
+VAR
+	f : UINT;
+	i : UINT;
+	PalletFound : BOOL;
+	LayerFound : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Verifica che la catasta pallett e la catasta vuoti abbiano codice uguale a quello della formatura attiva per del pacco presente nel punto di prelievo *)
+TFPalletizerCheckPalletLayerCode := 0; 
+PalletFound := FALSE;
+LayerFound := FALSE;
+
+FOR f:=1 TO MAXFORMING DO 
+	(* Verifico Formature attive *)
+	IF Forming^[f].Enable = 1 THEN
+		(* Verifico se i codici Layer e Pallet sono presenti tra le WorkArea *)
+		FOR i:=1 TO MAXAREA DO
+			IF  WorkArea^[i].Typology = TYPOLOGY_STACK AND WorkArea^[i].Enable = 1 (*AND WorkAreaState^[i].State >= WORKAREA_STATE_OCCUPIED_WORKING*) THEN 
+				IF WorkArea^[i].Pallet = Forming^[f].Pallet THEN
+					PalletFound := TRUE; 
+				END_IF	
+			END_IF	
+			IF  ((WorkArea^[i].Typology = TYPOLOGY_LAYER AND WorkArea^[i].Enable = 1  (*AND WorkAreaState^[i].State >= WORKAREA_STATE_OCCUPIED_WORKING*)) OR Forming^[f].Layer = 0) THEN 
+				IF WorkArea^[i].Layer = Forming^[f].Layer or Forming^[f].Layer=0 THEN
+					LayerFound := TRUE; 
+				END_IF	
+			END_IF	
+		END_FOR	
+		IF NOT PalletFound  THEN 
+			TFPalletizerCheckPalletLayerCode := ErrPALLETCODENOTFOUND;
+			RETURN; 
+		ELSIF NOT LayerFound THEN	
+			TFPalletizerCheckPalletLayerCode := ErrLAYERCODENOTFOUND;
+			RETURN; 
+		END_IF
+	END_IF
+END_FOR
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerCheckPalletLayerCode">
+      <LineId Id="293" Count="0" />
+      <LineId Id="266" Count="0" />
+      <LineId Id="269" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="215" Count="2" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="219" Count="1" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="221" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="234" Count="0" />
+      <LineId Id="270" Count="4" />
+      <LineId Id="236" Count="0" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="277" Count="0" />
+      <LineId Id="275" Count="0" />
+      <LineId Id="278" Count="2" />
+      <LineId Id="276" Count="0" />
+      <LineId Id="237" Count="0" />
+      <LineId Id="239" Count="0" />
+      <LineId Id="164" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

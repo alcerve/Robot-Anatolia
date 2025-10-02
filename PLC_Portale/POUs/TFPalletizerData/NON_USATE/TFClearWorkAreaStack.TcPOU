@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFClearWorkAreaStack" Id="{50e45e11-fa1b-45fd-a9c8-1a37542b35be}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFClearWorkAreaStack : BOOL
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	k : UINT;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFClearWorkAreaStack := FALSE;
+
+WorkArea^[k].LGV_Req := 0;
+//WorkArea^[k].H := 1000;
+WorkArea^[k].HPL := 0;
+WorkArea^[k].Taped := -1;
+WorkArea^[k].DoLearn_Z := 1;
+WorkArea^[k].LGV_GetIn_GetOut := -1;
+WorkAreaState^[k].F := -1;
+WorkAreaState^[k].P := -1;
+//WorkAreaState^[k].L := -1;
+//WorkAreaState^[k].PN := -1;
+WorkAreaState^[k].State := WORKAREA_STATE_FREE_DISABLED;
+WorkAreaState^[k].PackPointerModified := FALSE;
+WorkAreaState^[k].PackPointer := -1;
+TFClearWorkAreaStateSlab(WorkAreaState,k);
+IF WorkArea^[k].Jolly = 1 THEN
+	 WorkArea^[k].Code := 0;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFClearWorkAreaStack">
+      <LineId Id="9" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="23" Count="2" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="27" Count="3" />
+      <LineId Id="32" Count="1" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="52" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

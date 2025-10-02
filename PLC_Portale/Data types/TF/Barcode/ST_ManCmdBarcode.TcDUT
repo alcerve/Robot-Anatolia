@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_ManCmdBarcode" Id="{2cbc9e6b-ab7b-4a9f-af99-8b2317617bb3}">
+    <Declaration><![CDATA[TYPE ST_ManCmdBarcode :
+STRUCT
+	EseguiLettura : BOOL;//Esecuzione ciclo di lettura Barcode
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

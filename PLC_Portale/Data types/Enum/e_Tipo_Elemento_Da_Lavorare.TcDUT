@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_Tipo_Elemento_Da_Lavorare" Id="{81b93ad2-eef8-483b-ae5f-ca3e0a938129}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+///{attribute 'strict'}
+//Identifica il tipo di elemento nella tabella di 
+TYPE e_Tipo_Elemento_Da_Lavorare :
+(
+	NOT_DEFINED				:= -1, //Elemento non definito
+	LASTRA 					:= 0, //Elemento di tipo LASTRA
+	FALDA					:= 1, //Elemento di tipo FALDA
+	
+	
+	QUADROTTA 				:= 2, //Elemento di tipo "Quadrotta" ovvero, sotto prodotti che formano un piano come fosse una lastra
+	
+	TERMINATORE				:= 99 //Indica che il deposito è terminato
+);
+
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

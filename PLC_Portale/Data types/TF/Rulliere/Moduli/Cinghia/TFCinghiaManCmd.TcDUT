@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFCinghiaManCmd" Id="{96234706-5dc1-4c04-91b7-29364ef993de}">
+    <Declaration><![CDATA[TYPE TFCinghiaManCmd :
+STRUCT
+	Ax 					: TFAxManCmd;
+	ResetModulo 		: BOOL;
+	Ax2 				: TFAxManCmd;
+	AbilitaCmdTandem	: BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFAsseInFinestra" Id="{05f046ad-1ef9-45bb-b233-5e93be03afd0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFAsseInFinestra : bool //Valuta se l'asse è nella finsetra di posizione desiderata
+VAR_INPUT
+	Posizione_Attuale 	: LREAL;
+	Posizione_Finale 	: LREAL;
+	FinestraDiControllo : REAL;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFAsseInFinestra := FALSE;
+
+IF Posizione_Attuale >= (Posizione_Finale - FinestraDiControllo/2) AND Posizione_Attuale <= (Posizione_Finale + FinestraDiControllo/2) THEN
+	TFAsseInFinestra := TRUE;
+	RETURN;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFAsseInFinestra">
+      <LineId Id="15" Count="0" />
+      <LineId Id="19" Count="2" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="17" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

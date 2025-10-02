@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="e_PosizioneRullieraMobile" Id="{fc2ca7b2-2836-4190-8c20-ed43239b0bb5}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+//{attribute 'strict'}
+TYPE e_PosizioneRullieraMobile :
+(
+	POSIZIONE_INDEFINITA 	:= 0, 	//Posizione Indefinita
+	POSIZIONE_CARICO 		:= 1,	//Posizione Rulliera Carico
+	POSIZIONE_SCARICO 		:= 2,	//Posizione Rulliera Scarico
+	POSIZIONE_RP1 			:= 3,	//Posizione Rulliera Prelievo 1
+	POSIZIONE_RP2 			:= 4,	//Posizione Rulliera Prelievo 2
+	POSIZIONE_ATTUALE 		:= 5	//Posizione Rulliera ATTUALE, NON SI CAMBIA LA DESTINAZIONE!
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

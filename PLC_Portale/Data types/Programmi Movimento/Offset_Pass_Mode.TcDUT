@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Offset_Pass_Mode" Id="{51704214-86e2-433a-85a3-764e5a40c929}">
+    <Declaration><![CDATA[TYPE Offset_Pass_Mode :
+STRUCT
+	X	: REAL := 100; // mm di pass mode
+	Y	: REAL := 0; // mm di pass mode
+	Z	: REAL := 100; // mm di pass mode
+	J	: REAL := 0; // ° di pass mode
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

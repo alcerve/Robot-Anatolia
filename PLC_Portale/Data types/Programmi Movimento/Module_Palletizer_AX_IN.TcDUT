@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Module_Palletizer_AX_IN" Id="{e0d36bd4-e1fc-4bdd-9b02-1cd598effdd3}">
+    <Declaration><![CDATA[TYPE Module_Palletizer_AX_IN :
+STRUCT
+	BeltSafety : BOOL;
+	Px_Touch_1   : BOOL;
+	Px_TouchEmergency_1	: BOOL;
+	Px_Touch_2   : BOOL;
+	Px_TouchEmergency_2	: BOOL;
+	PX_GripPresence     : BOOL;
+	Enable_TouchEmergency : POINTER TO BOOL;
+	SimulazioneSenzaHW : bool;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

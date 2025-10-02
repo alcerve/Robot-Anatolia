@@ -1,0 +1,2266 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerWorkAreaManagerTF" Id="{5aec937a-63b7-4604-9c04-c96d7b224bb2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFPalletizerWorkAreaManagerTF
+VAR_INPUT
+	Cfg : Config;
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	WorkAreaOffset : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaOffset;
+	PX_WorkArea : ARRAY [1..MAXAREA] OF BOOL;
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint;
+	WorkPickPointOffset : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPPOffset;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	PickPlaceParameters	: POINTER TO TFMachinePalletizer_ParametersFromHMI;
+	ExternalWaitPositionRequest : BOOL;
+	ProgressiveNrWA : POINTER TO UDINT;
+	UsedCode : POINTER TO ARRAY [1..MAXFORMINGCODE] OF INT;
+	TCPParameter : POINTER TO TFModulePalletizerRobot_TCPPar;
+	TilterPack : POINTER TO ARRAY [1..MAXHANDLINGSTACK] OF TFHandlingPack;
+	PreviousPWA : POINTER TO INT;
+	RestoreCWA : POINTER TO BOOL;
+	PreviousStackWA : POINTER TO INT;
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	
+	WorkAreaZone : POINTER TO TFMachinePalletizer_WorkAreaZone;	// Struttura delle zone di lavoro
+	//HandlingPackTable : POINTER TO TFHandlingPackTable;			// Tabella contenente i pacchi sui trasporti
+	ArrayPacchi : POINTER TO DUT_ArrayPacchi; 					//Array contenente i pacchi sui trasporti				
+	GestioneAZoneAbilitata : POINTER TO BOOL;					// Abilitazione della gestione a zone
+	HandlingRun : BOOL;											//Traspoti in Automatico
+	RichiestaStartRibaltino : BOOL;
+	AbilitaForzaturaStatoDaRiposoAPrelievo : POINTER TO BOOL;			// Abilita il cambio al volo della missione dal ciclo di riposo al ciclo di prelievo
+	AbilitaDisposizionePalletContinua : POINTER TO BOOL;				// Abilitazione del deposito dei pallet ogni qualvolta il carico imposto dalla line a soddisfi determinato requisiti
+	AbilitaDepositoPaccoOrrizzonataleConTasteggio : POINTER TO BOOL; 	// Abilitazione per il deposito del pacco con tasteggio del pacco orrizzontale
+	AbilitaAssegnazioneCodicePiazzoleConPaccoSuRibaltino : BOOL := TRUE; // Abilitazione della gestione del codice in modo opportunistico rispettando le zone
+	AbilitaOffsetInUscitaTasteggioPrelievoPallet : POINTER TO BOOL; 	// Abilitazione dell'offset in uscita dei tastatori in prelievo pallet con tasteggio
+END_VAR
+VAR_OUTPUT
+	InWaitPosition : BOOL;
+	DepositoPaccoInLenta : BOOL;					// TRUE: Il deposito del pacco deve avvenire in lenta
+	ForzaPrelievoPaccoDuranteCicloDiRiposo : BOOL; // Indica che il ciclo sta facendo un salto: Da ciclo di riposo -> A ciclo di prelievo 
+	Errore : uint; //Codice di errore del WorkAreaManager
+END_VAR
+VAR
+	TimerPositionMission : REAL;
+	TimerDepositoContinuoPallet : REAL;
+	//TimerAttesaAssegnazioneCodice : REAL;
+	CurrentWorkArea : INT;
+	cwa : INT;
+	pwa : INT;
+	wa : INT;
+	pf : INT;
+	pp : INT;
+	fcode : INT;
+	pcode : INT;
+	pcodeUnassigned : INT;
+	ppick : INT;
+	lpick : INT;
+	jp : INT;
+	torque : REAL;
+	kpick : REAL;
+	XPick : REAL;
+	YPick : REAL;
+	ZPick : REAL;
+	JPick : REAL;
+	HalfPackDim : REAL;
+	vo : INT;
+	UnloadOnWADisabled : BOOL;
+	EnableCode : ARRAY [1..MAXFORMINGCODE*MAXFORMING] OF INT;
+	NFreeWA : INT;
+	WAPointer : ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaSort;
+	ZOffsetPick : REAL;
+	ZOffsetPlace : REAL;
+	DifferenceRealNominalDimensionZ :REAL;
+	WaitPositionRequest : BOOL;
+	WaitPositionRequestTRIG : BOOL;
+	BypassTEST : BOOL;							// ByPASS per il conteggio dei pacchi durante le simulazioni
+	PaccoSuRibaltinoDuranteCicloRiposo : BOOL; // Indica che il pacco è pronto durante sul ribaltino mentre il braccio sta andando sul punto di riposo
+	CicloDiRiposoNecessario : BOOL;		// Forzatura del ciclo di riposo da parte del WAManager
+	OKDepositoPalletContinuo : BOOL;	// Indica che la linea è in uno stato da consentire il deposito continuo dei pallet
+	NPacchiPresentiSuLinea : UINT;		// Indica il numero dei pacchi presenti sulla linea
+	NUltimiTrasportiOccupati : UINT;	// Indica il numero di trasporti occupati a partire dal ribaltino
+	HandlingOKPrelievoPacco : BOOL; 	// Indica che il Ribaltino è pronto a consegnare il pacco
+	ConsentiDepositoPaccoSuWA : BOOL; 	// Indica il Pacco può essere depositato sulla WorkArea
+	RibaltinoOKPerDepositoContinuo : BOOL; 	// Viene settato quando il ribaltino non è in fase di consegna pacco alla pinza da un certo Tempo (TimerDepositoContinuoPallet)
+	NumeroRibaltinoOccupatoConCodicePiazzola : INT; // Indica il ribaltino Avente un pacco con il codice uguale a quello della WA in esame
+	ComandoRibaltino : INT;							// Indica il comando Imposto al ribaltino
+	ConsentiMovimentoRibaltino : BOOL;				// Indica che il ribaltino può compiere i vari movimenti per posizionare il pacco in prelievo
+	AbilitaComandiAnticipatiRibaltino : BOOL;		// Abilitazione dell'anticipo dei comandi del ribaltino ( TRUE:il ribaltino si posiziona in qualsiasi posizione della pinza,FALSE: il ribaltino si posiziona solo quando la pinza è sul punto di prelievo) 
+	DisabilitaApproccioPacciOrrizzontali : BOOL := TRUE; // Abilitazione dell'approccio per i pacchi orrizzontali, in questo modo il ciclo è più rapido
+	QuotaFittizziaPerTasteggioDepPacchi : REAL := 200; //Quota fittizzia per consentire il tasteggio durante il deposito dei pacci orrizzontali
+	UltimaPoastazioneDiAssegnazione : INT;				// Variabile per Debug Interno
+	UltimoComando : INT;								// Variabile per Debug Interno
+	UltimoStatoCMDRibaltino : INT;						// Variabile per Debug Interno
+	WAconCodiceWPPPresente : BOOL;						// Indica che esiste almento una WA in lavorazione con il codice del pacco presente sul ribaltino in questione
+	FormaturaAttivaMista : BOOL;						// Indica che la formatura attiva è di tipo Misto (FALSE:utilizzata per anticipare ulteriormente il ribaltino,TRUE:si aspetta che sia terminato il deposito del pacco in corso prima di comandare il ribaltino)
+	PalletDepositatiSenzaCodicePresenti : BOOL;			// Indica che sono presenti dei pallet depositati con codice 0 ( Per assegnazione codice in modalità opportunistica(In base al codice sul ribaltino))
+	CodiceValidoPerWA : BOOL;							// Indica che il codice del pacco sul ribaltino è presente nella formatura attiva nella WA considerata
+
+	SimulazioneSenzaPallet : BOOL; //Variabile per simulare in officina senza pacco e pallet
+	PalletPrelevatiXSimulazione : INT;
+	PalletPrelevatiSimulazioneMAX : INT:= 5;
+	
+	ComandoPickPoint : ARRAY[1..10] OF INT;
+	StatoPickPoint : ARRAY[1..10] OF INT;
+	cmd : INT :=1;
+	FormatureMultipleAttive : BOOL;	//Indica che ci sono più formature Diverse ABILITATE
+	UltimaWAAssegnazionePacco : int; //debug
+	WAAssegnazionePaccoNONok: BOOL;//debug
+	wapick : INT;
+	i : uint;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//SimulazioneSenzaPallet := TRUE;
+
+
+//TFPalletizerWorkAreaManagerTF := FALSE;
+(* Chiamata del timer per andare alla posizione di riposo *)
+TFTimerCall(ADR(TimerPositionMission),Cfg.TimeBase);
+TFTimerCall(ADR(TimerDepositoContinuoPallet),Cfg.TimeBase);
+//TFTimerCall(ADR(TimerAttesaAssegnazioneCodice),Cfg.TimeBase);
+(* Inizializzazione del WAM *)
+Errore := 0;//Azzeramento errore;
+IF WorkAreaManager^.State = -1 THEN
+	WorkAreaManager^.State := WAMANAGER_NOP;
+	ExternalWaitPositionRequest := TRUE;
+END_IF
+
+(* Set quota per il tasteggio per deposito pacco orrizzontale *)
+QuotaFittizziaPerTasteggioDepPacchi := 200;
+
+(* Set codici abilitati *)
+//EnableCode := TFGetEnableCode(Forming);
+(*****************************************************************************************************************************)
+(* Gestione dello stop in fase -> Si aspetta che si abbia finito la missione e si porta il Braccio nella posizione di riposo *)
+(*****************************************************************************************************************************)
+(* Set della condizione di posizione di riposo Wait Position *)
+InWaitPosition := TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,ModuleAX_K,Mission);
+IF Mission^.State <> MISSION_STATE_NOP THEN
+	TFTimerSet(ADR(TimerPositionMission),200,TRUE);
+END_IF
+IF ((ExternalWaitPositionRequest AND WorkAreaManager^.State = WAMANAGER_NOP) OR TFTimerDone(ADR(TimerPositionMission))) AND NOT InWaitPosition THEN
+	WaitPositionRequestTRIG := TRUE;
+END_IF
+IF 	WaitPositionRequestTRIG THEN
+	WaitPositionRequest := TRUE;
+END_IF
+IF WaitPositionRequestTRIG AND WaitPositionRequest AND (InWaitPosition AND WorkAreaManager^.State = WAMANAGER_NOP) THEN
+	WaitPositionRequest := FALSE;
+	WaitPositionRequestTRIG := FALSE;
+END_IF
+(*****************************************************************************************************************************)
+(*****************************************************************************************************************************)
+
+(* Valutazione se la formatura attiva è di tipo misto oppure no, in questo caso, avendo una sola tipologia di formatura assegnamo l'indice di formatura fisso a 1 *)
+FormaturaAttivaMista := TFValutaSeFormaturaMista(Forming);//,1);
+FormatureMultipleAttive := TFValutaFormatureMultipleAttivate(Forming);
+(* Bilanciamento 1=1 con pwa sulle WorkArea *)
+//IF pwa < 1 OR pwa >= MAXAREA THEN
+//	pwa := 1;
+//ELSE
+//	pwa := pwa + 1;
+//END_IF
+(*****************************************************************************************************************************)
+(* Set variabili per gestione prelievo pacco dal ribaltino *)
+(*****************************************************************************************************************************)
+(* Set variabile che mi determina la possibilità di prelevare il pacco *)
+HandlingOKPrelievoPacco := ((HandlingRun AND RibaltinoExitOk) OR (RichiestaStartRibaltino AND InWaitPosition));
+TFTimerSet(ADR(TimerDepositoContinuoPallet),3000,HandlingRun);
+RibaltinoOKPerDepositoContinuo := TFTimerDone(ADR(TimerDepositoContinuoPallet));
+AbilitaComandiAnticipatiRibaltino := FROM_HMI_PAL.HMI_AbilitaComandiAnticipatiRibaltino;
+
+(*****************************************************************************************************************************)
+(*****************************************************************************************************************************)
+
+(* Gestione e Creazione Missione per Ciclo Di Riposo*)
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP:
+			
+		IF WaitPositionRequest AND 
+		((NOT ForzaPrelievoPaccoDuranteCicloDiRiposo AND HandlingOKPrelievoPacco) OR 
+		NOT ForzaPrelievoPaccoDuranteCicloDiRiposo OR 
+		NOT HandlingOKPrelievoPacco OR 
+		ExternalWaitPositionRequest OR 
+		CicloDiRiposoNecessario) THEN
+			WorkAreaManager^.State := WAMANAGER_CICLO_RIPOSO_INIT;
+		END_IF
+	
+	WAMANAGER_CICLO_RIPOSO_INIT:
+	
+		Z_Riposo := QuotaFuoriIngombro_Z_AVUOTO; 			
+	
+		Mission^.PPick			:= PICKPOINT1;
+		Mission^.TPick 			:= TPICK_NOT_DEFINED;
+		Mission^.XPick			:= X_Riposo;
+		Mission^.YPick			:= Y_Riposo;
+		Mission^.ZPick			:= Z_Riposo;
+		Mission^.JPick			:= J_Riposo;
+		Mission^.JPickLT		:= PICKLTRESTPOSITION; // LONGITUDINALE
+		Mission^.JPickVO		:= VORESTPOSITION;
+		IF K_Riposo + PickPlaceParameters^.OffsetKPickPack < AxisPar_K.MinPosition THEN
+			Mission^.KPick			:= AxisPar_K.MinPosition;
+		ELSIF K_Riposo + PickPlaceParameters^.OffsetKPickPack > AxisPar_K.MaxPosition THEN
+			Mission^.KPick			:= AxisPar_K.MaxPosition;
+		ELSE
+			Mission^.KPick			:= K_Riposo + PickPlaceParameters^.OffsetKPickPack;
+		END_IF
+		Mission^.KPickTorque	:= TORQUERESTPOSITION;
+		Mission^.KPickMode 		:= KPICKMODERESTPOSITION;
+		
+		Mission^.PPlace			:= Mission^.PPick;
+		Mission^.XPlace			:= Mission^.XPick;
+		Mission^.YPlace			:= Mission^.YPick;
+		Mission^.ZPlace			:= Mission^.ZPick;
+		Mission^.JPlace			:= Mission^.JPick;	
+		Mission^.KPlace			:= Mission^.KPick;
+		
+		WorkAreaManager^.State  := WAMANAGER_CICLO_RIPOSO_RUN;
+		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+	
+		IF WorkPickPointState^[1].State=1  AND HandlingOKPrelievoPacco THEN
+			PaccoSuRibaltinoDuranteCicloRiposo := TRUE;
+			IF AbilitaForzaturaStatoDaRiposoAPrelievo^ AND NOT ExternalWaitPositionRequest AND NOT CicloDiRiposoNecessario AND FALSE THEN //Forzatura passaggio di stato
+				ForzaPrelievoPaccoDuranteCicloDiRiposo := TRUE;
+				WorkAreaManager^.State := WAMANAGER_SALTA_DA_RIPOSO_A_PRELIEVO;
+			END_IF
+		ELSE
+			ForzaPrelievoPaccoDuranteCicloDiRiposo := FALSE;
+			PaccoSuRibaltinoDuranteCicloRiposo := FALSE;
+		END_IF
+		
+		IF Mission^.State = MISSION_STATE_VAIaRIPOSO_RUN THEN
+			;
+		ELSIF Mission^.State = MISSION_STATE_VAIaRIPOSO_END THEN
+			CicloDiRiposoNecessario := FALSE;
+			WorkAreaManager^.State 	:= WAMANAGER_CICLO_RIPOSO_END;	// setto lo stato del WAMANAGER
+		ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+			;
+		END_IF
+		
+	WAMANAGER_CICLO_RIPOSO_END:
+		WorkAreaManager^.State := WAMANAGER_NOP;
+		
+	WAMANAGER_SALTA_DA_RIPOSO_A_PRELIEVO:
+		IF Mission^.State = MISSION_STATE_VAIaRIPOSO_END THEN
+			//ForzaPrelievoPaccoDuranteCicloDiRiposo := FALSE;
+			WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+		END_IF
+						
+END_CASE
+
+
+IF WaitPositionRequest THEN
+	FOR wapick := 1 TO MAXAREA DO
+		IF AbilitaComandiAnticipatiRibaltino AND NOT FormaturaAttivaMista (*AND NOT FormatureMultipleAttive*) THEN
+			(* Valutazione Presenza pacco su ribaltino e Comando in base a ........*)
+			NumeroRibaltinoOccupatoConCodicePiazzola := TFPalletizerGetWPPFromPackCode(WorkPickPointState,WorkArea^[wapick].Code);
+			ConsentiMovimentoRibaltino := (TFConsentiDepositoPaccoSuWA(WorkArea,WorkAreaState,wapick)AND FormaturaAttivaMista) OR NOT FormaturaAttivaMista;
+			IF NumeroRibaltinoOccupatoConCodicePiazzola > 0 THEN
+				IF WorkAreaManager^.State = WAMANAGER_CICLO_DEPOSITO_PACCO_RUN AND Mission^.PPlace = cwa AND 
+					WorkArea^[Mission^.PPlace].Code = WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].Code AND FormaturaAttivaMista THEN
+						IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[(WorkAreaState^[Mission^.PPlace].P)+ 1].Grip = -1 OR 
+							Forming^[WorkAreaState^[Mission^.PPlace].F].PackXN[(WorkAreaState^[Mission^.PPlace].P)+ 1].Grip = -1 THEN
+								ConsentiMovimentoRibaltino := FALSE; 
+						END_IF
+				END_IF
+				IF ((NOT WaitPositionRequest AND FormaturaAttivaMista) OR NOT FormaturaAttivaMista) AND
+					ConsentiMovimentoRibaltino AND HandlingRun THEN //AND WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TS = 0 THEN
+						IF NumeroRibaltinoOccupatoConCodicePiazzola > 0 AND Forming^[WorkAreaState^[wapick].F].Enable = 1 THEN // se c'è un pacco e i trasporti (quindi il ribaltino )sono in automatico
+							(* Se il grip = -1 metto la Workarea nello stato WORKAREA_STATE_OCCUPIED_WORKED*)
+							IF Forming^[WorkAreaState^[wapick].F].PackXP[WorkAreaState^[wapick].P].Grip = -1 OR
+								Forming^[WorkAreaState^[wapick].F].PackXN[WorkAreaState^[wapick].P].Grip = -1 THEN
+								//WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC := RIBALTINO_NOP;
+							ELSE
+								IF WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TS = 0 AND WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC = 0  THEN
+									IF WorkAreaState^[wapick].PN = 0 THEN							
+										WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC := Forming^[WorkAreaState^[wapick].F].PackXP[WorkAreaState^[wapick].P].Grip + 1;	// Tipo di disposizione del pacco sul ribaltino
+										UltimaPoastazioneDiAssegnazione := wapick;
+										UltimoComando := Forming^[WorkAreaState^[wapick].F].PackXP[WorkAreaState^[wapick].P].Grip + 1;
+										UltimoStatoCMDRibaltino := WorkAreaManager^.State;
+										IF cmd >= 10 THEN
+											cmd:=1;
+										ELSE
+											ComandoPickPoint[cmd] := WorkPickPointState^[1].TC;
+											StatoPickPoint[cmd] := WorkPickPointState^[1].TS;
+											cmd := cmd+1;
+										END_IF
+									ELSE
+										WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC := Forming^[WorkAreaState^[wapick].F].PackXN[WorkAreaState^[wapick].P].Grip + 1;	// Tipo di disposizione del pacco sul ribaltino
+										UltimaPoastazioneDiAssegnazione := wapick;
+										UltimoComando := Forming^[WorkAreaState^[wapick].F].PackXN[WorkAreaState^[wapick].P].Grip + 1;
+										UltimoStatoCMDRibaltino := WorkAreaManager^.State;
+										IF cmd >= 10 THEN
+											cmd:=1;
+										ELSE
+											ComandoPickPoint[cmd] := WorkPickPointState^[1].TC;
+											StatoPickPoint[cmd] := WorkPickPointState^[1].TS;
+											cmd := cmd+1;
+										END_IF
+									END_IF
+								END_IF
+							END_IF
+						ELSE
+							;
+						END_IF
+				END_IF
+			END_IF
+		END_IF
+	END_FOR
+END_IF
+
+
+
+(*Con Stop in Fase, solo se la Missione è NOP vado in WAIT *)
+IF NOT WaitPositionRequest OR 
+	(WaitPositionRequest AND WorkAreaManager^.State <> WAMANAGER_NOP AND WorkAreaManager^.State <> WAMANAGER_CICLO_RIPOSO_RUN  AND WorkAreaManager^.State <> WAMANAGER_CICLO_RIPOSO_INIT) OR
+	(WorkAreaManager^.State = WAMANAGER_NOP AND ForzaPrelievoPaccoDuranteCicloDiRiposo) THEN
+	WAPointer := TFGetNearestWA(WorkArea,WorkPickPoint^[PICKPOINT1]);
+	FOR pwa:=1 TO MAXAREA DO
+		
+		pwa := RestoringCWA(RestoreCWA,PreviousPWA,pwa);
+		RestoreCWA^ := FALSE;		
+		cwa := WAPointer[pwa].cwa;
+		IF PreviousStackWA^ < 0 THEN
+			PreviousStackWA^ := 1;
+		END_IF
+		IF cwa > 0 THEN
+			;
+		ELSE
+			CONTINUE;
+		END_IF
+		
+		IF AbilitaComandiAnticipatiRibaltino AND ((WorkAreaManager^.State <> WAMANAGER_CICLO_DEPOSITO_PACCO_RUN AND WorkAreaManager^.State <> WAMANAGER_CICLO_DEPOSITO_PACCO_END AND FormaturaAttivaMista) OR NOT FormaturaAttivaMista) THEN
+			(* Valutazione Presenza pacco su ribaltino e Comando in base a ........*)
+			NumeroRibaltinoOccupatoConCodicePiazzola := TFPalletizerGetWPPFromPackCode(WorkPickPointState,WorkArea^[cwa].Code);
+			ConsentiMovimentoRibaltino := (TFConsentiDepositoPaccoSuWA(WorkArea,WorkAreaState,cwa)AND FormaturaAttivaMista) OR NOT FormaturaAttivaMista;
+			IF NumeroRibaltinoOccupatoConCodicePiazzola > 0 THEN
+				IF WorkAreaManager^.State = WAMANAGER_CICLO_DEPOSITO_PACCO_RUN AND Mission^.PPlace = cwa AND 
+					WorkArea^[Mission^.PPlace].Code = WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].Code AND FormaturaAttivaMista THEN
+						IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[(WorkAreaState^[Mission^.PPlace].P)+ 1].Grip = -1 OR 
+							Forming^[WorkAreaState^[Mission^.PPlace].F].PackXN[(WorkAreaState^[Mission^.PPlace].P)+ 1].Grip = -1 THEN
+								ConsentiMovimentoRibaltino := FALSE; 
+						END_IF
+				END_IF
+				IF ((NOT WaitPositionRequest AND FormaturaAttivaMista) OR NOT FormaturaAttivaMista) AND
+					ConsentiMovimentoRibaltino AND HandlingRun THEN //AND WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TS = 0 THEN
+						IF NumeroRibaltinoOccupatoConCodicePiazzola > 0 AND Forming^[WorkAreaState^[cwa].F].Enable = 1 THEN // se c'è un pacco e i trasporti (quindi il ribaltino )sono in automatico
+							(* Se il grip = -1 metto la Workarea nello stato WORKAREA_STATE_OCCUPIED_WORKED*)
+							IF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = -1 OR
+								Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip = -1 THEN
+								//WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC := RIBALTINO_NOP;
+							ELSE
+								IF WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TS = 0 AND WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC = 0  THEN
+									IF WorkAreaState^[cwa].PN = 0 THEN							
+										WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC := Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip + 1;	// Tipo di disposizione del pacco sul ribaltino
+										UltimaPoastazioneDiAssegnazione := cwa;
+										UltimoComando := Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip + 1;
+										UltimoStatoCMDRibaltino := WorkAreaManager^.State;
+										IF cmd >= 10 THEN
+											cmd:=1;
+										ELSE
+											ComandoPickPoint[cmd] := WorkPickPointState^[1].TC;
+											StatoPickPoint[cmd] := WorkPickPointState^[1].TS;
+											cmd := cmd+1;
+										END_IF
+									ELSE
+										WorkPickPointState^[NumeroRibaltinoOccupatoConCodicePiazzola].TC := Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip + 1;	// Tipo di disposizione del pacco sul ribaltino
+										UltimaPoastazioneDiAssegnazione := cwa;
+										UltimoComando := Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip + 1;
+										UltimoStatoCMDRibaltino := WorkAreaManager^.State;
+										IF cmd >= 10 THEN
+											cmd:=1;
+										ELSE
+											ComandoPickPoint[cmd] := WorkPickPointState^[1].TC;
+											StatoPickPoint[cmd] := WorkPickPointState^[1].TS;
+											cmd := cmd+1;
+										END_IF
+									END_IF
+								END_IF
+							END_IF
+						ELSE
+							;
+						END_IF
+				END_IF
+			END_IF
+		END_IF
+		
+		
+		
+		
+		CASE WorkAreaState^[cwa].State OF
+		
+			(* Nota Piazzola VS PickPacco/PickPallet Vuoto da Catasta o PickFalda:
+				1) E' la Piazzola Master che assegna la missione verso il ROBOT (* Missione Pick+Place *)
+				2) La missione Termina dopo il Place
+				3) Se si cancella la missione, la piazzola riprende d P
+				4) Se c'è una missione e la piazzola diventa indisponibile si genera errore
+			*)
+			(* Se il Robot ha una missione "Pick/Place PALLET" destinata ad una piazzola che non è WORKAREA_STATE_FREE_WORKING si deve forzare un errore! *)
+			(* Se il Robot ha una missione "Pick/Place PACCO" o "Pick/Place FALDA" destinata ad una piazzola che non è WORKAREA_STATE_OCCUPIED_WORKING si deve forzare un errore! *)
+			
+			(* Nota Puntatore Formatura: -1=Inizio Lavorazione, 0=Gestione Eventuale Falda Dopo Pallet, 1..n=Gestione Pacchi/Falde dopo Strato *)
+			(* ******************************************************************************************************** *)
+			(* ******************************************************************************************************** *)
+				(* Free + Disabled *)
+			WORKAREA_STATE_FREE_DISABLED:
+				(* Valuto il numero dei pacchi sulla linea e se è possibile depositare i pallet di continuo *)
+				NPacchiPresentiSuLinea := TFNumeroPacchiSuLinea(ArrayPacchi);
+				NUltimiTrasportiOccupati := TFNumeroUltimi_N_TrasportiOccupati(ArrayPacchi,12);//FROM_HMI_PAL.HMI_NumeroPacchiMassimoDepositoPalletContinuo);
+				OKDepositoPalletContinuo := AbilitaDisposizionePalletContinua^ AND RibaltinoOKPerDepositoContinuo AND NOT FormatureMultipleAttive AND 
+											TFDepositoContinuoPalletConsentito(NpacchiPresenti:=NPacchiPresentiSuLinea,NpacchiMassimiConsentiti:=FROM_HMI_PAL.HMI_NumeroPacchiMassimoDepositoPalletContinuo,NultimiTrasportiOccupati:=NUltimiTrasportiOccupati);
+				(* Cerco se ci sono già dei pallet depositati in attesa di ricevere il codice *)
+				PalletDepositatiSenzaCodicePresenti := TFPalletizerIsCodeAssigned(WorkArea,WorkAreaState,0);
+				(* Si verifica se Jolly o no e si passa in WORKING. Se Jolly si cerca codice non assegnato *)
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF WorkAreaState^[cwa].P = -1  THEN
+						(* Per Pallet si attiva solo se il codice assegnato è un dato valido *)
+						IF WorkArea^[cwa].Typology = TYPOLOGY_PALLET THEN
+							(* Postazione Zona *)
+							IF TFPalletizerIsWorkAreaIntoZone(WorkAreaZone,cwa) AND GestioneAZoneAbilitata^ THEN                     // Se la WA appartiene a una zona
+								pcode := TFPackCodePresenteInZona(WorkPickPointState:=WorkPickPointState,WorkAreaZone:=WorkAreaZone,WorkArea:=cwa);//Il codice del pacco sul ribaltino appartiene alla zona della postazione in esame
+								(* Cerco Formatura *)
+								fcode := TFPalletizerGetFormingFromCode(Forming,pcode);
+								IF NOT FormatureMultipleAttive THEN //Se NON ci sono più formature Diverse Abilitate valuto i codici non assegnati e li dispongo
+									pcodeUnassigned := TFPalletizerGetUnassignedCode(WorkArea,WorkAreaState,Forming);
+									(* Cerco Formatura *)
+									IF pcodeUnassigned > 0 THEN
+										fcode := TFPalletizerGetFormingFromCode(Forming,pcodeUnassigned);
+									END_IF
+								ELSE
+									pcodeUnassigned :=0;
+								END_IF
+								
+								IF (pcode > 0 OR pcodeUnassigned > 0)THEN 
+									(* Se ho trovato un codice non assegnato e ho l'abilitazione del deposito continuo attivo e l'ok per il deposito *)
+									IF pcodeUnassigned > 0 AND OKDepositoPalletContinuo THEN
+										fcode := TFPalletizerGetFormingFromCode(Forming,pcodeUnassigned);
+										IF fcode > 0 THEN
+											CicloDiRiposoNecessario := FALSE;	
+											WorkArea^[cwa].Taped := -1;
+											WorkArea^[cwa].LGV_ReqAbort := FALSE;
+											IF AbilitaAssegnazioneCodicePiazzoleConPaccoSuRibaltino THEN
+												WorkArea^[cwa].Code := 0;
+												WorkArea^[cwa].Initialize := TRUE;
+											ELSE
+												WorkArea^[cwa].Code := pcodeUnassigned;
+												WorkArea^[cwa].Initialize := FALSE;
+												pcodeUnassigned := 0;
+											END_IF
+											WorkAreaState^[cwa].F := fcode;
+											WorkAreaState^[cwa].P := -1;
+											WorkAreaState^[cwa].L := -1;
+											WorkAreaState^[cwa].PN := -1;
+											WorkAreaState^[cwa].LGVAttr := Forming^[WorkAreaState^[cwa].F].LGVAttr;
+											WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_WORKING;
+										ELSE
+											// Errore
+										END_IF
+									(* Se NON ho nessuna piazzola in lavorazione con il codice di lavorazione e il codice di formatura già PRESENTI e IN LAVORAZIONE
+									 o posso depositare il pallet in continuazione *)
+									ELSIF ((*NOT TFPalletizerIsCodeAssigned(WorkArea,WorkAreaState,pcode) AND*) NOT TFPalletizerIsFormingAssigned(FCode:=fcode,WorkArea:=WorkArea,WorkAreaState:=WorkAreaState,PCode:=pcode)) THEN
+										(* Cerco Formatura *)
+										fcode := TFPalletizerGetFormingFromCode(Forming,pcode);
+										IF fcode > 0 AND pcode > 0 THEN
+											CicloDiRiposoNecessario := FALSE;
+											WorkArea^[cwa].Taped := -1;
+											WorkArea^[cwa].LGV_ReqAbort := FALSE;
+											IF AbilitaAssegnazioneCodicePiazzoleConPaccoSuRibaltino THEN
+												WorkArea^[cwa].Code := 0;
+												WorkArea^[cwa].Initialize := TRUE;
+											ELSE
+												WorkArea^[cwa].Code := pcode;
+												WorkArea^[cwa].Initialize := FALSE;
+												pcode := 0;
+											END_IF
+											WorkAreaState^[cwa].F := fcode;
+											WorkAreaState^[cwa].P := -1;
+											WorkAreaState^[cwa].L := -1;
+											WorkAreaState^[cwa].PN := -1;
+											WorkAreaState^[cwa].LGVAttr := Forming^[WorkAreaState^[cwa].F].LGVAttr;
+											WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_WORKING;
+										ELSE
+											;// Errore
+										END_IF
+									END_IF
+								END_IF
+							ELSE
+								;(* Postazione Assegnata Con codice Fisso *)								
+								(*IF WorkArea^[cwa].Jolly <> 1 AND OKDepositoPalletContinuo THEN
+									IF WorkArea^[cwa].Code > 0 (*AND OKDepositoPalletContinuo*) THEN
+										(* Cerco Formatura *)
+										fcode := TFPalletizerGetFormingFromCode(Forming,WorkArea^[cwa].Code);
+										IF fcode > 0 THEN
+											CicloDiRiposoNecessario := FALSE;	
+											WorkArea^[cwa].Taped := -1;
+											WorkArea^[cwa].LGV_ReqAbort := FALSE;
+											WorkAreaState^[cwa].F := fcode;
+											WorkAreaState^[cwa].P := -1;
+											WorkAreaState^[cwa].L := -1;
+											WorkAreaState^[cwa].PN := -1;
+											WorkAreaState^[cwa].LGVAttr := Forming^[WorkAreaState^[cwa].F].LGVAttr;
+											WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_WORKING;
+										ELSE
+											// Errore
+										END_IF
+									END_IF
+								ELSE
+									(* Postazione Jolly: Il codice viene assegnato valutando i codici sulla linea *)
+									(* Se Jolly si Attiva se si trova un codice da assegnare *)
+									// pcode := TFPalletizerGetUnassignedCode(WorkArea,WorkAreaState,Forming);
+									pcode := TFPackCodePresenteInWAJolly(ArrayPacchi:=ArrayPacchi,WorkArea:=WorkArea,WorkAreaState:=WorkAreaState);//TFPackCodePresentToJollyWorkArea(HandlingPackTable,WorkArea,WorkAreaState);
+									IF pcode > 0 THEN
+										fcode := TFPalletizerGetFormingFromCode(Forming,pcode);
+										IF fcode > 0 THEN
+											WorkArea^[cwa].Taped := -1;
+											WorkArea^[cwa].LGV_ReqAbort := FALSE;
+											IF AbilitaAssegnazioneCodicePiazzoleConPaccoSuRibaltino THEN
+												WorkArea^[cwa].Code := 0;
+												WorkArea^[cwa].Initialize := TRUE;
+											ELSE
+												WorkArea^[cwa].Code := pcode;
+												WorkArea^[cwa].Initialize := FALSE;
+												pcode := 0;
+											END_IF
+											WorkAreaState^[cwa].F := fcode;
+											WorkAreaState^[cwa].P := -1;
+											WorkAreaState^[cwa].L := -1;
+											WorkAreaState^[cwa].PN := -1;
+											WorkAreaState^[cwa].LGVAttr := Forming^[WorkAreaState^[cwa].F].LGVAttr;
+											WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_WORKING;
+										ELSE
+											// Errore
+										END_IF
+									ELSE
+										;
+									END_IF
+								END_IF*)
+							END_IF
+						ELSE (* Per Cataste o Falde si Attiva senza controlli *)
+							WorkArea^[cwa].Taped := -1;
+							//WorkArea^[cwa].Learned_Z := WorkArea^[cwa].Learn_Z;
+							//WorkArea^[cwa].H := 1000;
+							WorkAreaState^[cwa].P := -1;
+							WorkAreaState^[cwa].L := -1;
+							WorkAreaState^[cwa].PN := -1;
+							IF PX_WorkArea[cwa] THEN // Con presenza vado in lavorazione altrimenti forzo chiamata LGV
+								WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+							ELSE
+								WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+							END_IF							
+						END_IF
+					ELSE
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+					END_IF;	
+			ELSE
+				;
+			END_IF
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* Occupied + Disabled *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			WORKAREA_STATE_OCCUPIED_DISABLED:
+				(* Nessuna Operazione! Si PROSEGUE LA LAVORAZIONE se viene Abilitata la Piazzola *)
+				IF WorkArea^[cwa].Enable = 1  AND  Forming^[WorkAreaState^[cwa].F].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+				END_IF
+	
+			(* Free + Working (Gestione PALLET VUOTO) *)
+			WORKAREA_STATE_FREE_WORKING:
+				IF PreviousStackWA^ < 0 THEN
+					PreviousStackWA^ := 1;
+				END_IF
+				IF WorkArea^[cwa].Enable = 1 THEN //oR (WorkArea^[cwa].Enable = 0 AND Mission^.State > MISSION_STATE_NOP) THEN
+					(* 	1) Se Nessuna Missione in Corso (Mission.State=NOP) allora eseguo i punti sotto
+						2) Verifica Catasta Disponibile per Prelievo Pallet. Se SI Proseguo altrimenti nulla
+						3) Creo Missione Pick/Place Pallet e assegno Mission.State = MISSION_STATE_PICKING
+						4) Con Mission.State = MISSION_STATE_PICKED o MISSION_STATE_PLACING non si fa nulla
+						5) Con Mission.State = MISSION_STATE_PLACED e PlaceID della Missione è QUESTA WorkArea la Missione Passa a NOP per liberare il Gestore
+						6) Assegno WorkArea^[cwa].P=0 per inizio Pallettizzazione + WorkArea^[cwa].L=0 per deposito prima Falda *)
+					CASE WorkAreaManager^.State OF
+						WAMANAGER_NOP:
+						
+							(* Cerco disponibilità Pallet *)
+							IF TFPalletizerIsStackAvailable(WorkArea,WorkAreaState,PreviousStackWA,Forming^[WorkAreaState^[cwa].F].Pallet) THEN
+								ppick := PreviousStackWA^;
+							ELSE	
+								ppick := TFPalletizerGetWAFromTypeCode(WorkArea,WorkAreaState,TYPOLOGY_STACK,Forming^[WorkAreaState^[cwa].F].Pallet);
+								PreviousStackWA^ := ppick; 
+							END_IF
+							
+							IF ppick <> -1 THEN
+								CicloDiRiposoNecessario := FALSE;
+								IF ppick > 0 AND 										// esiste una catasta pallatte con codice idoneo alle formature attive 
+									PX_WorkArea[ppick] AND 								// la fotocellula di presenza catasta è indica l'effettiva presenza dei pallet
+									WorkArea^[cwa].Typology <> TYPOLOGY_STACK THEN 		// la tipologia della workarea che devo valurtare NON è di tipo catasta vuoti
+									IF 	Forming^[WorkAreaState^[cwa].F].Layer > 0 AND 	// La formatura richiede la falda sopra il pallet
+										WorkAreaState^[cwa].L <= 0 THEN 				// il pallet sulla catasta non ha già la falda depositata	
+										(* Cerco se è presente una piazzola adibita a magazzino falde con codice presente in formtura*)
+										lpick := TFPalletizerGetWAFromTypeCode(WorkArea,WorkAreaState,TYPOLOGY_LAYER,Forming^[WorkAreaState^[cwa].F].Layer); // mi restituisce il numero della piazzola adibita a magazzino falda del codice richiesto
+										IF lpick <> -1 THEN
+											IF lpick > 0 AND 			// se c'è un magazzino falde con codice ok
+												PX_WorkArea[lpick]THEN	// se la fotocellula del magazzino mi indica l'effettiva presenza delle falde (=> magazzino NON vuoto!)
+												WorkAreaManager^.State  := WAMANAGER_CICLO_FALDA_VUOTI_INIT;	// setto lo stato del WAMANAGER
+												RestoreCWA^ := TRUE;
+												PreviousPWA^ := pwa;
+												EXIT;
+											END_IF
+										END_IF	
+									ELSE
+										WorkAreaManager^.State 	:= WAMANAGER_CICLO_PALL_INIT;
+										RestoreCWA^ := TRUE;
+										PreviousPWA^ := pwa;
+										EXIT;
+									END_IF
+								END_IF
+							ELSE
+							//;	CicloDiRiposoNecessario := TRUE;
+							END_IF
+							(* Creo Missione Falda per deposito su catasta vuoti *)
+						WAMANAGER_CICLO_FALDA_VUOTI_INIT:
+						
+							Mission^.PPick			:= lpick;
+							Mission^.TPick 			:= TPICK_LAYER;
+							Mission^.PPlace			:= ppick;
+							Mission^.XPick			:= WorkArea^[Mission^.PPick].X + WorkAreaOffset^[Mission^.PPick].X;//+ (Layer^[WorkArea^[Mission^.PPick].Layer].X / 2);
+							CASE TIPO_MAGAZZINO_FALDE OF
+								MAGAZZINO_FALDE_CENTRO_FISSO:
+									Mission^.YPick			:= WorkArea^[Mission^.PPick].Y + WorkAreaOffset^[Mission^.PPick].Y;// + (Layer^[WorkArea^[Mission^.PPick].Layer].Y / 2);
+								MAGAZZINO_FALDE_CENTRO_VARIABILE:
+									Mission^.YPick			:= WorkArea^[Mission^.PPick].Y + WorkAreaOffset^[Mission^.PPick].Y + (Layer^[WorkArea^[Mission^.PPick].Layer].Y / 2);
+							END_CASE
+							
+							//IF  WorkArea^[Mission^.PPick].DoLearn_Z = 1 THEN				// se DEVO efettuare l'apprendimento
+								//Mission^.ZPick	:= WorkArea^[Mission^.PPick].Learn_Z; 	// Quota di inizio apprendimento
+							//ELSE														// se NON DEVO efettuare l'apprendimento (cilo successivo al primo!! o dopo Richiesta Ingresso)
+								Mission^.ZPick	:= WorkArea^[Mission^.PPick].Z + WorkAreaOffset^[Mission^.PPick].Z; (*+ WorkArea^[Mission^.PPick].H;*) (* Posizione WorkArea + Altezza Reale *) // in questo modo LA LENTA va sempre fino a zero...mi fermo al raggiungimento dell'intervento dei tastatori
+							//END_IF
+							Mission^.JPick			:= WorkArea^[Mission^.PPick].JPick + WorkAreaOffset^[Mission^.PPick].J;
+							Mission^.KPick			:= Pallet^[WorkArea^[Mission^.PPlace].Pallet].X; (* + PickPlaceParameters^.OffsetKPick; *)
+							Mission^.KPickTorque	:= KPICKTORQUELAYER;
+							Mission^.KPickMode 		:= KSUCTIONMODE;
+							Mission^.XPlace			:= WorkArea^[Mission^.PPlace].X + WorkAreaOffset^[Mission^.PPlace].X;
+							Mission^.YPlace			:= WorkArea^[Mission^.PPlace].Y + WorkAreaOffset^[Mission^.PPlace].Y + (Pallet^[Forming^[WorkAreaState^[cwa].F].Pallet].Y / 2);
+							IF  WorkArea^[Mission^.PPlace].DoLearn_Z = 1 THEN 	// se devo fare l'apprendimento sulla catasta vuoti
+								//Mission^.ZPlace		:= WorkArea^[Mission^.PPlace].Learn_Z; //quota inizio apprendimento catasta vuoti
+								Mission^.ZPlace	:= WorkArea^[Mission^.PPlace].Z + WorkAreaOffset^[Mission^.PPlace].Z; // in questo modo LA LENTA va sempre fino a zero...mi fermo al raggiungimento dell'intervento dei tastatori
+							ELSE											// se NON devo fare l'apprendimento sulla catasta vuoti
+								Mission^.ZPlace		:= WorkArea^[Mission^.PPlace].Z + WorkAreaOffset^[Mission^.PPlace].Z;// + WorkArea^[Mission^.PPlace].H; //quota reale catasta vuoti = (altezza WA + altezza reale)
+							END_IF
+							Mission^.JPlace			:= WorkArea^[Mission^.PPlace].JPlace + WorkAreaOffset^[Mission^.PPlace].J;
+							Mission^.KPlace			:= Mission^.KPick;//WorkArea^[Mission^.PPick].KPick;//Layer^[WorkArea^[cwa].Layer].X + 20;
+							Mission^.KPlaceMode 	:= KSUCTIONMODE;
+							Mission^.XPlaceApproach	:= Mission^.XPlace + WorkAreaOffset^[Mission^.PPlace].X;
+							Mission^.YPlaceApproach	:= Mission^.YPlace + WorkAreaOffset^[Mission^.PPlace].Y;
+							Mission^.ZPlaceApproach	:= Mission^.ZPlace + WorkAreaOffset^[Mission^.PPlace].Z;
+							Mission^.JPlaceApproach	:= Mission^.JPlace + WorkAreaOffset^[Mission^.PPlace].J;
+							Mission^.XDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].Layer].X;
+							Mission^.YDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].Layer].Y;
+							Mission^.ZDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].Layer].Z;
+							WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_RUN;
+							EXIT;
+												
+						WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_RUN:
+	
+							IF Mission^.State = MISSION_STATE_PRELIEVO_FALDA_RUN THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_PRELIEVO_FALDA_END THEN
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_END;	// setto lo stato del WAMANAGER
+								EXIT;
+							ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+								;
+							END_IF
+							
+						WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_END:	
+							IF Mission^.TPick = TPICK_LAYER THEN
+								IF WorkArea^[Mission^.PPick].Typology = TYPOLOGY_LAYER THEN
+									IF WorkArea^[Mission^.PPick].H > (WorkArea^[Mission^.PPick].Z + WorkAreaOffset^[Mission^.PPick].Z + Layer^[WorkArea^[Mission^.PPick].Layer].Z) THEN
+										WorkArea^[Mission^.PPick].H := ModuleAX_Z^.Ax^.Status.ActPosition; (*- WorkArea^[Mission^.PPick].Z;*)//WorkArea^[Mission^.PPick].H - Layer^[WorkArea^[Mission^.PPick].Layer].Z;
+										WorkArea^[Mission^.PPick].DoLearn_Z := 2;
+										WorkArea^[Mission^.PPick].Learned_Z := ModuleAX_Z^.Ax^.Status.ActPosition;
+									ELSE
+										WorkArea^[Mission^.PPick].H := 0;
+										WorkArea^[Mission^.PPick].DoLearn_Z := 1;
+										//WorkAreaState^[Mission^.PPick].State := WORKAREA_STATE_OCCUPIED_ENDED;	
+									END_IF
+								
+								END_IF
+							END_IF
+							WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_RUN;	// setto lo stato del WAMANAGER
+							EXIT;
+	
+						WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_RUN:	
+							IF Mission^.State = MISSION_STATE_DEPOSITO_FALDA_RUN THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_DEPOSITO_FALDA_END THEN
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_END;	// setto lo stato del WAMANAGER
+								EXIT;
+							ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+								;
+							END_IF
+							
+						WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_END:
+							WorkAreaState^[Mission^.PPlace].L := 1;								// setto la presenza della falda sul pallet
+							
+							IF WorkArea^[Mission^.PPlace].DoLearn_Z = 1 THEN			// se sulla piazzola era da effettuare l'apprendimento
+								WorkArea^[Mission^.PPlace].Learned_Z := ModuleAX_Z^.Ax^.Status.ActPosition - (WorkArea^[Mission^.PPlace].Z + WorkAreaOffset^[Mission^.PPlace].Z);				// set della quota rilevata durante apprndimento
+								WorkArea^[Mission^.PPlace].DoLearn_Z := 2;				// setto l' vvenuto apprendimento della quota della catasta pallet 
+								WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].Learned_Z;
+							END_IF
+							
+							RestoreCWA^ := TRUE;
+							PreviousPWA^ :=cwa;
+							WorkAreaManager^.State 	:= WAMANAGER_CICLO_PALL_INIT;
+							EXIT;
+							
+						(* Creo Missione Pallet per deposito su piazzola*)
+						WAMANAGER_CICLO_PALL_INIT:
+							Mission^.PPick			:= ppick;
+							Mission^.TPick 			:= TPICK_PALLET;
+							Mission^.PPlace			:= cwa;
+							Mission^.XPick			:= WorkArea^[Mission^.PPick].X + WorkAreaOffset^[Mission^.PPick].X;
+							Mission^.YPick			:= WorkArea^[Mission^.PPick].Y + WorkAreaOffset^[Mission^.PPick].Y + (Pallet^[WorkArea^[Mission^.PPick].Pallet].Y / 2);
+							IF  WorkArea^[Mission^.PPick].DoLearn_Z = 1 THEN
+								Mission^.ZPick	:= WorkArea^[Mission^.PPick].Z + WorkAreaOffset^[Mission^.PPick].Z;//WorkArea^[Mission^.PPlace].Z; // in questo modo LA LENTA va sempre fino a zero...mi fermo al raggiungimento dell'intervento dei tastatori
+								//Mission^.ZPick	:= WorkArea^[Mission^.PPick].Learn_Z; (* Quota di START apprendimento *)
+							ELSE
+								Mission^.ZPick	:= WorkArea^[Mission^.PPick].Z + WorkAreaOffset^[Mission^.PPick].Z;// + WorkArea^[Mission^.PPick].H;//WorkArea^[Mission^.PPlace].Z + WorkArea^[Mission^.PPlace].H;//WorkArea^[Mission^.PPick].Z + WorkArea^[Mission^.PPick].H; (* Posizione WorkArea + Altezza Reale *)
+							END_IF
+							Mission^.JPick			:= WorkArea^[Mission^.PPick].JPick + WorkAreaOffset^[Mission^.PPick].J;
+							Mission^.KPick			:= Pallet^[WorkArea^[Mission^.PPick].Pallet].X;
+							Mission^.KPickTorque	:= PickPlaceParameters^.KPickTorquePallet;
+							IF NOT SimulazioneSenzaPallet THEN //Se non sono in simulazione utilizzo la presa con coppia
+								Mission^.KPickMode 		:= KTORQUEMODE;
+							ELSE
+								Mission^.KPickMode 		:= KPOSITIONMODE;
+							END_IF
+							Mission^.XPlace			:= WorkArea^[Mission^.PPlace].X + WorkAreaOffset^[Mission^.PPlace].X;
+							Mission^.YPlace			:= WorkArea^[Mission^.PPlace].Y + WorkAreaOffset^[Mission^.PPlace].Y + (Pallet^[Forming^[WorkAreaState^[cwa].F].Pallet].Y / 2);
+							Mission^.ZPlace			:= WorkArea^[Mission^.PPlace].Z + WorkAreaOffset^[Mission^.PPlace].Z + WorkArea^[Mission^.PPlace].H + Pallet^[Forming^[WorkAreaState^[cwa].F].Pallet].Z + PickPlaceParameters^.OffsetZPlacePallet;
+							Mission^.JPlace			:= WorkArea^[Mission^.PPlace].JPlace + WorkAreaOffset^[Mission^.PPlace].J;
+							Mission^.KPlace			:= Pallet^[Forming^[WorkAreaState^[cwa].F].Pallet].X; (*+ PickPlaceParameters^.OffsetKPlace;*)
+							Mission^.KPlaceMode 	:= KPOSITIONMODE;
+							Mission^.XPlaceApproach	:= Mission^.XPlace;
+							Mission^.YPlaceApproach	:= Mission^.YPlace;
+							Mission^.ZPlaceApproach	:= Mission^.ZPlace;
+							Mission^.JPlaceApproach	:= Mission^.JPlace;
+							Mission^.XDim			:= Pallet^[Forming^[WorkAreaState^[cwa].F].Pallet].X;
+							Mission^.YDim			:= Pallet^[Forming^[WorkAreaState^[cwa].F].Pallet].Y;
+							Mission^.ZDim			:= Pallet^[Forming^[WorkAreaState^[cwa].F].Pallet].Z;
+							
+							(* Valorizzo la variabile che serve per calolare la quota di fuori ingombro verticale della pinza *)
+							IF AbilitaOffsetInUscitaTasteggioPrelievoPallet^ THEN // Se ho l'abilitazione dell'uscita dai tastatori con Offset
+								Dimensione_Z_ElementoInPresaX_Ingombro := Mission^.ZDim + PickPlaceParameters^.OffsetZUscitaTasteggioPickPallet; // Se ho abilitato l'uscita con Offset dai tastatori lo aggiungo alla dimensione dell'elemento
+							ELSE
+								Dimensione_Z_ElementoInPresaX_Ingombro := Mission^.ZDim;
+							END_IF
+							
+							RestoreCWA^ := TRUE;
+							PreviousPWA^ := pwa;
+								
+							WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_PALL_RUN;
+							EXIT;
+							
+						WAMANAGER_CICLO_PRELIEVO_PALL_RUN:
+							IF 	Mission^.State = MISSION_STATE_PRELIEVO_PALLET_RUN THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_PRELIEVO_PALLET_END THEN
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_PALL_END;
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ :=cwa;
+								EXIT;
+							ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+								;
+							END_IF
+							
+						WAMANAGER_CICLO_PRELIEVO_PALL_END:	
+								IF WorkArea^[Mission^.PPick].DoLearn_Z = 1 THEN 									// se stavo facendo l'apprendimento della quota
+									WorkArea^[Mission^.PPick].Learned_Z := ModuleAX_Z^.Ax^.Status.ActPosition;	// set della quota rilevata durante apprndimento
+									WorkArea^[Mission^.PPick].H := ModuleAX_Z^.Ax^.Status.ActPosition;//WorkArea^[Mission^.PPick].Learned_Z;
+									WorkArea^[Mission^.PPick].DoLearn_Z := 2;
+								END_IF
+								IF (*WorkArea^[Mission^.PPick].H > Pallet^[WorkArea^[Mission^.PPick].Pallet].Z AND*) WorkArea^[Mission^.PPick].DoLearn_Z=2 THEN
+									WorkArea^[Mission^.PPick].Learned_Z := ModuleAX_Z^.Ax^.Status.ActPosition;
+								//WorkArea^[Mission^.PPick].H := WorkArea^[Mission^.PPick].H - Pallet^[WorkArea^[Mission^.PPick].Pallet].Z;
+									WorkArea^[Mission^.PPick].H := ModuleAX_Z^.Ax^.Status.ActPosition;// WorkArea^[Mission^.PPick].Learned_Z;
+									WorkArea^[Mission^.PPick].DoLearn_Z := 2;
+								ELSE
+									WorkArea^[Mission^.PPick].H := 0;				// a questo punto non ho più pallet, quindi altezza 0!!
+									WorkArea^[Mission^.PPick].DoLearn_Z := 1;			// devo quindi effettuare l'apprendimento quando avrò la nuova catasta!!!
+									WorkArea^[Mission^.PPick].Learned_Z := ALTEZZA_CATASTA_VUOTI;
+								END_IF
+								WorkAreaState^[Mission^.PPick].State := WORKAREA_STATE_OCCUPIED_ENDED;	
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_PALL_RUN;
+								EXIT;
+								
+						WAMANAGER_CICLO_DEPOSITO_PALL_RUN:	
+							IF Mission^.State = MISSION_STATE_DEPOSITO_PALLET_RUN THEN
+								;	
+							ELSIF Mission^.State = MISSION_STATE_DEPOSITO_PALLET_END THEN
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_PALL_END;
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ :=cwa;
+								EXIT;
+							ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+								;
+							END_IF
+							
+						WAMANAGER_CICLO_DEPOSITO_PALL_END:	
+							/////////////////////////////
+							(* X simulazione *)
+							PalletPrelevatiXSimulazione := PalletPrelevatiXSimulazione+1;
+							IF PalletPrelevatiXSimulazione >= PalletPrelevatiSimulazioneMAX THEN
+								PalletPrelevatiXSimulazione := 0;
+								I_PHPresenzaPalletVirtuale[Mission^.PPick] := FALSE;
+							END_IF
+							
+							//////////////////////////////////////
+							IF WorkAreaState^[Mission^.PPick].L < 0 THEN
+								IF NOT HMI_AbilitaTasteggioDepositoPallet THEN // Se non ho abilitata la funzione di tasteggio in deposito pallet, setto le altezze con le altezze ideali
+									WorkArea^[Mission^.PPlace].H := Pallet^[Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet].Z;
+									WorkArea^[Mission^.PPlace].HPL := Pallet^[Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet].Z;
+								ELSE	// Setto le altezze con la posizione attuale, cercando di aumentare la precisione in fase di deposito pacco
+									WorkArea^[Mission^.PPlace].H := ModuleAX_Z^.Ax^.Status.ActPosition;
+									WorkArea^[Mission^.PPlace].HPL := ModuleAX_Z^.Ax^.Status.ActPosition;
+								END_IF
+								WorkArea^[Mission^.PPlace].ProgressiveNr := ProgressiveNrWA^;
+								ProgressiveNrWA^ := ProgressiveNrWA^ + 1;
+								WorkAreaState^[Mission^.PPlace].P := 0;
+								WorkAreaState^[Mission^.PPlace].L := 0;
+								WorkArea^[Mission^.PPlace].Slow := 0;
+								WorkAreaState^[Mission^.PPlace].LGVAttr := Forming^[WorkAreaState^[Mission^.PPlace].F].LGVAttr;
+								WorkAreaState^[Mission^.PPlace].State := WORKAREA_STATE_OCCUPIED_WORKING;
+								WorkAreaManager^.State 	:= WAMANAGER_NOP;
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ :=cwa;
+								I_PHPresenzaPalletVirtuale[Mission^.PPlace] := TRUE;
+								EXIT;
+							ELSE
+								IF NOT HMI_AbilitaTasteggioDepositoPallet THEN // Se non ho abilitata la funzione di tasteggio in deposito pallet, setto le altezze con le altezze ideali
+									WorkArea^[Mission^.PPlace].H := Pallet^[Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet].Z + Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].Z;
+									WorkArea^[Mission^.PPlace].HPL := Pallet^[Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet].Z + Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].Z;
+								ELSE	// Setto le altezze con la posizione attuale, cercando di aumentare la precisione in fase di deposito pacco
+									IF AbilitaOffsetInUscitaTasteggioPrelievoPallet^ THEN // Se ho l'abilitazione dell'uscita dai tastatori con Offset
+										WorkArea^[Mission^.PPlace].H := ModuleAX_Z^.Ax^.Status.ActPosition - PickPlaceParameters^.OffsetZUscitaTasteggioPickPallet;
+										WorkArea^[Mission^.PPlace].HPL := ModuleAX_Z^.Ax^.Status.ActPosition - PickPlaceParameters^.OffsetZUscitaTasteggioPickPallet;
+									ELSE
+										WorkArea^[Mission^.PPlace].H := ModuleAX_Z^.Ax^.Status.ActPosition;
+										WorkArea^[Mission^.PPlace].HPL := ModuleAX_Z^.Ax^.Status.ActPosition;
+									END_IF
+								END_IF
+								WorkArea^[Mission^.PPlace].ProgressiveNr := ProgressiveNrWA^;
+								ProgressiveNrWA^ := ProgressiveNrWA^ + 1;
+								WorkAreaState^[Mission^.PPlace].P := 1;
+								WorkAreaState^[Mission^.PPlace].L := 1;
+								WorkArea^[Mission^.PPlace].Slow := 0;
+								WorkAreaState^[Mission^.PPlace].LGVAttr := Forming^[WorkAreaState^[Mission^.PPlace].F].LGVAttr;
+								WorkAreaState^[Mission^.PPlace].State := WORKAREA_STATE_OCCUPIED_WORKING;
+								WorkAreaManager^.State 	:= WAMANAGER_NOP;
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ :=cwa;
+								I_PHPresenzaPalletVirtuale[Mission^.PPlace] := TRUE;
+								EXIT;
+							END_IF
+							IF NOT PX_WorkArea[Mission^.PPlace] THEN // Se non vede la fotocellula, disattiva la piazzola e la dichiara libera per evitare di andare a far dei danni successivi
+								WorkAreaState^[Mission^.PPlace].State := WORKAREA_STATE_FREE_DISABLED;
+								Errore := ErrPALLETNOTPRESENT;
+								EXIT;
+							END_IF
+						ELSE		//riferito al case WorkAreaManager^.State
+							;
+						END_CASE	//riferito al case WorkAreaManager^.State
+				ELSE
+					(* Controllo della Ph di presenza pallet, in base a quello gestisco lo stato della piazzola *)
+					IF PX_WorkArea[cwa] THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_DISABLED;
+					ELSE
+						WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_DISABLED;
+					END_IF
+				END_IF
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* Occupied + Working (Gestione PACCHI/FALDE) *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			WORKAREA_STATE_OCCUPIED_WORKING:
+				IF WorkArea^[cwa].Enable = 1 AND Forming^[WorkAreaState^[cwa].F].Enable = 1 OR
+					WorkArea^[cwa].Typology <> TYPOLOGY_PALLET OR
+					((WorkArea^[cwa].Enable = 0 OR Forming^[WorkAreaState^[cwa].F].Enable = 0) AND Mission^.State > MISSION_STATE_NOP) THEN
+					CASE  WorkAreaManager^.State OF
+												
+						WAMANAGER_NOP:
+							(* Forzatura Piazzola da Estrarre. Si passa per il Tape *) 
+							IF WorkArea^[cwa].LGV_Req = 1 THEN
+								WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ :=cwa;
+								EXIT;
+							END_IF
+							IF WorkAreaState^[cwa].L = 0 THEN		// se è necessario depositare la falda
+								IF WorkAreaState^[cwa].P = 0 THEN 	// se non ho pacchi depositati
+									(* Falda Iniziale *)
+									IF Forming^[WorkAreaState^[cwa].F].Layer > 0 THEN	// se è necessario depositare ho un tipo (1..n) di falda
+										(* Cerco disponibilità Falda *)
+										ppick := TFPalletizerGetWAFromTypeCode(WorkArea,WorkAreaState,TYPOLOGY_LAYER,Forming^[WorkAreaState^[cwa].F].Layer);
+										IF ppick > 0 AND 			// se esiste una piazzola adibita a magazzino con codice falda designato
+											PX_WorkArea[ppick] THEN	// se la Fotocelula mi indica la presenza effettiva di almeno una falda
+											WorkAreaManager^.State  := WAMANAGER_CICLO_FALDA_INIT;	// setto lo stato del WAMANAGER
+											RestoreCWA^ := TRUE;
+											PreviousPWA^ := pwa;
+											EXIT;
+										END_IF
+									ELSE
+										(* Nessuna Falda da gestire dopo Pallet/Prima del primo pacco. Assegno WorkArea^[cwa].L=1 come se fosse dopositato *)
+										(* Assegno WorkArea^[cwa].P=1 per gestione primo PACCO *)
+										WorkAreaState^[cwa].L := 1;
+										WorkAreaState^[cwa].P := 1;
+										EXIT;
+									END_IF
+								ELSE
+									(* Falde Successive *)
+									(* Cerco disponibilità Falda *)
+									ppick := TFPalletizerGetWAFromTypeCode(WorkArea:=WorkArea,WorkAreaState:=WorkAreaState,Typology:=TYPOLOGY_LAYER,TCode:=Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Layer);
+									IF ppick > 0 AND 				// se esiste una piazzola adibita a magazzino con codice falda designato
+										PX_WorkArea[ppick] THEN		// se la Fotocelula mi indica la presenza effettiva di almeno una falda
+										WorkAreaManager^.State  := WAMANAGER_CICLO_FALDA_INIT;	// setto lo stato del WAMANAGER
+										RestoreCWA^ := TRUE;
+										PreviousPWA^ := pwa;
+										EXIT;
+									ELSif ppick = -1 THEN
+										Errore:=ErrLAYERCODENOTFOUND;
+										EXIT;
+									END_IF
+								END_IF
+							ELSE	// se non devo depositare la falda
+								
+								(* Assegnazione del codice con la modalità ad approccio diretto, cioè:
+									- I pallet sono già stati depositati sulla WA
+									- Alla WA viene assegnato il codice del pacco presente sul ribaltino solo se non è già presente una WA in lavorazione con lo stesso codice
+									- Il codice assegnato alla WA rientra nei codici stabiliti dalla gestione a Zone
+									- Il codice sul ribaltino è presente nella formatura attiva della WA*)	
+								ppick := 1;//TFPalletizerGetWPPFromPackCode(WorkPickPointState,WorkArea^[cwa].Code);
+								WAconCodiceWPPPresente := TFWAconCodiceWPPPresente(WorkArea,WorkAreaState,WorkPickPointState,ppick); // Valuto se è già presente una WA in lavorazione con il codice del pacco sul ribaltino	
+								pcode := TFPackCodePresenteInZona(WorkPickPointState:=WorkPickPointState,WorkAreaZone:=WorkAreaZone,WorkArea:=cwa);//TFPackCodePresentToZone(HandlingPackTable,WorkAreaZone,cwa);
+(**********************)	//	CodiceValidoPerWA := TFCodicePaccoPresenteInFormatura(Forming := Forming,IndiceFormatura := WorkAreaState^[cwa].F,CodiceInValutazione := pcode);	
+								IF pcode<>0 THEN
+									IF NOT TFCodicePaccoPresenteInFormaturaAll(Forming := Forming,CodiceInValutazione := pcode) THEN
+										Errore:= ErrPACKCODENOTFOUND;
+									END_IF
+								END_IF
+								IF NOT TFCodicePaccoPresenteInFormatura(Forming := Forming,IndiceFormatura := WorkAreaState^[cwa].F,CodiceInValutazione := pcode) THEN
+									CodiceValidoPerWA := FALSE;
+									IF pcode<>0 THEN
+										;//Errore:= ErrPACKCODENOTFOUND;
+									END_IF
+								ELSE
+									CodiceValidoPerWA := TRUE;
+								END_IF
+								IF WorkAreaState^[cwa].P = 1 AND WorkArea^[cwa].Initialize AND
+									WorkArea^[cwa].Code = 0 AND NOT WAconCodiceWPPPresente AND 
+									pcode = WorkPickPointState^[1].Code AND CodiceValidoPerWA THEN
+									
+									IF (ppick > 0 AND HandlingRun) AND // c'è un pacco sul ribaltino e i traspporti sono in automatico
+										NOT WAconCodiceWPPPresente  AND // non è già presente una WA in lavorazione con il codice del pacco sul ribaltino
+										pcode = WorkPickPointState^[ppick].Code  THEN // il codice sul ribaltino può essere assegnato alla WA in base alla suddivisione delle zone
+											WorkArea^[cwa].Code := pcode;
+											WorkArea^[cwa].Initialize := FALSE;
+											RestoreCWA^ := TRUE;
+											PreviousPWA^ := pwa;
+											EXIT;
+									ELSE
+										EXIT;
+									END_IF
+								ELSE (* Cerco Disponibilità Pacco *)
+									ppick := TFPalletizerGetWPPFromPackCode(WorkPickPointState,WorkArea^[cwa].Code); // Valuta se c'è un PickPoint con il pacco col codice della WA 
+									ConsentiDepositoPaccoSuWA := TFConsentiDepositoPaccoSuWA(WorkArea,WorkAreaState,cwa); // Valutazione se è possibile depositare il pacco sulla WA, valuta se ci sono altre WA con il codice della WA in esame e con un numero di pacchi maggiore
+			(**********************)	//	CodiceValidoPerWA := TFCodicePaccoPresenteInFormatura(Forming := Forming,IndiceFormatura := WorkAreaState^[cwa].F,CodiceInValutazione := pcode);	
+										IF pcode<>0 THEN
+											IF NOT TFCodicePaccoPresenteInFormaturaAll(Forming := Forming,CodiceInValutazione := pcode) THEN
+												Errore:= ErrPACKCODENOTFOUND;
+											END_IF
+										END_IF
+										IF NOT TFCodicePaccoPresenteInFormatura(Forming := Forming,IndiceFormatura := WorkAreaState^[cwa].F,CodiceInValutazione := pcode) THEN
+											CodiceValidoPerWA := FALSE;
+											IF pcode<>0 THEN
+												;//Errore:= ErrPACKCODENOTFOUND;
+											END_IF
+										ELSE
+											CodiceValidoPerWA := TRUE;
+										END_IF
+										IF (ppick > 0 AND Forming^[WorkAreaState^[cwa].F].Enable = 1) AND CodiceValidoPerWA AND ((ConsentiDepositoPaccoSuWA AND AbilitaDisposizionePalletContinua^) OR NOT AbilitaDisposizionePalletContinua^) THEN // se c'è un pacco e i trasporti (quindi il ribaltino )sono in automatico
+										(* Se il grip = -1 metto la Workarea nello stato WORKAREA_STATE_OCCUPIED_WORKED*)
+										IF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = -1 OR
+											Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip = -1 THEN
+											WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+											WorkAreaManager^.State  := WAMANAGER_NOP;
+											CicloDiRiposoNecessario := TRUE;
+											EXIT;
+										ELSE
+											(* Aggiorno l'Array dei Codici Usati *)
+											//TFRefreshUsedCode(WorkArea^[cwa].Code,UsedCode);
+											IF (AbilitaComandiAnticipatiRibaltino AND HandlingOKPrelievoPacco) OR 	// Se c'è l'abilitazione degli antici del ribaltino e il ribaltino è in condizioni di dare il pacco
+												(NOT AbilitaComandiAnticipatiRibaltino AND HandlingRun) THEN		// Se NON c'è l'abilitazione dei comandi anticipati del ribaltino e i trasporti sono in automatico
+												WorkAreaManager^.State  := WAMANAGER_CICLO_PACCO_INIT;				// Setto lo stato del WAMANAGER
+												RestoreCWA^ := TRUE;
+												PreviousPWA^ := pwa;
+												UltimaWAAssegnazionePacco := cwa;
+												CicloDiRiposoNecessario := FALSE;
+												EXIT;
+											END_IF
+										END_IF
+									ELSE
+										IF Forming^[WorkAreaState^[cwa].F].Enable = 1 THEN
+											(* Se il grip = -1 metto la Workarea nello stato WORKAREA_STATE_OCCUPIED_WORKED*)
+											IF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = -1 OR
+												Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip = -1 THEN
+												WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+												WorkAreaManager^.State  := WAMANAGER_NOP;
+												EXIT;
+											END_IF
+										END_IF
+										;//CicloDiRiposoNecessario := TRUE;
+									END_IF
+								END_IF
+							END_IF
+								
+							
+						WAMANAGER_CICLO_FALDA_INIT:
+							
+							(* Creo Missione Falda *)
+							Mission^.PPick			:= ppick; 				// valorizzo il punto di prelievo = workarea dove ho valutato la presenza delle falde
+							Mission^.TPick 			:= TPICK_LAYER;			// valorizzo la tipologia di prelievo = tipo prelievo falda
+							Mission^.PPlace			:= cwa;					// valorizzo il punto di deposito = workarea dove ho valutato di depositare la falda
+							Mission^.XPick			:= WorkArea^[Mission^.PPick].X + WorkAreaOffset^[Mission^.PPick].X;// + (Layer^[WorkArea^[Mission^.PPick].Layer].X / 2); // valorizzo la quota X di prelievo 
+							CASE TIPO_MAGAZZINO_FALDE OF
+								MAGAZZINO_FALDE_CENTRO_FISSO:
+									Mission^.YPick			:= WorkArea^[Mission^.PPick].Y + WorkAreaOffset^[Mission^.PPick].Y;// + (Layer^[WorkArea^[Mission^.PPick].Layer].Y / 2);
+								MAGAZZINO_FALDE_CENTRO_VARIABILE:
+									Mission^.YPick			:= WorkArea^[Mission^.PPick].Y + WorkAreaOffset^[Mission^.PPick].Y + (Layer^[WorkArea^[Mission^.PPick].Layer].Y / 2);
+							END_CASE
+							
+							//IF  WorkArea^[Mission^.PPick].DoLearn_Z = 1 THEN // se devo eseguire l'apprendimento della quota Z vado alla quota preposta di Start lenta
+							//	Mission^.ZPick	:= WorkArea^[Mission^.PPick].Learn_Z; (* Quota di inizio apprendimento *)
+							//ELSE
+							//	Mission^.ZPick	:= WorkArea^[Mission^.PPick].Z + WorkArea^[Mission^.PPick].H; (* Posizione WorkArea + Altezza Reale *)
+							//END_IF
+							
+							//IF  WorkArea^[Mission^.PPick].DoLearn_Z = 1 THEN 	// se devo fare l'apprendimento sulla catasta vuoti
+								Mission^.ZPick	:= WorkArea^[Mission^.PPick].Z; // in questo modo LA LENTA va sempre fino a zero...mi fermo al raggiungimento dell'intervento dei tastatori
+							//ELSE											// se NON devo fare l'apprendimento sulla catasta vuoti
+							//	Mission^.ZPick		:= WorkArea^[Mission^.PPick].Z + WorkArea^[Mission^.PPick].H; //quota reale catasta vuoti = (altezza WA + altezza reale)
+							//END_IF
+					
+							Mission^.JPick			:= WorkArea^[Mission^.PPick].JPick + WorkAreaOffset^[Mission^.PPick].J;
+							Mission^.KPick			:= Pallet^[Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet].X; (*+ PickPlaceParameters^.OffsetKPick;*)//Layer^[WorkArea^[Mission^.PPick].Layer].X + PickPlaceParameters^.OffsetKPick;//1150;//Layer^[WorkArea^[cwa].Layer].X + 20; 
+							Mission^.KPickTorque	:= KPICKTORQUELAYER;
+							Mission^.KPickMode 		:= KSUCTIONMODE;
+							Mission^.XPlace			:= WorkArea^[Mission^.PPlace].X + WorkAreaOffset^[Mission^.PPlace].X;
+							IF WorkAreaState^[cwa].P = 0 THEN       // se devo depositare la falda sul pallet
+								Mission^.YPlace			:= WorkArea^[Mission^.PPlace].Y + WorkAreaOffset^[Mission^.PPlace].Y + (Pallet^[Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet].Y / 2); //!!! Modificato !!!!!//WorkArea^[Mission^.PPlace].Y + (Layer^[Forming^[WorkAreaState^[cwa].F].Layer].Y / 2);
+								Mission^.ZPlace			:= WorkArea^[Mission^.PPlace].Z + WorkAreaOffset^[Mission^.PPlace].Z + WorkArea^[Mission^.PPlace].H + Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].Z + PickPlaceParameters^.OffsetZPlaceLayer;
+							ELSE									// se devo depositare la falda su uno strato di pacchi
+								Mission^.YPlace			:= WorkArea^[Mission^.PPlace].Y + WorkAreaOffset^[Mission^.PPlace].Y + (Pallet^[Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet].Y / 2);
+								Mission^.ZPlace			:= WorkArea^[Mission^.PPlace].H + Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Layer].Z + PickPlaceParameters^.OffsetZPlaceLayer;
+							END_IF
+							Mission^.JPlace			:= WorkArea^[Mission^.PPlace].JPlace + WorkAreaOffset^[Mission^.PPlace].J;
+							Mission^.KPlace			:= Mission^.KPick;//WorkArea^[Mission^.PPick].KPick;//Layer^[WorkArea^[cwa].Layer].X + 20;
+							Mission^.KPlaceMode 	:= KSUCTIONMODE;
+							Mission^.XPlaceApproach	:= Mission^.XPlace;
+							Mission^.YPlaceApproach	:= Mission^.YPlace;
+							Mission^.ZPlaceApproach	:= Mission^.ZPlace;
+							Mission^.JPlaceApproach	:= Mission^.JPlace;
+							IF WorkAreaState^[Mission^.PPlace].P = 0 THEN			// se devo depositare la falda sul pallet
+								Mission^.XDim			:= Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].X;
+								Mission^.YDim			:= Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].Y;
+								Mission^.ZDim			:= Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].Z;
+							ELSE										// se devo depositare la falda su uno strato di pacchi
+								Mission^.XDim			:= Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Layer].X;
+								Mission^.YDim			:= Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Layer].Y;
+								Mission^.ZDim			:= Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Layer].Z;
+							END_IF
+							
+							WorkAreaManager^.State := WAMANAGER_CICLO_PRELIEVO_FALDA_RUN;
+							EXIT;
+							
+						WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:	
+							IF Mission^.State = MISSION_STATE_PRELIEVO_FALDA_RUN THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_PRELIEVO_FALDA_END THEN
+								WorkAreaManager^.State := WAMANAGER_CICLO_PRELIEVO_FALDA_END;
+								EXIT;
+							ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+								;
+							END_IF
+	
+						WAMANAGER_CICLO_PRELIEVO_FALDA_END:	
+							//IF Mission^.TPick = TPICK_LAYER THEN
+								IF WorkArea^[Mission^.PPick].Typology = TYPOLOGY_LAYER THEN
+									IF WorkArea^[Mission^.PPick].H > WorkArea^[Mission^.PPick].Z + Layer^[WorkArea^[Mission^.PPick].Layer].Z THEN
+										WorkArea^[Mission^.PPick].H := ModuleAX_Z^.Ax^.Status.ActPosition; (*- WorkArea^[Mission^.PPick].Z;*)//WorkArea^[Mission^.PPick].H - Layer^[WorkArea^[Mission^.PPick].Layer].Z;
+										WorkArea^[Mission^.PPick].DoLearn_Z := 2;
+										WorkArea^[Mission^.PPick].Learned_Z := ModuleAX_Z^.Ax^.Status.ActPosition;
+									ELSE
+										WorkArea^[Mission^.PPick].H := 0;
+										WorkArea^[Mission^.PPick].DoLearn_Z := 1;
+										WorkArea^[Mission^.PPick].Learned_Z := ALTEZZA_CATASTA_FALDE;
+										//WorkAreaState^[Mission^.PPick].State := WORKAREA_STATE_OCCUPIED_ENDED;	
+									END_IF
+								END_IF
+							//END_IF
+							WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_FALDA_RUN;
+							EXIT;
+						
+						WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:	
+							IF Mission^.State = MISSION_STATE_DEPOSITO_FALDA_RUN THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_DEPOSITO_FALDA_END THEN
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ := pwa;
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_FALDA_END;	// setto lo stato del WAMANAGER
+								EXIT;
+							ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+								;
+							END_IF
+							
+						WAMANAGER_CICLO_DEPOSITO_FALDA_END:
+							//IF WorkAreaState^[Mission^.PPlace].L = 0 THEN						// se la workarea indica l'assenza della falda
+								(* Assegno WorkArea^[cwa].L=1 completamento deposito Falda *)
+								WorkAreaState^[Mission^.PPlace].L := 1;							// setto la presenza della falda sulla Piazzola dove depositerò il pallet
+								WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1; // Aggiorno il numero del pacco successivo che si deve depositare
+								(* Aggiorno Altezza Pallet su Layer *)
+								IF WorkAreaState^[Mission^.PPlace].P > 0 THEN
+									WorkArea^[Mission^.PPlace].H := WorkArea^[cwa].H + Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].Z;
+								ELSE
+									WorkArea^[Mission^.PPlace].HPL := WorkArea^[cwa].HPL + Layer^[Forming^[WorkAreaState^[Mission^.PPlace].F].Layer].Z;
+								END_IF
+								
+								(* Aggiorno il numero del pacco successivo che si deve depositare, se il doposito falda è stato effettuato sopra uno strato di pacchi 
+								IF WorkAreaState^[Mission^.PPlace].P > 1 THEN						// doposito falda è stato effettuato sopra uno strato di pacchi
+										// Aggiorno il numero del pacco successivo che si deve depositare
+								ELSE
+									WorkAreaState^[Mission^.PPlace].P := 1;							// Aggiorno il numero del pacco successivo che si deve depositare = pacco n°1
+								END_IF*)
+								
+								(* Controllo Fine Pallettizzazione o Deposito Falda Dopo Strato Layer*)
+								(* COME FACCIO A SAPERE SE è L'ULTIMO PACCO ? -> Si controlla la Grip=-1 *)
+								(* Per sicurezza le controllo su entrambi le direzioni POSITIVA/NEGATIVA *)
+								IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Grip = -1 OR
+									Forming^[WorkAreaState^[Mission^.PPlace].F].PackXN[WorkAreaState^[Mission^.PPlace].P].Grip = -1 THEN
+									WorkAreaState^[Mission^.PPlace].State := WORKAREA_STATE_OCCUPIED_WORKED;
+								END_IF	
+								
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ := pwa;
+								WorkAreaManager^.State 	:= WAMANAGER_NOP;
+								EXIT;	
+							//ELSE														// non dovrebbe mai accadere
+							//	WorkAreaState^[cwa].L := 1;	
+							//	WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+							//	WorkAreaManager^.State 	:= WAMANAGER_NOP;
+							//	EXIT;
+							//END_IF
+							
+						(* Creo Missione Pacco *)
+						WAMANAGER_CICLO_PACCO_INIT:
+							IF cwa = UltimaWAAssegnazionePacco AND cwa<>0 THEN
+								(* Reset della memoria utilizzata per forzare il ciclo di riposo in ciclo di prelievo pacco *)
+								//ForzaPrelievoPaccoDuranteCicloDiRiposo := FALSE;			
+								(* Definisco dse la WORKAREA è negativa o positiva *)
+								IF WorkAreaState^[cwa].PN < 0 THEN							// se la Workarea non è stata inizializzata (-1) vado a definire se è a DX o SX del ribaltino
+									IF WorkPickPoint^[ppick].Xv < WorkArea^[cwa].X THEN		// Se la quota X è MINORE della quota del ribaltino definisco che la workarea è NEGATIVA 
+										WorkAreaState^[cwa].PN := 0;
+									ELSE													// Se la quota X è MAGGIORE della quota del ribaltino definisco che la workarea è POSITIVA 
+										WorkAreaState^[cwa].PN := 1;
+									END_IF
+								END_IF
+								
+								Mission^.PPick := ppick;								   	// Assegno il numero della Punto di prelievo
+								Mission^.TPick := TPICK_PACK;							   	// Assegno il tipo di Prelievo
+								Mission^.PPlace := cwa;									   	// Assegno il numero della piazzola di deposito
+								Mission^.XDim := WorkPickPointState^[Mission^.PPick].XDim; 	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+								Mission^.YDim := WorkPickPointState^[Mission^.PPick].YDim; 	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+								Mission^.ZDim := WorkPickPointState^[Mission^.PPick].ZDim; 	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+								
+								(* Definisco il tipo di presa dei pacchi "sinistri" e "destri" *)
+								IF WorkAreaState^[cwa].PN = 0 THEN							
+									jp := Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].JP;		// Tipo di presa della pinza
+									vo := Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip;	// Tipo di disposizione del pacco sul ribaltino
+								ELSE
+									jp := Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].JP;		// Tipo di presa della pinza
+									vo := Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip;	// Tipo di disposizione del pacco sul ribaltino
+								END_IF
+								(* Controllo se lo spessore del pacco è minore della lunghezza della pinza *)
+								IF Mission^.ZDim < TCPParameter^.Z AND 						// Altezza pacco sul ribaltino < di un parametro
+									vo = 1 THEN												// Presa pacco in orrizzontale
+									ZOffsetPick 	:= TCPParameter^.Z - Mission^.ZDim;		// Offset da utilizzare successivamente nel calcolo della quota di prelievo
+									ZOffsetPlace 	:= TCPParameter^.Z - Mission^.ZDim;		// Offset da utilizzare successivamente nel calcolo della quota di prelievo
+								ELSE	
+									ZOffsetPick 	:= 0;									// Offset da utilizzare successivamente nel calcolo della quota di prelievo
+									ZOffsetPlace 	:= 0;									// Offset da utilizzare successivamente nel calcolo della quota di prelievo
+								END_IF
+								
+								IF vo = 0 THEN 															// Se ho prelievo verticale
+									CASE TIPO_RIBALTINO OF
+										(* TIPO 1 = RIBALTINO_DOPO_SQUADRO *)
+										1: 
+											HalfPackDim := Mission^.YDim/2;										// Metà pacco = (dimensione Y)/2
+											(* Verticale *)
+											IF jp = 1 THEN														// Prelievo lungo X (Longitudinale)
+												(* Longitudinale *)
+												kpick := Mission^.XDim;										 	// Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KLT;					// Valore di coppia Asse K
+											ELSE																// Prelievo lungo Y (Trasversale)
+												(* Trasversale *)
+												kpick := Mission^.ZDim;	//Forming^[WorkAreaState^[cwa].F].PZ;	// Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KTT;					// Valore di coppia Asse K
+											END_IF
+											XPick := WorkPickPoint^[Mission^.PPick].Xv + 		// Quota X Ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Xv;	//Offset Posizione ribaltino in direzione X	
+											YPick := WorkPickPoint^[Mission^.PPick].Yv + 		// Quota Y ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Yv + //Offset Posizione ribaltino in direzione Y
+													 (Mission^.ZDim / 2);					// (Dimensione pacco Z)/2
+											ZPick := WorkPickPoint^[Mission^.PPick].Zv + 	// Quota Z ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Zv + //Offset Posizione ribaltino in direzione Z	
+													 Mission^.YDim + 						// Dimensione Y del pacco	
+													 Forming^[WorkAreaState^[cwa].F].PIZ + 	// Offset di prelievo dato dalla formatura			
+													 WorkPickPointState^[ppick].ZTilter;	// Quota asse ribaltino
+											(* In base al tipo di pallettizzatore setto la quota per la presa in modo che i pacchi vengano depositati in modo corretto *)		 		 
+											CASE VERSO_PALLETTIZZATORE OF
+												PALLETTIZZATORE_DX:
+																	JPick := WorkPickPoint^[Mission^.PPick].Jv + 		// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jv + 	//Offset Posizione ribaltino in direzione Z	
+																 			(90 * jp) - 90 +							// Quota rotazione stabilita dal tipo di presa	
+																			180;
+											
+												PALLETTIZZATORE_SX:
+																	JPick := WorkPickPoint^[Mission^.PPick].Jv + 	// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jv + //Offset Posizione ribaltino in direzione Z	
+																 			(90 * jp) - 90;								// Quota rotazione stabilita dal tipo di presa								
+											END_CASE		 
+											(* Differenza tra valori reali e nominali  *)
+											DifferenceRealNominalDimensionZ := Mission^.YDim - Forming^[WorkAreaState^[cwa].F].PY;
+											(* Valorizzo la variabile che serve per calolare la quota di fuori ingombro verticale della pinza *)
+											Dimensione_Z_ElementoInPresaX_Ingombro := Mission^.YDim + Forming^[WorkAreaState^[cwa].F].PIZ;
+										(* TIPO 2 = RIBALTINO_DIRETTO *)
+										2:
+											HalfPackDim := Mission^.ZDim/2;										// Metà pacco = (dimensione Z)/2
+											(* Verticale *)
+											IF jp = 0 THEN														// Prelievo (Longitudinale)
+												(* Longitudinale *)
+												kpick := Mission^.ZDim;                                     	// Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KLT;					// Valore di coppia Asse K
+											ELSE																// Prelievo lungo Y (Trasversale)
+												(* Trasversale *)
+												kpick := Mission^.YDim;	//Forming^[WorkAreaState^[cwa].F].PZ;	// Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KTT;					// Valore di coppia Asse K
+											END_IF
+											XPick := WorkPickPoint^[Mission^.PPick].Xv + 		// Quota X Ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Xv +	//Offset Posizione ribaltino in direzione X	
+													 Mission^.ZDim/2;								// Metà pacco = (dimensione Z) /2
+											YPick := WorkPickPoint^[Mission^.PPick].Yv + 		// Quota Y ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Yv;  //Offset Posizione ribaltino in direzione Y
+													//(Mission^.ZDim / 2);					// (Dimensione pacco Z)/2
+											ZPick := WorkPickPoint^[Mission^.PPick].Zv + 	// Quota Z ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Zv + //Offset Posizione ribaltino in direzione Z	
+													 Mission^.XDim + 						// Dimensione Y del pacco	
+													 Forming^[WorkAreaState^[cwa].F].PIZ + 	// Offset di prelievo dato dalla formatura			
+													 WorkPickPointState^[ppick].ZTilter;	// Quota asse ribaltino
+											(* In base al tipo di pallettizzatore setto la quota per la presa in modo che i pacchi vengano depositati in modo corretto *)		 
+											CASE VERSO_PALLETTIZZATORE OF
+												PALLETTIZZATORE_DX:
+																	JPick := WorkPickPoint^[Mission^.PPick].Jv + 	// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jv + //Offset Posizione ribaltino in direzione Z	
+														 					(90 * (1-jp))+								// Quota rotazione stabilita dal tipo di presa	
+																			180;										// +180° per fare in modo che il deposito sul pallet sia uguale per le formature con verso del pal DX e SX
+												
+												PALLETTIZZATORE_SX:	
+																	JPick := WorkPickPoint^[Mission^.PPick].Jv + 	// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jv + //Offset Posizione ribaltino in direzione Z	
+														 					(90 * (1-jp));								// Quota rotazione stabilita dal tipo di presa							
+											END_CASE
+											(* Differenza tra valori reali e nominali  *)
+											DifferenceRealNominalDimensionZ := Mission^.XDim - Forming^[WorkAreaState^[cwa].F].PY;
+											(* Valorizzo la variabile che serve per calolare la quota di fuori ingombro verticale della pinza *)
+											Dimensione_Z_ElementoInPresaX_Ingombro := Mission^.XDim + Forming^[WorkAreaState^[cwa].F].PIZ;
+									END_CASE
+									
+								ELSE																	// Se ho prelievo orrizzontale
+									CASE TIPO_RIBALTINO OF
+										(* TIPO 1 = RIBALTINO_DOPO_SQUADRO *)
+										1:
+											HalfPackDim := Mission^.ZDim/2; 									// Metà pacco = (dimensione Z) /2
+											(* Orizzontale *)
+											IF jp = 1 THEN														// Prelievo TRASVERSALE
+												(* Trasversale *)
+												kpick := Mission^.XDim; 										 // Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KLT;					// Valore di coppia Asse K
+											ELSE																// Prelievo lungo Y (Trasversale)
+												(* Longitudinale *)							
+												kpick := Mission^.YDim; //Forming^[WorkAreaState^[cwa].F].PY;	// Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KTT;					// Valore di coppia Asse K
+											END_IF
+											
+											XPick := WorkPickPoint^[Mission^.PPick].Xh +						// Quota X ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Xh; 					// Offset Posizione ribaltino in direzione X	
+											YPick := WorkPickPoint^[Mission^.PPick].Yh + 						// Quota Y ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Yh - 					// Offset Posizione ribaltino in direzione Y
+													(Mission^.YDim / 2) - 										// (Dimensione pacco Y)/2
+													WorkPickPointState^[ppick].ZTilter;							// Quota asse ribaltino
+											ZPick := WorkPickPoint^[Mission^.PPick].Zh + 						// Quota Z ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Zh + 					//Offset Posizione ribaltino in direzione Z
+													Mission^.ZDim + 											// Dimensione Z pacco
+													Forming^[WorkAreaState^[cwa].F].PIZ + 						// Offset di prelievo dato da formatura
+													ZOffsetPick;												// Offset calcolato in precedenza
+											(* In base al tipo di pallettizzatore setto la quota per la presa in modo che i pacchi vengano depositati in modo corretto *)		
+											CASE VERSO_PALLETTIZZATORE OF
+												PALLETTIZZATORE_DX:		
+																	JPick := WorkPickPoint^[Mission^.PPick].Jh + 						// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jh + 					//Offset Posizione ribaltino in direzione J
+																			(90 * jp)-90+													// Quota rotazione stabilita dal tipo di presa
+																			180;										// +180° per fare in modo che il deposito sul pallet sia uguale per le formature con verso del pal DX e SX
+												PALLETTIZZATORE_SX:		
+																	JPick := WorkPickPoint^[Mission^.PPick].Jh + 						// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jh + 					//Offset Posizione ribaltino in direzione J
+																			(90 * jp)-90;													// Quota rotazione stabilita dal tipo di presa
+											END_CASE
+											(* Differenza tra valori reali e nominali *)
+											DifferenceRealNominalDimensionZ := Mission^.ZDim - Forming^[WorkAreaState^[cwa].F].PZ;		
+											(* Valorizzo la variabile che serve per calolare la quota di fuori ingombro verticale della pinza *)
+											Dimensione_Z_ElementoInPresaX_Ingombro := Mission^.ZDim + Forming^[WorkAreaState^[cwa].F].PIZ;
+										
+										(* TIPO 2 = RIBALTINO_DIRETTO *)
+										2:
+											HalfPackDim := Mission^.YDim/2; 									// Metà pacco = (dimensione Y) /2
+											(* Orizzontale *)
+											IF jp = 0 THEN														// Prelievo TRASVERSALE
+												(* Trasversale *)
+												kpick := Mission^.XDim;											// Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KLT;					// Valore di coppia Asse K
+											ELSE																// Prelievo lungo Y (Trasversale)
+												(* Longitudinale *) 							
+												kpick := Mission^.YDim; //Forming^[WorkAreaState^[cwa].F].PY;	// Quota di prelievo Asse K
+												torque := Forming^[WorkAreaState^[cwa].F].KTT;					// Valore di coppia Asse K
+											END_IF
+											
+											XPick := WorkPickPoint^[Mission^.PPick].Xh +						// Quota X ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Xh - 					// Offset Posizione ribaltino in direzione X	
+													 Mission^.XDim/2;												// (Dimensione pacco Y)/2
+											YPick := WorkPickPoint^[Mission^.PPick].Yh + 						// Quota Y ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Yh - 					// Offset Posizione ribaltino in direzione Y
+													 WorkPickPointState^[ppick].ZTilter;						// Quota asse ribaltino
+											ZPick := WorkPickPoint^[Mission^.PPick].Zh + 						// Quota Z ribaltino
+													 WorkPickPointOffset^[Mission^.PPick].Zh + 					//Offset Posizione ribaltino in direzione Z
+													Mission^.ZDim + 											// Dimensione Z pacco
+													Forming^[WorkAreaState^[cwa].F].PIZ + 						// Offset di prelievo dato da formatura
+													ZOffsetPick;												// Offset calcolato in precedenza
+											(* In base al tipo di pallettizzatore setto la quota per la presa in modo che i pacchi vengano depositati in modo corretto *)		
+											CASE VERSO_PALLETTIZZATORE OF
+												PALLETTIZZATORE_DX:												
+																	JPick := WorkPickPoint^[Mission^.PPick].Jh + 						// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jh + 					//Offset Posizione ribaltino in direzione J
+																			(90 * (1-jp))+												// Quota rotazione stabilita dal tipo di presa
+																			180;
+												PALLETTIZZATORE_SX:												
+																	JPick := WorkPickPoint^[Mission^.PPick].Jh + 						// Quota rotazione data dalla disposizione del ribaltino
+																			 WorkPickPointOffset^[Mission^.PPick].Jh + 					//Offset Posizione ribaltino in direzione J
+																			(90 * (1-jp));												// Quota rotazione stabilita dal tipo di presa
+											END_CASE
+																										
+											(* Differenza tra valori reali e nominali *)
+											DifferenceRealNominalDimensionZ := Mission^.ZDim - Forming^[WorkAreaState^[cwa].F].PZ;		
+											(* Valorizzo la variabile che serve per calolare la quota di fuori ingombro verticale della pinza *)
+											Dimensione_Z_ElementoInPresaX_Ingombro := Mission^.ZDim + Forming^[WorkAreaState^[cwa].F].PIZ;
+									END_CASE
+										
+								END_IF
+								
+								Mission^.XPick			:= XPick;
+								Mission^.YPick			:= YPick;
+								Mission^.ZPick			:= ZPick;
+								Mission^.JPick			:= JPick;
+								Mission^.JPickLT		:= jp;
+								Mission^.JPickVO		:= vo;
+								Mission^.KPick			:= kpick;// + OFFSETKPICK;
+								Mission^.KPickTorque	:= torque;
+								IF NOT SimulazioneSenzaPallet THEN //Se non sono in simulazione utilizzo la presa con coppia
+									Mission^.KPickMode 		:= Forming^[WorkAreaState^[cwa].F].KM;		// valorizzazione del tipo di presa in base al tipo scelto nella formatura
+								ELSE
+									Mission^.KPickMode 		:= KPOSITIONMODE;
+									Mission^.KPick			:= kpick + PickPlaceParameters^.OffsetKPickPack;
+								END_IF
+								(* Set delle variabili per andare al punto di riposo *)
+								X_Riposo	:= XPick;
+								Y_Riposo	:= YPick;
+								J_Riposo	:= JPick;
+								K_Riposo	:= kpick;
+								Z_Riposo	:= QuotaFuoriIngombro_Z_AVUOTO;
+													
+								// Tipo di Traiettoria
+								// Mission^.Approach		:= Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory;
+								(* Valorizzazione nel caso di Piazzole negative*)
+								IF WorkAreaState^[cwa].PN = 1 THEN
+									Mission^.XPlace			:= 	WorkArea^[Mission^.PPlace].X + 
+																WorkAreaOffset^[Mission^.PPlace].X + 
+																Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].X;
+									Mission^.YPlace			:=	WorkArea^[Mission^.PPlace].Y + 
+																WorkAreaOffset^[Mission^.PPlace].Y + 
+																Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Y;
+									(* Quota di deposito Z con pacco verticale *)	
+									CASE TIPO_RIBALTINO OF
+
+										RIBALTINO_DOPO_SQUADRO:
+											IF vo = 0 THEN 							
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			Forming^[WorkAreaState^[cwa].F].PIZ +
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			HalfPackDim + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoVerticale +
+																			DifferenceRealNominalDimensionZ/2;
+											(* Quota di deposito Z con pacco orrizontale *)	
+											ELSE
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			HalfPackDim + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoOrrizzontale;
+																			//DifferenceRealNominalDimensionZ/2;
+											END_IF
+									
+										RIBALTINO_DIRETTO:
+											IF vo = 0 THEN 							
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			Forming^[WorkAreaState^[cwa].F].PIZ +
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			Mission^.XDiM/2 + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoVerticale +
+																			DifferenceRealNominalDimensionZ/2;
+											(* Quota di deposito Z con pacco orrizontale *)	
+											ELSE
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			Mission^.ZDim/2 + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoOrrizzontale +
+																			DifferenceRealNominalDimensionZ/2;
+											END_IF
+									END_CASE
+									
+									//Mission^.ZPlace			:= WorkArea^[Mission^.PPlace].Z + Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Z*2 + WorkArea^[Mission^.PPlace].H;
+									CASE Jp OF
+										-1:;
+										//Presa trasversale	
+										0: 
+											IF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J = 0 AND TIPO_RIBALTINO = RIBALTINO_DIRETTO THEN
+												Mission^.JPlace	:= 	WorkArea^[Mission^.PPlace].J + 
+																	WorkAreaOffset^[Mission^.PPlace].J + 
+																	Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J;																		
+											ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J = 90 AND TIPO_RIBALTINO = RIBALTINO_DIRETTO THEN
+												Mission^.JPlace	:= 	WorkArea^[Mission^.PPlace].J + 
+																	WorkAreaOffset^[Mission^.PPlace].J + 
+																	Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J + 90;	
+											ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J = 180 AND TIPO_RIBALTINO = RIBALTINO_DIRETTO THEN
+												Mission^.JPlace	:= 	WorkArea^[Mission^.PPlace].J + 
+																	WorkAreaOffset^[Mission^.PPlace].J + 
+																	Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J + 90;
+											ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J = 270 AND TIPO_RIBALTINO = RIBALTINO_DIRETTO THEN
+												Mission^.JPlace	:= 	WorkArea^[Mission^.PPlace].J + 
+																	WorkAreaOffset^[Mission^.PPlace].J;
+											ELSE
+												Mission^.JPlace	:= 	WorkArea^[Mission^.PPlace].J + 
+																	WorkAreaOffset^[Mission^.PPlace].J + 
+																	Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J;											
+											END_IF
+											
+											
+										//Presa longitudinale
+										1:
+											CASE VERSO_PALLETTIZZATORE OF 
+												
+												PALLETTIZZATORE_DX:
+													Mission^.JPlace			:= 	WorkArea^[Mission^.PPlace].J + 
+																WorkAreaOffset^[Mission^.PPlace].J + 
+																Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J;
+																
+												PALLETTIZZATORE_SX:
+													Mission^.JPlace			:= 	WorkArea^[Mission^.PPlace].J + 
+																WorkAreaOffset^[Mission^.PPlace].J + 
+																Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J;
+
+											END_CASE
+												(*Mission^.JPlace			:= 	WorkArea^[Mission^.PPlace].J + 
+																	WorkAreaOffset^[Mission^.PPlace].J + 
+																	Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].J;*)	
+																
+																				
+									END_CASE
+									
+									IF NOT SimulazioneSenzaPallet THEN //Se non sono in simulazione utilizzo la presa con coppia							
+										Mission^.KPlace			:= 	kpick; (*+ 
+																PickPlaceParameters^.OffsetKPlacePack;*) // Aggiungere Eventuale Offset x Apertura e Rilascio
+									ELSE
+										Mission^.KPlace			:= 	kpick + PickPlaceParameters^.OffsetKPickPack;
+									END_IF
+									Mission^.KPlaceMode 	:= 	Forming^[WorkAreaState^[cwa].F].KM;// KTORQUEMODE;
+									(* Quota di Approccio con pacco verticale *)							
+									IF (vo = 0 AND DisabilitaApproccioPacciOrrizzontali) OR NOT DisabilitaApproccioPacciOrrizzontali THEN 
+										IF  Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 0 THEN //NO APPROCCIO
+											Mission^.XPlaceApproach	:= Mission^.XPlace;
+											Mission^.YPlaceApproach	:= Mission^.YPlace;
+											Mission^.ZPlaceApproach	:= Mission^.ZPlace;
+											Mission^.JPlaceApproach	:= Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 1 THEN // APPROCCIO STANDARD
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 111 THEN // APPROCCIO STANDARD
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 2	THEN // ESTERNO-INTERNO X
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 	
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 101	THEN // ESTERNO-INTERNO X
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 	
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 201	THEN // ESTERNO-INTERNO X
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 	
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 3	THEN //
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;	
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 4	THEN // NON USATO
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 5 THEN	//Esterno-Interno Direzione Y !!!!!!!!! modificare con 11 e 21
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace;
+											IF (Mission^.JPlace = 90 OR Mission^.JPlace = 270) AND Mission^.YPlace >= (WorkArea^[Mission^.PPlace].Y + Pallet^[Workarea^[Mission^.PPlace].Pallet].Y/2) THEN
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											ELSE //NORD
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											END_IF
+											
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace +
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace; 
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 11 THEN	//Esterno-Interno Direzione Y !!!!!!!!! modificare con 11 e 21
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace;
+											IF (Mission^.JPlace = 90 OR Mission^.JPlace = 270) AND Mission^.YPlace >= (WorkArea^[Mission^.PPlace].Y + Pallet^[Workarea^[Mission^.PPlace].Pallet].Y/2) THEN
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											ELSE
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											END_IF
+											
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace +
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace; 	
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Trajectory = 21 THEN	//Esterno-Interno Direzione Y e BASTA!!!!!!!!! modificare con 11 e 21
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace;
+											IF (Mission^.JPlace = 90 OR Mission^.JPlace = 270) AND Mission^.YPlace >= (WorkArea^[Mission^.PPlace].Y + Pallet^[Workarea^[Mission^.PPlace].Pallet].Y/2) THEN
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											ELSE
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											END_IF
+											
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace +
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace; 	
+										END_IF
+									ELSIF DisabilitaApproccioPacciOrrizzontali AND vo = 1 THEN
+										Mission^.XPlaceApproach	:= Mission^.XPlace;
+										Mission^.YPlaceApproach	:= Mission^.YPlace;
+										Mission^.ZPlaceApproach	:= Mission^.ZPlace;
+										Mission^.JPlaceApproach	:= Mission^.JPlace;	
+									END_IF
+								
+								ELSE (* Valorizzazione nel caso di Piazzole positive *)
+									Mission^.XPlace			:= 	WorkArea^[Mission^.PPlace].X + 
+																WorkAreaOffset^[Mission^.PPlace].X + 
+																Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].X;
+									Mission^.YPlace			:= 	WorkArea^[Mission^.PPlace].Y + 
+																WorkAreaOffset^[Mission^.PPlace].Y + 
+																Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Y;
+									
+									(* Quota di deposito Z con pacco verticale *)	
+									CASE TIPO_RIBALTINO OF
+
+										RIBALTINO_DOPO_SQUADRO:
+											IF vo = 0 THEN 							
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			Forming^[WorkAreaState^[cwa].F].PIZ +
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			HalfPackDim + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoVerticale +
+																			DifferenceRealNominalDimensionZ/2;
+											(* Quota di deposito Z con pacco orrizontale *)	
+											ELSE
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			HalfPackDim + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoOrrizzontale;
+																			//DifferenceRealNominalDimensionZ/2;
+											END_IF
+									
+										RIBALTINO_DIRETTO:
+											IF vo = 0 THEN 							
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			Forming^[WorkAreaState^[cwa].F].PIZ +
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			Mission^.XDiM/2 + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoVerticale +
+																			DifferenceRealNominalDimensionZ/2;
+											(* Quota di deposito Z con pacco orrizontale *)	
+											ELSE
+												Mission^.ZPlace			:= 	//WorkArea^[Mission^.PPlace].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Z + 
+																			Forming^[WorkAreaState^[cwa].F].PLZ + 
+																			WorkArea^[Mission^.PPlace].HPL + 
+																			Mission^.ZDim/2 + 
+																			ZOffsetPlace + 
+																			PickPlaceParameters^.OffsetZPlacePaccoOrrizzontale +
+																			DifferenceRealNominalDimensionZ/2;
+											END_IF
+									END_CASE
+									//Mission^.ZPlace			:= WorkArea^[Mission^.PPlace].Z + Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Z*2 + WorkArea^[Mission^.PPlace].H;
+									Mission^.JPlace			:= 	WorkArea^[Mission^.PPlace].J + 
+																WorkAreaOffset^[Mission^.PPlace].J + 
+																Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].J-
+																(90*(1-JP)); //x deposito con prelievo TRASVERSALE
+									CASE VERSO_PALLETTIZZATORE OF 
+										
+										PALLETTIZZATORE_DX:
+											Mission^.JPlace	:= 	WorkArea^[Mission^.PPlace].J + 
+																WorkAreaOffset^[Mission^.PPlace].J + 
+																Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].J-
+																(90*(1-JP));
+														
+										PALLETTIZZATORE_SX:
+											Mission^.JPlace	:= 	WorkArea^[Mission^.PPlace].J + 
+																WorkAreaOffset^[Mission^.PPlace].J + 
+																Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].J-
+																(90*(1-JP));
+
+									END_CASE							
+																
+																
+									IF NOT SimulazioneSenzaPallet THEN //Se non sono in simulazione utilizzo la presa con coppia							
+										Mission^.KPlace			:= 	kpick; (*+ 
+																PickPlaceParameters^.OffsetKPlacePack;*) // Aggiungere Eventuale Offset x Apertura e Rilascio
+									ELSE
+										Mission^.KPlace			:= 	kpick + PickPlaceParameters^.OffsetKPickPack;
+									END_IF
+									Mission^.KPlaceMode 	:= 	KTORQUEMODE;
+									(* Quota di Approccio con pacco verticale *)							
+									IF (vo = 0 AND DisabilitaApproccioPacciOrrizzontali) OR NOT DisabilitaApproccioPacciOrrizzontali THEN 
+										IF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 0 THEN
+											Mission^.XPlaceApproach	:= Mission^.XPlace;
+											Mission^.YPlaceApproach	:= Mission^.YPlace;
+											Mission^.ZPlaceApproach	:= Mission^.ZPlace;
+											Mission^.JPlaceApproach	:= Mission^.JPlace;
+										ELSIF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 1 THEN	
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 111 THEN	
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 2 THEN	
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 101 THEN	
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 101 THEN	
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 201 THEN	
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;	
+										ELSIF  Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 4 THEN	
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AX;
+											Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AZ;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 5 THEN	//Esterno-Interno Direzione Y !!!!!!!!!
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace;
+											IF (Mission^.JPlace = 90 OR Mission^.JPlace = 270) AND Mission^.YPlace >= (WorkArea^[Mission^.PPlace].Y + Pallet^[Workarea^[Mission^.PPlace].Pallet].Y/2) THEN
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											ELSE
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											END_IF
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace; 
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 11 THEN	//Esterno-Interno Direzione Y !!!!!!!!!
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace;
+											IF (Mission^.JPlace = 90 OR Mission^.JPlace = 270) AND Mission^.YPlace >= (WorkArea^[Mission^.PPlace].Y + Pallet^[Workarea^[Mission^.PPlace].Pallet].Y/2) THEN
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											ELSE
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											END_IF
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										ELSIF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Trajectory = 21 THEN	//Esterno-Interno Direzione Y !!!!!!!!!
+											Mission^.XPlaceApproach	:= 	Mission^.XPlace;
+											IF (Mission^.JPlace = 90 OR Mission^.JPlace = 270) AND Mission^.YPlace >= (WorkArea^[Mission^.PPlace].Y + Pallet^[Workarea^[Mission^.PPlace].Pallet].Y/2) THEN
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace + 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											ELSE
+												Mission^.YPlaceApproach	:= 	Mission^.YPlace - 
+																		Forming^[WorkAreaState^[cwa].F].AY;
+											END_IF
+											Mission^.ZPlaceApproach	:= 	Mission^.ZPlace;
+											Mission^.JPlaceApproach	:= 	Mission^.JPlace;
+										END_IF	
+									ELSIF DisabilitaApproccioPacciOrrizzontali and vo = 1 THEN
+										Mission^.XPlaceApproach	:= Mission^.XPlace;
+										Mission^.YPlaceApproach	:= Mission^.YPlace;
+										IF NOT AbilitaDepositoPaccoOrrizzonataleConTasteggio^ THEN
+											Mission^.ZPlaceApproach	:= Mission^.ZPlace;
+										ELSE
+											Mission^.ZPlaceApproach	:= Mission^.ZPlace + QuotaFittizziaPerTasteggioDepPacchi;
+										END_IF
+										
+										Mission^.JPlaceApproach	:= Mission^.JPlace;	
+									END_IF
+								END_IF
+								(* Setto l'uscita che mi determina il deposito del primo pacco in lenta *)
+								IF WorkArea^[Mission^.PPlace].Slow = 1 THEN
+									DepositoPaccoInLenta := TRUE;
+								END_IF
+								
+								
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_PACCO_RUN;
+								WAAssegnazionePaccoNONok := FALSE;
+							ELSE
+								WAAssegnazionePaccoNONok := TRUE;
+							END_IF
+							
+						WAMANAGER_CICLO_PRELIEVO_PACCO_RUN:
+							IF Mission^.State = MISSION_STATE_PRELIEVO_PACCO_RUN THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_PRELIEVO_PACCO_END THEN
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_PACCO_END;
+							ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_NOP AND (NOT HandlingRun OR WorkPickPointState^[Mission^.PPick].TS <> WorkPickPointState^[Mission^.PPick].TC) THEN
+								WorkAreaManager^.State 	:= WAMANAGER_NOP;
+							END_IF	
+						
+						WAMANAGER_CICLO_PRELIEVO_PACCO_END:	
+							(* Copio Info Pacco da Ribaltino a Pinza *)
+							Mission^.Pack := TilterPack^;
+							RestoreCWA^ := TRUE;
+							PreviousPWA^ := pwa;
+							//TFPalletizerSetWPPState(WorkPickPointState,Mission^.PPick,WORKPICKPOINT_PRODOTTO_ASSENTE);
+							WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_PACCO_RUN;
+							ForzaPrelievoPaccoDuranteCicloDiRiposo := FALSE;	
+							
+						WAMANAGER_CICLO_DEPOSITO_PACCO_RUN:	
+							IF Mission^.State = MISSION_STATE_DEPOSITO_PACCO_RUN THEN
+								;
+							ELSIF Mission^.State = MISSION_STATE_DEPOSITO_PACCO_END THEN
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ := pwa;
+								WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_PACCO_END;	// setto lo stato del WAMANAGER
+							END_IF
+						
+						WAMANAGER_CICLO_DEPOSITO_PACCO_END:
+						
+							(* Se era settata la velocità lenta di deposito pacco, questa viene resettata *)
+							IF WorkArea^[Mission^.PPlace].Slow = 1 THEN
+								WorkArea^[Mission^.PPlace].Slow := 0;
+								DepositoPaccoInLenta := FALSE;
+							END_IF
+						
+							IF Mission^.TPick = TPICK_PACK THEN
+								FOR i:=1 TO MAXHANDLINGSTACK DO
+									WorkAreaState^[Mission^.PPlace].Pack[WorkAreaState^[Mission^.PPlace].P,i] := Mission^.Pack[i];
+								END_FOR	
+							END_IF
+						
+							(* Punto alla tabella Formatura per verificare se dopo questo pacco devo gestire una Falda *)
+							(* La fine formatura la verifico con i dati -1 *)
+							IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Layer > 0 THEN			// se dopo aver depositato un pacco, questo richiede il deposito di una falda (.Layer > 0)
+								WorkAreaState^[Mission^.PPlace].L := 0;															// metto a 0 lo stato del layer della piazzola in modo che il manager al ciclo successivo si acorg che bisogna compiere un ciclo falda
+								(* Aggiorno Altezza Pallet su Ultimo Pacco *)
+								IF Mission^.TPick = TPICK_PACK THEN													// Controllo che la missione  appena eseguita era un prelievo pacco ( dovrebbe sempre essere così!! mantenuto da vecchia gestione..)
+									CASE TIPO_RIBALTINO OF
+										RIBALTINO_DOPO_SQUADRO:
+											IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Grip = 0 THEN	// Aggiornamento altezza pallet con pacco in verticale (si considera la dimensione Y del pacco) 
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL +												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.YDim/2;													//Dimensione Y /2, indica la distanza dal baricentro al bordo superiore del pacco
+											ELSIF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = 1 THEN
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL + 												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.ZDim/2;													//Dimensione Z /2, indica la distanza dal baricentro al bordo superiore del pacco
+											END_IF
+											
+										RIBALTINO_DIRETTO:
+										
+											IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Grip = 0 THEN	// Aggiornamento altezza pallet con pacco in verticale (si considera la dimensione Y del pacco) 
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL +												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.XDim/2;													//Dimensione Y /2, indica la distanza dal baricentro al bordo superiore del pacco
+											ELSIF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = 1 THEN
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL + 												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.ZDim/2;													//Dimensione Z /2, indica la distanza dal baricentro al bordo superiore del pacco
+											END_IF
+									END_CASE
+								END_IF
+								RestoreCWA^ := TRUE;
+								PreviousPWA^ := pwa;
+								WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+								EXIT;
+							ELSE																								// se dopo aver depositato un pacco, NON DEVO depositare NESSUNA falda
+								(* Aggiorno Altezza Pallet su Ultimo Pacco *)
+								IF Mission^.TPick = TPICK_PACK THEN													// Controllo che la missione  appena eseguita era un prelievo pacco ( dovrebbe sempre essere così!! mantenuto da vecchia gestione..)
+									CASE TIPO_RIBALTINO OF
+										RIBALTINO_DOPO_SQUADRO:
+											IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Grip = 0 THEN	// Aggiornamento altezza pallet con pacco in verticale (si considera la dimensione Y del pacco) 
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL +												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.YDim/2;													//Dimensione Y /2, indica la distanza dal baricentro al bordo superiore del pacco
+											ELSIF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = 1 THEN
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL + 												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.ZDim/2;													//Dimensione Z /2, indica la distanza dal baricentro al bordo superiore del pacco
+											END_IF
+											
+										RIBALTINO_DIRETTO:
+										
+											IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Grip = 0 THEN	// Aggiornamento altezza pallet con pacco in verticale (si considera la dimensione Y del pacco) 
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL +												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.XDim/2;													//Dimensione Y /2, indica la distanza dal baricentro al bordo superiore del pacco
+											ELSIF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = 1 THEN
+												WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL + 												// Altezza pallet + layers utilizzati
+																	Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z + 	// Quota "Z" del centro del pacco sulla piazzola, cioè altezza assoluta del baricentro
+																	Mission^.ZDim/2;													//Dimensione Z /2, indica la distanza dal baricentro al bordo superiore del pacco
+											END_IF
+									END_CASE
+								END_IF
+								(* Incremento WorkArea^[cwa].P (P=P+1) *)
+								WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1;
+								(* Controllo Fine Pallettizzazione o Deposito Falda Dopo Strato Pacchi*)
+								(* COME FACCIO A SAPERE SE è L'ULTIMO PACCO ? -> Si controlla la Grip=-1 *)
+								(* Per sicurezza le controllo su entrambi le direzioni POSITIVA/NEGATIVA *)
+								IF Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Grip = -1 OR
+									Forming^[WorkAreaState^[Mission^.PPlace].F].PackXN[WorkAreaState^[Mission^.PPlace].P].Grip = -1 THEN
+									IF NOT BypassTEST AND TRUE THEN //se true inizializza la piazzola a 1 pacco una volta completata la pallettizzazione
+										WorkAreaState^[Mission^.PPlace].State := WORKAREA_STATE_OCCUPIED_WORKED;
+										WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+										RestoreCWA^ := TRUE;
+										PreviousPWA^ := pwa;
+										EXIT;
+									ELSE
+										WorkAreaState^[Mission^.PPlace].P := 1;
+										WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+										RestoreCWA^ := TRUE;
+										PreviousPWA^ := pwa;
+										EXIT;
+									END_IF			
+								END_IF
+								WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+								EXIT;
+							END_IF								
+					END_CASE	//riferito al case WorkAreaManager^.State
+				ELSE			// riferito all' IF prima del  case WorkAreaManager^.State
+					RestoreCWA^ := TRUE;
+					PreviousPWA^ := pwa;
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_DISABLED;
+					EXIT;
+				END_IF			// riferito all' IF prima del  case WorkAreaManager^.State
+
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* ******************************************************************************************************** *)
+						(* GESTIONE (Nastratura) o (Veicolo per prelievo/deposito PALLET FINITI/CATASTE/FALDE) *)
+			(* ******************************************************************************************************** *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* Occupied + Worked *)
+			WORKAREA_STATE_OCCUPIED_WORKED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF NOT WorkArea^[cwa].RefuseLGV THEN		
+						IF Forming^[WorkAreaState^[cwa].F].Tape = 0 THEN
+							WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+						ELSIF Forming^[WorkAreaState^[cwa].F].Tape = 1 THEN
+							WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPING;
+						END_IF
+					ELSIF WorkArea^[cwa].RefuseLGV AND WorkArea^[cwa].LGV_Req = 1 THEN
+						WorkArea^[cwa].LGV_Req := 0;
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED_DISABLED;
+				END_IF
+	
+			(* Occupied + Worked + Disabled *)
+			WORKAREA_STATE_OCCUPIED_WORKED_DISABLED:
+				WorkArea^[cwa].LGV_Req := 0;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + Taping *)
+			WORKAREA_STATE_OCCUPIED_TAPING:
+				WorkArea^[cwa].LGV_Req := 0;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF WorkArea^[cwa].LGV_Req = 0 AND  WorkArea^[cwa].LGV_ReqAbort THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+						WorkArea^[cwa].LGV_ReqAbort := FALSE;
+					ELSE
+						IF WorkArea^[cwa].Taped = 1 OR Forming^[WorkAreaState^[cwa].F].Tape = 0 THEN
+							WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPED;
+						END_IF
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPING_DISABLED;
+				END_IF
+	
+			(* Occupied + Taping + Disabled *)
+			WORKAREA_STATE_OCCUPIED_TAPING_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPING;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + Taped *)
+			WORKAREA_STATE_OCCUPIED_TAPED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPED_DISABLED;
+				END_IF
+	
+			(* Occupied + Taped + Disabled *)
+			WORKAREA_STATE_OCCUPIED_TAPED_DISABLED:
+				WorkArea^[cwa].LGV_Req := 0;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPED;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + Ended *)
+			WORKAREA_STATE_OCCUPIED_ENDED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF WorkArea^[cwa].Typology = TYPOLOGY_PALLET OR WorkArea^[cwa].Typology = TYPOLOGY_STACK AND NOT PX_WorkArea[cwa] THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ;
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED_DISABLED;
+				END_IF
+	
+			(* Occupied + Ended + Disabled *)
+			WORKAREA_STATE_OCCUPIED_ENDED_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+				ELSE
+					;
+				END_IF
+	
+		 (* (* Occupied + LgvReq *)
+			WORKAREA_STATE_OCCUPIED_LGVREQ:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					; // Gestito dalla FB TFLGV
+					IF WorkArea^[cwa].LGV_ReqAbort THEN
+						WorkArea^[cwa].LGV_Req := 0;
+						WorkArea^[cwa].LGV_ReqAbort := FALSE;
+					ELSE
+						WorkArea^[cwa].LGV_Req := 1; //aggiunto per comunicazione con LGV
+						IF Forming^[WorkAreaState^[cwa].F].Tape = 1 AND WorkArea^[cwa].Taped < 1 THEN
+							WorkArea^[cwa].LGV_Req := 0;
+							WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+						END_IF
+					END_IF
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED;				
+				END_IF*)
+				
+			(* Occupied + LgvReq *)
+			WORKAREA_STATE_OCCUPIED_LGVREQ:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF Forming^[WorkAreaState^[cwa].F].Tape = 1 AND WorkArea^[cwa].Taped < 1 and WorkArea^[cwa].Typology = TYPOLOGY_PALLET THEN
+						WorkArea^[cwa].LGV_Req := 0;
+						WorkArea^[cwa].LGV_ReqAbort := FALSE;
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+						EXIT;
+					END_IF
+					IF WorkArea^[cwa].LGV_ReqAbort THEN
+						WorkArea^[cwa].LGV_Req := 0;
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ_ABORT;
+					ELSIF (NOT WorkArea^[cwa].LGV_ReqAbort AND WorkArea^[cwa].LGV_Req = 0) AND WorkArea^[cwa].Typology = TYPOLOGY_PALLET THEN
+						IF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = -1 OR
+							Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip = -1 THEN
+							WorkArea^[cwa].LGV_Req := 1; 
+						ELSE
+							WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+							EXIT;
+						END_IF
+					ELSE
+						WorkArea^[cwa].LGV_Req := 1; 
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED;				
+				END_IF
+	
+			(* Occupied + LgvReq + Disabled *)
+			WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED:
+				WorkArea^[cwa].LGV_Req := 0;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ;
+				ELSE
+					;
+				END_IF
+				
+			(* Occupied + LgvReqAbort *)
+			WORKAREA_STATE_OCCUPIED_LGVREQ_ABORT:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF (Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip <> -1 OR
+						Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip <> -1) AND WorkArea^[cwa].LGV_ReqAbort THEN
+							WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+							WorkArea^[cwa].LGV_ReqAbort := FALSE;
+							EXIT;
+					ELSIF WorkArea^[cwa].LGV_ReqAbort THEN
+						WorkArea^[cwa].LGV_Req := 0;
+						//WorkArea^[cwa].LGV_ReqAbort := FALSE;
+						EXIT;
+					ELSIF WorkArea^[cwa].LGV_Req = 1 OR (Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = -1 OR
+						Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip = -1) THEN
+							WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ; 
+							EXIT;
+					END_IF
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + LgvIn  - NOT USED !!!!!!!!!!!*)
+			WORKAREA_STATE_OCCUPIED_LGVIN:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + LgvIn + Disabled  - NOT USED !!!!!!!!!!!*)
+			WORKAREA_STATE_OCCUPIED_LGVIN_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + LgvEnd  - NOT USED !!!!!!!!!!!*)
+			WORKAREA_STATE_OCCUPIED_LGVEND:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + LgvIn + Disabled - NOT USED !!!!!!!!!!! *)
+			WORKAREA_STATE_OCCUPIED_LGVEND_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF
+	
+			(* Error *)
+			WORKAREA_STATE_ERROR:
+				;
+	
+		ELSE		//riferito al WorkAreaState^[cwa].State								
+			(* Stato Errato. viene Forzato lo stato di errore. Non dovrebbe MAI accadere *)
+			WorkAreaState^[cwa].State := WORKAREA_STATE_ERROR;
+				
+		END_CASE;  //riferito al WorkAreaState^[cwa].State
+	
+	END_FOR			// riferito a FOR pwa:=1 TO MAXAREA DO
+
+
+END_IF 				// riferito a IF WaitPositionRequest > 0 AND
+
+//TFPalletizerWorkAreaManagerTF := TRUE;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF">
+      <LineId Id="24854" Count="299" />
+      <LineId Id="27440" Count="0" />
+      <LineId Id="25155" Count="723" />
+      <LineId Id="25880" Count="89" />
+      <LineId Id="27272" Count="0" />
+      <LineId Id="27274" Count="0" />
+      <LineId Id="27279" Count="0" />
+      <LineId Id="27282" Count="1" />
+      <LineId Id="27281" Count="0" />
+      <LineId Id="27289" Count="0" />
+      <LineId Id="27280" Count="0" />
+      <LineId Id="27286" Count="2" />
+      <LineId Id="27284" Count="0" />
+      <LineId Id="27278" Count="0" />
+      <LineId Id="25974" Count="27" />
+      <LineId Id="27302" Count="0" />
+      <LineId Id="27293" Count="1" />
+      <LineId Id="26002" Count="2" />
+      <LineId Id="27301" Count="0" />
+      <LineId Id="27295" Count="1" />
+      <LineId Id="27299" Count="1" />
+      <LineId Id="27298" Count="0" />
+      <LineId Id="27297" Count="0" />
+      <LineId Id="26006" Count="3" />
+      <LineId Id="26011" Count="28" />
+      <LineId Id="27310" Count="0" />
+      <LineId Id="27290" Count="1" />
+      <LineId Id="26040" Count="2" />
+      <LineId Id="27292" Count="0" />
+      <LineId Id="27304" Count="3" />
+      <LineId Id="27309" Count="0" />
+      <LineId Id="26044" Count="29" />
+      <LineId Id="27314" Count="1" />
+      <LineId Id="27311" Count="0" />
+      <LineId Id="26074" Count="2" />
+      <LineId Id="27322" Count="0" />
+      <LineId Id="27318" Count="3" />
+      <LineId Id="26077" Count="0" />
+      <LineId Id="27316" Count="0" />
+      <LineId Id="26078" Count="118" />
+      <LineId Id="27120" Count="0" />
+      <LineId Id="27122" Count="0" />
+      <LineId Id="27126" Count="1" />
+      <LineId Id="27125" Count="0" />
+      <LineId Id="27128" Count="0" />
+      <LineId Id="27130" Count="2" />
+      <LineId Id="27129" Count="0" />
+      <LineId Id="27124" Count="0" />
+      <LineId Id="27121" Count="0" />
+      <LineId Id="26197" Count="2" />
+      <LineId Id="27119" Count="0" />
+      <LineId Id="26200" Count="181" />
+      <LineId Id="27136" Count="2" />
+      <LineId Id="27148" Count="2" />
+      <LineId Id="27141" Count="2" />
+      <LineId Id="27151" Count="2" />
+      <LineId Id="27146" Count="1" />
+      <LineId Id="27133" Count="2" />
+      <LineId Id="26382" Count="176" />
+      <LineId Id="26952" Count="1" />
+      <LineId Id="26957" Count="11" />
+      <LineId Id="26970" Count="8" />
+      <LineId Id="26954" Count="0" />
+      <LineId Id="26568" Count="5" />
+      <LineId Id="26575" Count="1" />
+      <LineId Id="26980" Count="22" />
+      <LineId Id="26585" Count="25" />
+      <LineId Id="26612" Count="220" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

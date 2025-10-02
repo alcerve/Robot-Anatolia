@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_EAPModuleState" Id="{1a4c2e09-9d4c-4052-8f22-e0ba001f29f0}">
+    <Declaration><![CDATA[TYPE ST_EAPModuleState : 
+	STRUCT
+		(* Comando in esecuzione *)
+		Cmd : UDINT;
+		(* Stato del comando in esecuzione *)
+		CmdCase : UDINT;
+		(* Errore generico del modulo *)
+		Error : UDINT;
+		(* Errore specifico del modulo *)
+		ErrorExtra : UDINT;
+		(* Modulo in Power *)
+		PowerActive : BOOL;
+		(* Modulo con Home eseguito *)
+		Homed : BOOL;
+	END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

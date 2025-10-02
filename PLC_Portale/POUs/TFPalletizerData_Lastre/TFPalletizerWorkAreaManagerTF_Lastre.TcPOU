@@ -1,0 +1,3152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerWorkAreaManagerTF_Lastre" Id="{02c9f462-c94d-4b6f-b759-73bc34ee33fa}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFPalletizerWorkAreaManagerTF_Lastre
+VAR_INPUT
+	Cfg 						: Config;
+	WorkArea 					: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState 				: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	WorkAreaOffset				: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaOffset;
+	PX_WorkArea 				: ARRAY [1..MAXAREA] OF BOOL;
+	WorkPickPoint 				: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointState 			: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	//WorkPickPointTransportState	: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointTransport_State;
+	//WorkPickPointStoreState		: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointStore_State;
+	WorkPickPointOffset 		: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointOffset;
+	Forming 					: POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	Pallet 						: POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer 						: POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Mission 					: POINTER TO TFMachinePalletizer_Mission;
+	PickPlaceParameters			: POINTER TO TFMachinePalletizer_PickPlaceParameters;
+	ExternalWaitPositionRequest : BOOL;
+	ProgressiveNrWA 			: POINTER TO UDINT;
+	UsedCode 					: POINTER TO ARRAY [1..MAXFORMINGCODE] OF INT;
+	TCPParameter 				: POINTER TO TFModulePalletizerRobot_TCPPar;
+	TilterPack 					: POINTER TO ARRAY [1..MAXHANDLINGSTACK] OF TFHandlingPack;
+	PreviousPWA 				: POINTER TO UINT;
+	RestoreCWA 					: POINTER TO BOOL;
+	PreviousStackWA 			: POINTER TO INT;
+	WorkAreaManager 			: POINTER TO TFWorkAreaManager;
+	ModuleAX_X 					: POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y 					: POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z 					: POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J 					: POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_K 					: POINTER TO TFModulePalletizer_Ax;
+	
+	ModulePinza					: pointer to TFModulePalletizer_Pinza;
+	
+	WorkAreaZone 				: POINTER TO TFMachinePalletizer_WorkAreaZone;	// Struttura delle zone di lavoro
+	//HandlingPackTable : POINTER TO TFHandlingPackTable;						// Tabella contenente i pacchi sui trasporti
+	ArrayPacchi 			: POINTER TO DUT_ArrayPacchi; 						//Array contenente i pacchi sui trasporti				
+	GestioneAZoneAbilitata 	: POINTER TO BOOL;									// Abilitazione della gestione a zone
+	HandlingRun 			: BOOL;												//Traspoti in Automatico
+	RichiestaStartRibaltino : BOOL;
+	AbilitaForzaturaStatoDaRiposoAPrelievo 			: POINTER TO BOOL;			// Abilita il cambio al volo della missione dal ciclo di riposo al ciclo di prelievo
+	AbilitaDisposizionePalletContinua 				: POINTER TO BOOL;			// Abilitazione del deposito dei pallet ogni qualvolta il carico imposto dalla line a soddisfi determinato requisiti
+	AbilitaDepositoPaccoOrrizzonataleConTasteggio 	: POINTER TO BOOL; 			// Abilitazione per il deposito del pacco con tasteggio del pacco orrizzontale
+	AbilitaAssegnazioneCodicePiazzoleConPaccoSuRibaltino 	: BOOL := TRUE; 	// Abilitazione della gestione del codice in modo opportunistico rispettando le zone
+	AbilitaOffsetInUscitaTasteggioPrelievoPallet 			: POINTER TO BOOL; 	// Abilitazione dell'offset in uscita dei tastatori in prelievo pallet con tasteggio
+	
+	//TabellaDiProduzione : POINTER TO ARRAY [1..MAXPRODLIST] OF TFMachinePalletizer_ListaProduzione; //Lista degli ordini di produzione che devo Svolgere
+	
+	WorkAreaProductionList : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_ListaProduzione_WAM;// ARRAY [1..MAXAREA] OF TFMachinePalletizer_ListaProduzione_WAM; //Lista di produzione che devo Svolgere PER ogni POSTAZIONE
+	
+	//
+	RichiestaIngZonaDX : BOOL; //Richiesta di ingresso zona DX del pallettizzatore, le postazioni vanno dalla 1 alla 4
+	RichiestaIngZonaSX : BOOL; //Richiesta di ingresso zona SX del pallettizzatore, le postazioni vanno dalla 5 alla 8
+	
+END_VAR
+VAR_OUTPUT
+	InWaitPosition 			: BOOL;
+	DepositoPaccoInLenta 	: BOOL;					// TRUE: Il deposito del pacco deve avvenire in lenta
+	ForzaPrelievoPaccoDuranteCicloDiRiposo : BOOL; 	// Indica che il ciclo sta facendo un salto: Da ciclo di riposo -> A ciclo di prelievo 
+	Errore : TFError_WAM; 							//Codice di errore del WorkAreaManager
+END_VAR
+VAR
+	i : UINT;
+	TimerPositionMission : REAL;
+	CurrentWorkArea : INT;
+	cwa : UINT;
+	pwa : UINT;
+	wa : INT;
+	pf : INT;
+	pp : INT;
+	fcode : INT;
+	ppick : UINT; //Punto di prelievo
+	XPick : LREAL;
+	YPick : LREAL;
+	ZPick : LREAL;
+	JPick : LREAL;
+	EnableCode : ARRAY [1..MAXFORMINGCODE*MAXFORMING] OF INT;
+	WAPointer : ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaSort;
+	ZOffsetPick : REAL;
+	ZOffsetPlace : REAL;
+	WaitPositionRequest : BOOL;
+	WaitPositionRequestTRIG : BOOL;
+	BypassTEST 								: BOOL; // ByPASS per il conteggio dei pacchi durante le simulazioni
+	CicloDiRiposoNecessario 				: BOOL;	// Forzatura del ciclo di riposo da parte del WAManager
+	NPacchiPresentiSuLinea 					: UINT;	// Indica il numero dei pacchi presenti sulla linea
+	NUltimiTrasportiOccupati 				: UINT;	// Indica il numero di trasporti occupati a partire dal ribaltino
+	HandlingOKPrelievoPacco 				: BOOL; // Indica che il Ribaltino è pronto a consegnare il pacco
+	ConsentiDepositoPaccoSuWA 				: BOOL; // Indica il Pacco può essere depositato sulla WorkArea
+
+	DisabilitaApproccioPacciOrrizzontali 	: BOOL := TRUE; // Abilitazione dell'approccio per i pacchi orrizzontali, in questo modo il ciclo è più rapido
+	QuotaFittizziaPerTasteggioDepPacchi 	: REAL := 200; 	//Quota fittizzia per consentire il tasteggio durante il deposito dei pacci orrizzontali
+	UltimaPoastazioneDiAssegnazione 		: INT;	// Variabile per Debug Interno
+	UltimoComando 							: INT;	// Variabile per Debug Interno
+	UltimoStatoCMDRibaltino 				: INT;	// Variabile per Debug Interno
+	WAconCodiceWPPPresente 					: BOOL;	// Indica che esiste almento una WA in lavorazione con il codice del pacco presente sul ribaltino in questione
+	FormaturaAttivaMista 					: BOOL;	// Indica che la formatura attiva è di tipo Misto (FALSE:utilizzata per anticipare ulteriormente il ribaltino,TRUE:si aspetta che sia terminato il deposito del pacco in corso prima di comandare il ribaltino)
+	PalletDepositatiSenzaCodicePresenti 	: BOOL;	// Indica che sono presenti dei pallet depositati con codice 0 ( Per assegnazione codice in modalità opportunistica(In base al codice sul ribaltino))
+	CodiceValidoPerWA 						: BOOL; // Indica che il codice del pacco sul ribaltino è presente nella formatura attiva nella WA considerata
+
+	SimulazioneSenzaPallet 					: BOOL; //Variabile per simulare in officina senza pacco e pallet
+	
+	FormatureMultipleAttive 				: BOOL;	//Indica che ci sono più formature Diverse ABILITATE
+	////////// NUOVE PER LASTRE ////////////
+	DIREZIONE_X_POSITIVA					: BOOL;
+	
+	TFWAM_CreaMissione_DepFaldaSuLastra 	: TFWAM_CreaMissione_DepPrelElemento;
+	TFWAM_CreaMissione_DepFaldaSuPallet 	: TFWAM_CreaMissione_DepPrelElemento;
+	TFWAM_CreaMissione_Destinazione			: TFWAM_CreaMissione_DepPrelElemento;
+	
+	TFWAM_CreaMissione_PrelLastraDaWA 		: TFWAM_CreaMissione_DepPrelElemento;
+	TFWAM_CreaMissione_DepLastraDaWA		: TFWAM_CreaMissione_DepPrelElemento;
+	
+	TFWAM_CreaMissione_DepLastraDaPP		: TFWAM_CreaMissione_DepPrelElemento;
+	
+	TFWAM_CreaMissione_DepFaldaSuMagazzino 	: TFWAM_CreaMissione_DepPrelElemento;
+
+	
+	PostazioneConListaInEsecuzione : UINT; //Indica il numero della postazione avente una lista di lavorazione ion esecuzione
+	WADiDepositoFinale : UINT; //WorkArea Di Desinazione della Lastra 
+	NLastraDaPrelevare : INT; //Numero della lastra da prelevare = N° della prima lastra che sarà prelevata dalla cavallina
+	RIESEGUI_PAREGGIATURA : BOOL; //Forzo L'esecuzione della pareggiatura della lastra Dopo arresto anomalo del ciclo
+	ElList1: UINT;
+	ElList : UINT;//Elemento in elaborazione nella lista
+	
+	
+	LastRequetsID : STRING; //Ultimo ID depositato sulla rulliera dopo il depal
+	LatoPrelievo : INT; //Indica il lato di prelievo per le cavalline = 90 o 180
+	LastPpick : UINT; //Memoria dell'ultimo 
+
+	debug : bool;
+	ppickOld : UINT;
+	ApprendimentoNulloRullieraDeposito : TFMachinePalletizer_CoordinateApprendimento;
+	DisabilitaCicloRiposoPerPezzoInPresa : BOOL;
+	LatoDeposito : INT; //Indica il lato di deposito.. per le cavalline = 90 o 180
+
+
+	Debug_SupportoMancanteInDeposito : BOOL;//Indica che il supporto sul deposito non è presente
+	Debug_RullieraInManuale : BOOL;//Indica che la rulliera è in manuale
+	Debug_NessunaListaDaProcessare : BOOL;//Indica che non c'è nessuna lista da processare
+	Debug_RicSupportoWA : ARRAY[1..MAXAREA] OF BOOL;//Indica una richiesta del supporto da partede della postazione
+	Actual_WorkOrde: INT;
+	AltezzaCentroLastraInclinata : REAL;
+	AngoloPrelievo : REAL;
+	QuotaLastraYRealTimePrelievo : REAL;
+	QuotaLastraYRealTimeDeposito : REAL;
+	QuotaLastraZRealTimePrelievo : REAL;
+	QuotaLastraZRealTimeDeposito : REAL;
+	
+	TFCalcoloFormaturaDaLista	: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+	CalcolaFormaturaTrig : BOOL;
+	
+	PplaceOld : UINT;
+	AngoloDepositoLastra : REAL;
+	
+	Y_PuntoPrelievo0: REAL;
+	Y_PuntoPrelievo180: REAL;
+	OffSetY180Cavallete: REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Set variabili varie *)
+Errore.Code:= 0;
+Errore.Extracode:=0;
+
+(* Chiamata del timer per andare alla posizione di riposo *)
+TFTimerCall(ADR(TimerPositionMission),Cfg.TimeBase);
+(* Inizializzazione del WAM *)
+IF WorkAreaManager^.State = -1 THEN
+	WorkAreaManager^.State := WAMANAGER_NOP;
+	ExternalWaitPositionRequest := TRUE;
+END_IF
+
+EnableCode := TFGetEnableCode_Lastre(Forming);
+
+
+
+IF Mission^.State <> MISSION_STATE_NOP THEN
+	TFTimerSet(ADR(TimerPositionMission),300,TRUE);
+END_IF
+IF ((ExternalWaitPositionRequest AND WorkAreaManager^.State = WAMANAGER_NOP)  OR TFTimerDone(ADR(TimerPositionMission))) AND NOT InWaitPosition THEN
+	CicloDiRiposoNecessario	:= TRUE;
+	WaitPositionRequestTRIG := TRUE;
+END_IF
+IF 	WaitPositionRequestTRIG THEN
+	WaitPositionRequest := TRUE;
+END_IF
+IF WaitPositionRequestTRIG AND WaitPositionRequest AND (InWaitPosition AND WorkAreaManager^.State = WAMANAGER_NOP) THEN
+	WaitPositionRequest := FALSE;
+	WaitPositionRequestTRIG := FALSE;
+END_IF
+
+
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP:
+			
+		IF RichiestaIngZonaSX THEN
+			Mission^.PPick			:= 5;
+			Mission^.TPick 			:= TPICK_NOT_DEFINED;
+			Mission^.XPick			:= WorkArea^[5].X;
+			Mission^.YPick			:= WorkSpace.Y/2 + OffSetPosYReposo;//Workarea^[5].Y;
+			Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 -OffsetSicurezza.Z.Avuoto; // estaba 100
+			
+			Mission^.JPick			:= 90;
+			
+			Mission^.PPlace			:= Mission^.PPick;
+			Mission^.XPlace			:= Mission^.XPick;
+			Mission^.YPlace			:= Mission^.YPick;
+			Mission^.ZPlace			:= Mission^.ZPick;
+			Mission^.JPlace			:= Mission^.JPick;
+
+			Mission^.XDim 	:= 0;
+			Mission^.YDim	:= 0;
+			Mission^.ZDim	:= 0;
+			
+			X_Riposo := Mission^.XPick;
+			Y_Riposo := Mission^.YPick;
+			Z_Riposo := Mission^.ZPick;
+			J_Riposo := Mission^.JPick;
+			
+			(* Set della condizione di posizione di riposo Wait Position *)
+			InWaitPosition := TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,Mission);
+
+			IF WaitPositionRequest AND NOT InWaitPosition AND
+			(ExternalWaitPositionRequest OR CicloDiRiposoNecessario) THEN //Se la macchina non è a riposo, ce la mando
+				WorkAreaManager^.State := WAMANAGER_CICLO_RIPOSO_INIT;
+			ELSE	//Se la macchina è ferma e a riposo -> verifica eventuali cambi di produzione
+				ReadyToChange := TRUE;
+			END_IF
+
+		ELSIF RichiestaIngZonaDX THEN
+			Mission^.PPick			:= 1;
+			Mission^.TPick 			:= TPICK_NOT_DEFINED;
+			Mission^.XPick			:= WorkArea^[4].X;
+			Mission^.YPick			:= WorkSpace.Y/2 + OffSetPosYReposo;//Workarea^[1].Y;
+			Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 -OffsetSicurezza.Z.Avuoto ;
+			Mission^.JPick			:= 90;
+			
+			Mission^.PPlace			:= Mission^.PPick;
+			Mission^.XPlace			:= Mission^.XPick;
+			Mission^.YPlace			:= Mission^.YPick;
+			Mission^.ZPlace			:= Mission^.ZPick;
+			Mission^.JPlace			:= Mission^.JPick;
+
+			Mission^.XDim 	:= 0;
+			Mission^.YDim	:= 0;
+			Mission^.ZDim	:= 0;
+			
+			X_Riposo := Mission^.XPick;
+			Y_Riposo := Mission^.YPick;
+			Z_Riposo := Mission^.ZPick;
+			J_Riposo := Mission^.JPick;
+
+			(* Set della condizione di posizione di riposo Wait Position *)
+			InWaitPosition := TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,Mission);
+			
+			IF WaitPositionRequest AND NOT InWaitPosition AND
+			(ExternalWaitPositionRequest OR CicloDiRiposoNecessario) THEN //Se la macchina non è a riposo, ce la mando
+				WorkAreaManager^.State := WAMANAGER_CICLO_RIPOSO_INIT;
+			ELSE	//Se la macchina è ferma e a riposo -> verifica eventuali cambi di produzione
+				ReadyToChange := TRUE;
+			END_IF
+		ELSE
+		 	Mission^.PPick			:= 1;
+			Mission^.TPick 			:= TPICK_NOT_DEFINED;
+			Mission^.XPick			:= ModuleAX_X^.Ax^.Status.ActPosition;// WorkArea^[1].X;
+			Mission^.YPick			:= WorkSpace.Y/2 + OffSetPosYReposo;//Workarea^[1].Y;
+			Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 - OffsetSicurezza.Z.Avuoto; 
+			Mission^.JPick			:= 90;
+			
+			Mission^.PPlace			:= Mission^.PPick;
+			Mission^.XPlace			:= Mission^.XPick;
+			Mission^.YPlace			:= Mission^.YPick;
+			Mission^.ZPlace			:= Mission^.ZPick;
+			Mission^.JPlace			:= Mission^.JPick;
+
+			Mission^.XDim 	:= 0;
+			Mission^.YDim	:= 0;
+			Mission^.ZDim	:= 0;
+			
+			X_Riposo := Mission^.XPick;
+			Y_Riposo := Mission^.YPick;
+			Z_Riposo := Mission^.ZPick;
+			J_Riposo := Mission^.JPick;
+
+			(* Set della condizione di posizione di riposo Wait Position *)
+			InWaitPosition := TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,Mission);
+			
+			IF WaitPositionRequest AND NOT InWaitPosition AND
+			(ExternalWaitPositionRequest OR CicloDiRiposoNecessario) THEN //Se la macchina non è a riposo, ce la mando
+				WorkAreaManager^.State := WAMANAGER_CICLO_RIPOSO_INIT;
+			ELSE	//Se la macchina è ferma e a riposo -> verifica eventuali cambi di produzione
+				ReadyToChange := TRUE;
+			END_IF
+		END_IF
+						
+	WAMANAGER_CICLO_RIPOSO_INIT:
+	 	
+		IF RichiestaIngZonaSX THEN
+			Mission^.PPick			:= 5;
+			Mission^.TPick 			:= TPICK_NOT_DEFINED;
+			IF AreaPikingConCavallete AND MultiplesCavalletesReceta OR WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO 
+				OR (PosRobot <> 0 AND  HMI_WorkAreaDataPicking[PosRobot].Typology = CAVALLETTO)	THEN
+				Mission^.XPick			:= WorkArea^[PosFinOrdenPikingCaballete].X;
+				Mission^.YPick			:= ModuleAX_y^.Ax^.AxRef^.NcToPlc.ActPos;
+				Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 -OffsetSicurezza.Z.Avuoto;
+				Mission^.JPick			:= ModuleAX_j^.Ax^.AxRef^.NcToPlc.ActPos ;
+			ELSE
+				Mission^.XPick			:= WorkArea^[5].X;
+				Mission^.YPick			:= WorkSpace.Y/2 + OffSetPosYReposo;//Workarea^[5].Y;
+				Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 -OffsetSicurezza.Z.Avuoto;
+				Mission^.JPick			:= 90;
+			END_IF
+			
+			Mission^.PPlace			:= Mission^.PPick;
+			Mission^.XPlace			:= Mission^.XPick;
+			Mission^.YPlace			:= Mission^.YPick;
+			Mission^.ZPlace			:= Mission^.ZPick;
+			Mission^.JPlace			:= Mission^.JPick;
+
+			Mission^.XDim 	:= 0;
+			Mission^.YDim	:= 0;
+			Mission^.ZDim	:= 0;
+			
+			X_Riposo := Mission^.XPick;
+			Y_Riposo := Mission^.YPick;
+			Z_Riposo := Mission^.ZPick;
+			J_Riposo := Mission^.JPick;
+
+		ELSIF RichiestaIngZonaDX THEN
+			Mission^.PPick			:= 1;
+			Mission^.TPick 			:= TPICK_NOT_DEFINED;
+			IF AreaPikingConCavallete AND MultiplesCavalletesReceta OR WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO 
+				OR (PosRobot <> 0 AND  HMI_WorkAreaDataPicking[PosRobot].Typology = CAVALLETTO) THEN
+				Mission^.XPick			:= WorkArea^[PosFinOrdenPikingCaballete].X;
+				Mission^.YPick			:= ModuleAX_y^.Ax^.AxRef^.NcToPlc.ActPos;
+				Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 -OffsetSicurezza.Z.Avuoto;
+				Mission^.JPick			:= ModuleAX_j^.Ax^.AxRef^.NcToPlc.ActPos ;
+				
+				
+			ELSE
+				Mission^.XPick			:= WorkArea^[4].X;
+				Mission^.YPick			:= WorkSpace.Y/2+OffSetPosYReposo;//Workarea^[1].Y;
+				Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 -OffsetSicurezza.Z.Avuoto;
+				Mission^.JPick			:= 90;
+			END_IF
+			
+			
+			Mission^.PPlace			:= Mission^.PPick;
+			Mission^.XPlace			:= Mission^.XPick;
+			Mission^.YPlace			:= Mission^.YPick;
+			Mission^.ZPlace			:= Mission^.ZPick;
+			Mission^.JPlace			:= Mission^.JPick;
+
+			Mission^.XDim 	:= 0;
+			Mission^.YDim	:= 0;
+			Mission^.ZDim	:= 0;
+			
+			X_Riposo := Mission^.XPick;
+			Y_Riposo := Mission^.YPick;
+			Z_Riposo := Mission^.ZPick;
+			J_Riposo := Mission^.JPick;
+		ELSE
+		 	Mission^.PPick			:= 1;
+			Mission^.TPick 			:= TPICK_NOT_DEFINED;
+			IF AreaPikingConCavallete AND MultiplesCavalletesReceta OR WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO
+				OR (PosRobot <> 0 AND  HMI_WorkAreaDataPicking[PosRobot].Typology = CAVALLETTO) THEN
+				Mission^.XPick			:= WorkArea^[PosFinOrdenPikingCaballete].X;
+				Mission^.YPick			:= ModuleAX_y^.Ax^.AxRef^.NcToPlc.ActPos;
+				Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 -OffsetSicurezza.Z.Avuoto;
+				Mission^.JPick			:= ModuleAX_j^.Ax^.AxRef^.NcToPlc.ActPos ;
+			ELSE
+				Mission^.XPick			:= ModuleAX_X^.Ax^.Status.ActPosition;// WorkArea^[1].X;
+				Mission^.YPick			:= (*2000   *)   WorkSpace.Y/2+OffSetPosYReposo;//Workarea^[1].Y ;
+				Mission^.ZPick			:= ModuleAX_Z^.Ax^.Parameter.MAXPosition - 100 - OffsetSicurezza.Z.Avuoto;
+				Mission^.JPick			:= 90;
+			END_IF
+			
+			
+			Mission^.PPlace			:= Mission^.PPick;
+			Mission^.XPlace			:= Mission^.XPick;
+			Mission^.YPlace			:= Mission^.YPick;
+			Mission^.ZPlace			:= Mission^.ZPick;
+			Mission^.JPlace			:= Mission^.JPick;
+
+			Mission^.XDim 	:= 0;
+			Mission^.YDim	:= 0;
+			Mission^.ZDim	:= 0;
+			
+			X_Riposo := Mission^.XPick;
+			Y_Riposo := Mission^.YPick;
+			Z_Riposo := Mission^.ZPick;
+			J_Riposo := Mission^.JPick;
+		END_IF
+	WorkAreaManager^.State  := WAMANAGER_CICLO_RIPOSO_RUN;
+		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+		
+		IF Mission^.State = MISSION_STATE_VAIaRIPOSO_RUN THEN
+			;
+		ELSIF Mission^.State = MISSION_STATE_VAIaRIPOSO_END THEN
+			CicloDiRiposoNecessario := FALSE;
+			WorkAreaManager^.State 	:= WAMANAGER_CICLO_RIPOSO_END;	// setto lo stato del WAMANAGER
+		ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+			;
+		END_IF
+		
+	WAMANAGER_CICLO_RIPOSO_END:
+		WorkAreaManager^.State := WAMANAGER_NOP;
+		
+	WAMANAGER_SALTA_DA_RIPOSO_A_PRELIEVO:
+		IF Mission^.State = MISSION_STATE_VAIaRIPOSO_END THEN
+			WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+		END_IF
+	ELSE;					
+END_CASE
+
+
+(*Con Stop in Fase, solo se la Missione è NOP vado in WAIT *)
+IF NOT WaitPositionRequest OR 
+	(WaitPositionRequest AND WorkAreaManager^.State <> WAMANAGER_NOP AND WorkAreaManager^.State <> WAMANAGER_CICLO_RIPOSO_RUN  AND WorkAreaManager^.State <> WAMANAGER_CICLO_RIPOSO_INIT) THEN
+	WAPointer := TFGetNearestWA(WorkArea,WorkPickPoint^[PICKPOINT1]);
+	FOR pwa:=1 TO MAXAREAPRESENT DO	
+		pwa := RestoringCWA(RestoreCWA,PreviousPWA,pwa);
+		RestoreCWA^ := FALSE;		
+		cwa := WAPointer[pwa].cwa;
+		cwa := pwa;
+		IF PreviousStackWA^ < 0 THEN
+			PreviousStackWA^ := 1;
+		END_IF
+		
+		(* Ciclo solo nelle postazioni in cui non è attiva la richiesta di ingresso.. in questo modo la macchina non cercherà di lavorare dove c'è l'operatore *)
+		IF RichiestaIngZonaSX THEN
+			IF cwa > 4 THEN
+				CONTINUE;
+			END_IF
+		ELSIF RichiestaIngZonaDX THEN
+			IF cwa < 5 THEN
+				CONTINUE;
+			END_IF
+		ELSE
+		 	;
+		END_IF
+		
+		CASE WorkAreaState^[cwa].State OF	
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+		(* POSTAZIONE LIBERA E ABILITATA *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			WORKAREA_STATE_FREE_ENABLED:
+
+				CASE TIPOLOGIA_FUNZIONAMENTO_MACCHINA OF 
+					
+					FUNZIONAMENTO_SLAVE:;{info "Implementare logica utilizzata WAM nel magazzino lastre di ariostea!!!"}
+			
+					FUNZIONAMENTO_PICKING:
+						{Region "TIPOLOGIA POSTAZIONE"}
+							(* Se la postazione è ABILITATA *)			
+							IF WorkArea^[cwa].Enable = 1 THEN
+								(* Se la FTC di presenza è SPENTA *)
+								//IF NOT PX_WorkArea[cwa] THEN
+									(* Valuto la tipologia di postazione *)
+									CASE WorkArea^[cwa].Typology OF
+										(* Per Postazione Di Lavoro INDEFINITE *)	
+										TYPOLOGY_NOT_DEFINED:
+											CONTINUE;//Passo alla postazione successiva nel ciclo FOR							
+										(* Per Postazione di Lavoro *)
+										TYPOLOGY_PALLET:
+											 	WorkAreaState^[cwa].P := -1;
+												IF cwa <> NumPostazioneSuRulliera THEN
+													IF PX_WorkArea[cwa] THEN // Con presenza vado in lavorazione altrimenti forzo chiamata LGV
+														WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+													ELSE
+														//WorkAreaState^[cwa].LGV_Req 			:= REQ_LGV; //Setto la chiamata
+														//WorkAreaState^[cwa].LGV_GetIn_GetOut 	:= REQ_DEPOSITO_LGV_VUOTO;//Setto la tipologia di chiamata
+														;//WorkAreaState^[cwa].State 				:= WORKAREA_STATE_FREE_LGVREQ;
+													END_IF
+												END_IF
+										(* Per Magazzino di Lavoro di tipo Falde *)
+										TYPOLOGY_LAYER:							
+											CASE WorkArea^[cwa].Typology_Desc OF
+												(* WorkArea di tipo *) 
+												MAGAZZINO_FALDE_IN_WA: 	
+													WorkAreaState^[cwa].Taped := -1;
+													WorkAreaState^[cwa].P := -1;
+													IF PX_WorkArea[cwa] THEN // Con presenza vado in lavorazione altrimenti forzo chiamata LGV
+														WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+													ELSE
+														WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_LGVREQ;
+													END_IF	
+												
+												(* PickPoint di tipo *)
+												MAGAZZINO_FALDE_IN_PP:	
+													WorkAreaState^[cwa].Taped := -1;
+													WorkAreaState^[cwa].P := -1;
+													IF PX_WorkArea[cwa] THEN // Con presenza vado in lavorazione altrimenti forzo chiamata LGV
+														WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+													ELSE
+														WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_ENABLED;
+													END_IF	
+											END_CASE
+												
+										(* Tipologia Postazione ESTERNA al perimetro del Pallettizzatore: 
+										Utilizzata per deposito o prelievo di Pallet/Casse/Cavalline lavorate o da lavorare *)	
+										TYPOLOGY_EXTERNAL_DEPPREL:;
+										TYPOLOGY_OVER_TRANSPORT:
+											Debug_RicSupportoWA[cwa] := FALSE;
+											IF WorkAreaState^[cwa].TransportState.ProdPresence = WORKPICKPOINT_PRODOTTO_PRESENTE THEN // Con presenza vado in lavorazione altrimenti sto in attesa che sia presente qualcosa
+												WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+											ELSIF WorkAreaState^[cwa].TransportState.ProdPresence <> WORKPICKPOINT_PRODOTTO_PRESENTE AND cwa = NumPostazioneSuRulliera THEN
+												(* Ricavo se una postazione ha una Lista in esecuzione *)
+												PostazioneConListaInEsecuzione := TFWAM_RicavaListaInLavoro(WorkAreaProductionList := WorkAreaProductionList);
+												(* Se non ho liste in esecuzione e ho una lista da eseguire sulla postazione, vado a richiedere il suporto *)
+												IF (WorkAreaProductionList^[cwa].Stato = LISTA_PROD_DA_ESEGUIRE AND PostazioneConListaInEsecuzione = 0) THEN 
+													Debug_RicSupportoWA[cwa] := TRUE;
+												END_IF			
+												WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_ENABLED;
+											END_IF	
+										TYPOLOGY_BUNDLE:
+											IF WorkAreaState^[cwa].TransportState.ProdPresence = WORKPICKPOINT_PRODOTTO_PRESENTE THEN // Con presenza vado in lavorazione altrimenti sto in attesa che sia presente qualcosa
+												WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+											ELSE
+												WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_ENABLED;
+											END_IF
+									ELSE
+										CONTINUE;//Passo alla postazione successiva nel ciclo FOR	
+									END_CASE	
+								(* Se la FTC di presenza è ACCESA *)	
+								//ELSE
+									(* Genero Errore relativo a FTC oscurata senza la presenza LOGICA*)
+									//Errore.Code 	 := ErrWAM_FTCWA_ON_PrenzaLogicaOFF;
+									//Errore.ExtraCode := cwa;
+								//END_IF
+							(* Se la postazione è DISABILITATA *)	
+							ELSIF WorkArea^[cwa].Enable < 1 THEN
+								IF PX_WorkArea[cwa] THEN (* CON FTC di presenza Assegno stato in Occupata e Disabilitata *)
+									WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_DISABLED;
+								ELSE					(* SENZA FTC di presenza Asegno stato in LIBERA e Disabilitata *)
+									WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_DISABLED;
+								END_IF
+							END_IF
+						{endregion}
+
+				ELSE //riferito a TIPOLOGIA_FUNZIONAMENTO_MACCHINA
+				;
+				END_CASE
+
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)			
+			(* Free Disabled *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			WORKAREA_STATE_FREE_DISABLED:
+				(* Se la postazione è ABILITATA *)
+				IF WorkArea^[cwa].Enable = 1 THEN
+					(* Se la FTC di presenza è SPENTA *)
+					//IF NOT PX_WorkArea[cwa] THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_ENABLED;
+					(* Se la FTC di presenza è ACCESA *)
+					//ELSE
+						(* Genero Errore relativo a FTC oscurata senza la presenza LOGICA*)
+						//Errore.Code 	 := ErrWAM_FTCWA_ON_PrenzaLogicaOFF;
+						//Errore.ExtraCode := cwa;
+						//IF CWA = NumPostazioneFALDE THEN
+						//	Errore.Code := ErrMODULEPALLETIZERROBOT_EMPTYLAYERSTACK;
+						//END_IF
+					//END_IF	
+				(* Se la postazione è DISABILITATA *)
+				ELSIF WorkArea^[cwa].Enable < 1 THEN
+					IF PX_WorkArea[cwa] THEN (* CON FTC di presenza Assegno stato in Occupata e Disabilitata *)
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_DISABLED;
+					ELSE					(* SENZA FTC di presenza Asegno stato in LIBERA e Disabilitata *)
+						WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_DISABLED;
+					END_IF	
+				END_IF
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* Occupied + Disabled *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			WORKAREA_STATE_OCCUPIED_DISABLED:
+				(* Nessuna Operazione! Si PROSEGUE LA LAVORAZIONE se viene Abilitata la Piazzola *)
+				(* Se la postazione è ABILITATA e la Formatura è ABILITATA *)
+				IF WorkArea^[cwa].Enable = 1  AND  (Forming^[WorkAreaState^[cwa].F].Enable = 1 OR PX_WorkArea[cwa]) THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+				END_IF
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)	
+			(* Free + Working (Gestione PALLET VUOTO) *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			WORKAREA_STATE_FREE_WORKING:
+				IF PreviousStackWA^ < 0 THEN
+					PreviousStackWA^ := 1;
+				END_IF
+				(* Se la postazione è ABILITATA *)			
+				IF WorkArea^[cwa].Enable = 1 THEN
+					(* Se la FTC di presenza è SPENTA *)
+					IF NOT PX_WorkArea[cwa] THEN
+						CASE WorkAreaManager^.State OF
+							WAMANAGER_NOP:;
+							
+						ELSE		(* riferito al case WorkAreaManager^.State *)
+							;
+						END_CASE	(* riferito al case WorkAreaManager^.State *)
+					(* Se la FTC di presenza è ACCESA *)
+					ELSE
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+						(* Genero Errore relativo a Ftocellula oscurata senza la presenza LOGICA*)
+						//Errore.Code 	 := ErrWAM_FTCWA_ON_PrenzaLogicaOFF;
+						//Errore.ExtraCode := cwa;
+					END_IF
+				
+				(* Se la postazione è DISABILITATA *)
+				ELSIF WorkArea^[cwa].Enable < 1 THEN
+					(* Controllo della Ph di presenza pallet, in base a quello gestisco lo stato della piazzola *)
+					IF PX_WorkArea[cwa] THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_DISABLED;
+					ELSE
+						WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_DISABLED;
+					END_IF
+				END_IF
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* Occupied + Working (Gestione LASTRE/FALDE) *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			WORKAREA_STATE_OCCUPIED_WORKING:
+				IF (WorkArea^[cwa].Enable = 1 AND ((Forming^[WorkAreaState^[cwa].F].Enable = 1 AND TIPOLOGIA_FUNZIONAMENTO_MACCHINA <> FUNZIONAMENTO_DEPAL) OR TIPOLOGIA_FUNZIONAMENTO_MACCHINA = FUNZIONAMENTO_PICKING))  OR
+					((WorkArea^[cwa].Enable = 0 OR Forming^[WorkAreaState^[cwa].F].Enable = 0) AND Mission^.State > MISSION_STATE_NOP)THEN //AND
+					//WorkAreaProductionList^[cwa].Stato <> LISTA_PROD_ASSENTE AND WorkAreaProductionList^[cwa].Stato <> LISTA_PROD_ESEGUITA THEN
+					IF WorkAreaState^[cwa].P = 0 THEN
+						WorkAreaState^[cwa].P := 1;
+					END_IF
+					
+					CASE WorkAreaManager^.State OF							
+						WAMANAGER_NOP:							
+							CASE TIPOLOGIA_FUNZIONAMENTO_MACCHINA OF 
+								FUNZIONAMENTO_SLAVE:;
+								
+								FUNZIONAMENTO_PICKING:
+									Debug_SupportoMancanteInDeposito := FALSE;
+									Debug_RullieraInManuale := FALSE;
+									Debug_NessunaListaDaProcessare:=FALSE;
+									
+									(* Forzatura espulsione da HMI *)
+									IF HMI_COMMAND_PAL.HMI_ForzaEspulsioneWA[cwa] THEN
+										WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+										//HMI_COMMAND_PAL.HMI_ForzaEspulsioneWA[cwa] := FALSE;
+										CONTINUE;
+									END_IF	
+									(* Ricavo se una postazione ha una Lista in esecuzione *)
+									PostazioneConListaInEsecuzione := TFWAM_RicavaListaInLavoro(WorkAreaProductionList := WorkAreaProductionList);
+									
+									IF WorkAreaProductionList^[cwa].Stato = LISTA_PROD_DA_ESEGUIRE AND PostazioneConListaInEsecuzione = 0 THEN
+										WorkAreaProductionList^[cwa].Stato := LISTA_PROD_IN_ESECUZIONE;
+										ActualPickingListFromHMI[WorkAreaProductionList^[cwa].NumeroListaAssociata].State := e_StatoWorkOrder.IN_ESECUZIONE;
+									END_IF
+									
+									PostazioneConListaInEsecuzione := TFWAM_RicavaListaInLavoro(WorkAreaProductionList := WorkAreaProductionList);
+																		
+									IF (WorkAreaProductionList^[cwa].Stato = LISTA_PROD_DA_ESEGUIRE AND PostazioneConListaInEsecuzione = 0) OR 
+										(WorkAreaProductionList^[cwa].Stato = LISTA_PROD_IN_ESECUZIONE AND PostazioneConListaInEsecuzione = cwa) THEN
+										FOR ElList := 1 TO MAXELEMENTLIST DO
+											IF WorkAreaProductionList^[cwa].NumeroListaAssociata > 0 AND_THEN 
+												ElList > ActualPickingListFromHMI[WorkAreaProductionList^[cwa].NumeroListaAssociata].SlabNumber THEN
+													WorkAreaProductionList^[cwa].Stato := LISTA_PROD_ESEGUITA;
+													ActualPickingListFromHMI[WorkAreaProductionList^[cwa].NumeroListaAssociata].State := e_StatoWorkOrder.TERMINATO;
+													EXIT;
+											ELSIF WorkAreaProductionList^[cwa].PElementList[ElList].Stato = ELEMENTO_DA_ELABORARE THEN //Se l'elemento è da elaborare
+												IF WorkAreaProductionList^[cwa].PElementList[ElList].WA_DEPOSITO = cwa THEN 	//Se la postazione di deposito è quella che sto considerando,Proseguo con la creazione della missione
+													//IF Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Typology = LASTRA OR  //Controllo x sicurezza che la Formatura della Postazione Chiami una Lastra o 
+													//Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Typology = FALDA THEN //Una Falda
+													
+													CASE WorkArea^[cwa].Typology OF
+															TYPOLOGY_PALLET:	(* Tipologia Postazione Di Lavoro in WorkArea *)
+																	(* Verifico che ci sia il supporto *)
+																	IF PX_WorkArea[cwa] THEN
+																		(* Verifico che il supporto sulla postazione di deposito coincida con il supporto previsto dalla lista di produzione *)
+																		IF WorkAreaProductionList^[cwa].Support.Tipologia = WorkAreaState^[cwa].Supporto.Tipologia AND
+																			(WorkAreaProductionList^[cwa].Support.XDim = WorkAreaState^[cwa].Supporto.XDim) AND
+																			(WorkAreaProductionList^[cwa].Support.YDim = WorkAreaState^[cwa].Supporto.YDim) AND
+																			(WorkAreaProductionList^[cwa].Support.ZDim = WorkAreaState^[cwa].Supporto.ZDim) THEN
+																			CASE WorkAreaProductionList^[cwa].PElementList[ElList].PElement.Typology OF //(*WorkAreaState^[cwa].P*).PElement.Typology OF
+																				LASTRA:
+																						IF PX_WorkArea[WorkAreaProductionList^[cwa].PElementList[ElList].WA_PRELIEVO] THEN
+																							IF WorkAreaState^[WorkAreaProductionList^[cwa].PElementList[ElList].WA_PRELIEVO].P > 1 THEN
+																								WorkAreaManager^.State  := WAMANAGER_CICLO_LASTRA_WA_INIT;	(* Setto lo stato del WAMANAGER *)
+																								WADiDepositoFinale := cwa; //Memorizzo la Postazione FINALE di deposito
+																								Mission^.PPick	:= WorkAreaProductionList^[cwa].PElementList[ElList].WA_PRELIEVO; (* valorizzo il punto di prelievo *)
+																								RestoreCWA^ := TRUE;
+																								PreviousPWA^ := pwa;
+																								EXIT;
+																							ELSE
+																								Errore.Code := ErrWA_NumPezzInPrelErrato;
+																								EXIT;
+																							END_IF
+																						ELSE
+																							Errore.Code := ErrWAM_FTCWA_OFF_PrenzaLogicaON;
+																							EXIT;
+																						END_IF
+																				FALDA:											
+																						WorkAreaManager^.State  := WAMANAGER_CICLO_FALDA_INIT;	(* Setto lo stato del WAMANAGER *)
+																						WADiDepositoFinale := cwa; //Memorizzo la Postazione FINALE di deposito
+																						RestoreCWA^ := TRUE;
+																						PreviousPWA^ := pwa;
+																						EXIT;
+																				TERMINATORE:
+																						WorkAreaProductionList^[cwa].Stato := LISTA_PROD_ESEGUITA;
+																						RestoreCWA^ := TRUE;
+																						PreviousPWA^ := pwa;
+																						EXIT;																
+																				
+																			END_CASE
+																		ELSE
+																			Errore.Code := ErrWA_SupportoInDepositoErrato;//Genero l'errore che mi indica che il supporto in lavoro non coincide col supporto richiesto
+																			WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+																			EXIT;
+																		END_IF
+																	ELSE
+																		WorkAreaManager^.State 	:= WAMANAGER_NOP; // setto lo stato del WAMANAGER
+																		Debug_SupportoMancanteInDeposito := TRUE; 
+																		EXIT;
+																	END_IF
+																
+															TYPOLOGY_OVER_TRANSPORT:   (* Tipologia Di Postazione di prelievo/deposito su trasporti (rulliere o catenaria) *)
+																(* Verifico che la linea sia in automatico *)		
+																IF WorkAreaState^[cwa].TransportState.State = WORKPICKPOINT_STATE_AUTO THEN
+																	(* Verifico che ci sia il supporto *)
+																	IF WorkAreaState^[cwa].TransportState.ProdPresence = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+																		(* Verifico che il supporto sulla postazione di deposito coincida con il supporto previsto dalla lista di produzione *)
+																		IF WorkAreaProductionList^[cwa].Support.Tipologia = WorkAreaState^[cwa].Supporto.Tipologia AND
+																			(WorkAreaProductionList^[cwa].Support.XDim = WorkAreaProductionList^[cwa].Support.XDim) AND
+																			(WorkAreaProductionList^[cwa].Support.YDim = WorkAreaProductionList^[cwa].Support.YDim) AND
+																			(WorkAreaProductionList^[cwa].Support.ZDim = WorkAreaProductionList^[cwa].Support.ZDim) THEN
+																			CASE WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.Typology OF
+																				LASTRA:
+																						WorkAreaManager^.State  := WAMANAGER_CICLO_LASTRA_WA_INIT;	(* Setto lo stato del WAMANAGER *)
+																						WADiDepositoFinale := cwa; //Memorizzo la Postazione FINALE di deposito
+																						RestoreCWA^ := TRUE;
+																						PreviousPWA^ := pwa;
+																						EXIT;
+																				FALDA:											
+																						WorkAreaManager^.State  := WAMANAGER_CICLO_FALDA_INIT;	(* Setto lo stato del WAMANAGER *)
+																						WADiDepositoFinale := cwa; //Memorizzo la Postazione FINALE di deposito
+																						RestoreCWA^ := TRUE;
+																						PreviousPWA^ := pwa;
+																						EXIT;
+																				TERMINATORE:
+																						WorkAreaProductionList^[cwa].Stato := LISTA_PROD_ESEGUITA;
+																						RestoreCWA^ := TRUE;
+																						PreviousPWA^ := pwa;
+																						EXIT;																
+																				
+																			END_CASE
+																		ELSE
+																			Errore.Code := ErrWA_SupportoInDepositoErrato;//Genero l'errore che mi indica che il supporto in lavoro non coincide col supporto richiesto
+																			WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+																			EXIT;
+																		END_IF
+																	ELSE
+																		WorkAreaManager^.State 	:= WAMANAGER_NOP; // setto lo stato del WAMANAGER
+																		Debug_SupportoMancanteInDeposito := TRUE; 
+																		EXIT;
+																	END_IF
+																ELSE
+																	WorkAreaManager^.State 	:= WAMANAGER_NOP; // setto lo stato del WAMANAGER
+																	Debug_RullieraInManuale := TRUE;
+																	EXIT;
+																END_IF
+															
+															TYPOLOGY_BUNDLE:;  (* Tipologia Di Postazione Di deposito = BUNDLE *)
+															TYPOLOGY_ALIGNER:;   (* Tipologia Di Postazione Di PAREGGIATURA *)
+															TYPOLOGY_EXTERNAL_DEPPREL:;(* Tipologia Postazione ESTERNA al perimetro del Pallettizzatore: Utilizzata per deposito o prelievo di Pallet/Casse/Cavalline lavorate o da lavorare *)
+
+													END_CASE
+													
+													//ELSIF Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Typology = TERMINATORE THEN //Se ho depostitato tutti gli elementi e la deposizione è completa, la evacuo	
+													//	WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+													//END_IF
+												ELSE //Se la postazione di deposito NON è quella che sto considerando
+													CONTINUE;														
+												END_IF
+											ELSE
+												CONTINUE;
+											END_IF
+										END_FOR
+									ELSE
+										Debug_NessunaListaDaProcessare:=TRUE;
+									END_IF
+									
+									(* Se nessuna Postazione Ha una lista in esecuzione Vado a cercare una postazione con lista da Eseguire *)
+									(*IF PostazioneConListaInEsecuzione = 0 THEN
+										IF WorkAreaProductionList^.Stato = LISTA_PROD_ASSENTE THEN	
+											CONTINUE;								
+										ELSIF WorkAreaProductionList^.Stato = LISTA_PROD_DA_ESEGUIRE OR WorkAreaProductionList^.Stato = LISTA_PROD_IN_ESECUZIONE THEN
+											CASE WorkAreaProductionList^.PElement[WorkAreaState^[cwa].P].PElement.Typology OF
+												LASTRA:
+														WorkAreaManager^.State  := WAMANAGER_CICLO_LASTRA_WA_INIT;	(* Setto lo stato del WAMANAGER *)
+														WADiDepositoFinale := cwa; //Memorizzo la Postazione FINALE di deposito
+														RestoreCWA^ := TRUE;
+														PreviousPWA^ := pwa;
+														EXIT;
+												FALDA:											
+														WorkAreaManager^.State  := WAMANAGER_CICLO_FALDA_INIT;	(* Setto lo stato del WAMANAGER *)
+														WADiDepositoFinale := cwa; //Memorizzo la Postazione FINALE di deposito
+														RestoreCWA^ := TRUE;
+														PreviousPWA^ := pwa;
+														EXIT;
+											END_CASE
+										END_IF
+									ELSE
+										cwa := PostazioneConListaInEsecuzione;
+										WADiDepositoFinale := cwa; //Memorizzo la Postazione FINALE di deposito
+										IF WorkAreaState^[NumPostazioneDiPareggiatura].P > 1 THEN //Se ho la lastra depositata sulla tavola di pareggiatura, Riprendo dal Punto di pareggiatura
+											IF PX_WorkArea[NumPostazioneDiPareggiatura] THEN //Se ho anche Presenza Fisica della lastra
+												WorkAreaManager^.State  := WAMANAGER_CICLO_PAREGGIATURA_RUN;	(* Setto lo stato del WAMANAGER *)
+												RIESEGUI_PAREGGIATURA := TRUE; //Forzo l'esecuzione della pareggiatura
+											ELSE //Se non ho presenza Fisica della Lastra genero un errore
+												Errore.Code := ErrWAM_FTC_OFF_PresenzaLastraPareggiatore; //Segnalo che la FTC non vede la presenza della lastra
+											END_IF
+										ELSE //Se non la lastra depositata sulla tavola di pareggiatura, Proseguo con la deposizione delle lastre sucessive
+											CASE WorkAreaProductionList^.PElement[WorkAreaState^[cwa].P].PElement.Typology OF
+												LASTRA:
+														WorkAreaManager^.State  := WAMANAGER_CICLO_LASTRA_WA_INIT;	(* Setto lo stato del WAMANAGER *)
+												FALDA:											
+														WorkAreaManager^.State  := WAMANAGER_CICLO_FALDA_INIT;	(* Setto lo stato del WAMANAGER *)
+											END_CASE
+										END_IF
+										RestoreCWA^ := TRUE;
+										PreviousPWA^ := pwa;
+										EXIT;
+									END_IF*)								
+							ELSE	
+								;
+							END_CASE
+	{region "Ciclo falda"}
+						WAMANAGER_CICLO_FALDA_INIT:	
+							FALDA_INIT();						
+															
+						(*************************************************)
+						(* Creo Missione FALDA *)	
+						(*************************************************)
+						WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:	
+							PREL_FALDA_RUN();
+
+						WAMANAGER_CICLO_PRELIEVO_FALDA_END:
+							PREL_FALDA_END();
+							
+							
+						WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:	
+							DEP_FALDA_RUN();
+							
+						WAMANAGER_CICLO_DEPOSITO_FALDA_END:
+							DEP_FALDA_END();
+	{endregion}
+	{region "Ciclo LASTRA DA PICK POINT"}														
+						(*************************************************)
+						(* Creo Missione LASTRA sul Punto di preievo *)	
+						(*************************************************)
+						WAMANAGER_CICLO_LASTRA_PP_INIT:
+							LASTRA_PP_INIT();							
+							
+						WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_RUN:
+							PREL_LASTRA_PP_RUN();
+							
+						WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_END:	
+							PREL_LASTRA_PP_END();
+
+						WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_RUN:
+							DEP_LASTRA_PP_RUN();
+						
+						WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_END:
+							DEP_LASTRA_PP_END();
+	{endregion}	
+	{region "Ciclo LASTRA DA WORKAREA"}
+						(*************************************************)
+						(* Creo Missione LASTRA Con Prelievo da WorkArea *)
+						(*************************************************)
+						WAMANAGER_CICLO_LASTRA_WA_INIT:
+							LASTRA_WA_INIT();
+							RestoreCWA^ := TRUE;
+							PreviousPWA^ := pwa;
+							EXIT;
+							
+						WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_RUN:
+							PREL_LASTRA_WA_RUN();
+							RestoreCWA^ := TRUE;
+							PreviousPWA^ := pwa;
+							EXIT;
+							
+						WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_END:
+							PREL_LASTRA_WA_END();
+							RestoreCWA^ := TRUE;
+							PreviousPWA^ := pwa;
+							EXIT;
+							
+						WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN:	
+							DEP_PAREGGIATORE_RUN();			
+												
+						WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_END:
+							DEP_SU_PAREGGIATORE_END();
+							
+						WAMANAGER_CICLO_PAREGGIATURA_RUN:				
+							CICLO_PAREGGIATURA_RUN();
+	
+						WAMANAGER_CICLO_PAREGGIATURA_END:
+							CICLO_PAREGGIATURA_END();
+							
+						WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN:
+							PREL_DA_PAREGGIATORE_RUN();
+							
+						WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_END:
+							PREL_DA_PAREGGIATORE_END();
+				
+						WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN:		
+							DEP_LASTRA_WA_RUN();
+							
+						WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_END:
+							DEP_LASTRA_WA_END();
+	{endregion}			
+
+{endregion}		
+					ELSE
+						;
+					END_CASE	//riferito al case WorkAreaManager^.State
+				ELSE			// riferito all' IF prima del  case WorkAreaManager^.State
+					RestoreCWA^ := TRUE;
+					PreviousPWA^ := pwa;
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_DISABLED;
+					EXIT;
+				END_IF			// riferito all' IF prima del case WorkAreaManager^.State	
+
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* ******************************************************************************************************** *)
+						(* GESTIONE (Nastratura) o (Veicolo per prelievo/deposito PALLET FINITI/CATASTE/FALDE) *)
+			(* ******************************************************************************************************** *)
+(**********************************************************************************************************************************************************************************)
+(**********************************************************************************************************************************************************************************)
+			(* Occupied + Worked *)
+			WORKAREA_STATE_OCCUPIED_WORKED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF NOT WorkAreaState^[cwa].RefuseLGV THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+						(* Se NON BISOGNA eseguire la NASTRATURA *)		
+						//IF Forming^[WorkAreaState^[cwa].F].Tape = 0 THEN
+						//	WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+						//(* Se BISOGNA eseguire la NASTRATURA *)	
+						//ELSIF Forming^[WorkAreaState^[cwa].F].Tape = 1 THEN
+						///	WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPING;
+						//END_IF
+					ELSIF WorkAreaState^[cwa].RefuseLGV AND WorkAreaState^[cwa].LGV_Req = 1 THEN
+						WorkAreaState^[cwa].LGV_Req := NESSUNA_REQ_LGV;
+						WorkAreaState^[cwa].LGV_GetIn_GetOut := NESSUNA_REQ_LGV;
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED_DISABLED;
+				END_IF
+	
+			(* Occupied + Worked + Disabled *)
+			WORKAREA_STATE_OCCUPIED_WORKED_DISABLED:
+				WorkAreaState^[cwa].LGV_Req := NESSUNA_REQ_LGV;
+				WorkAreaState^[cwa].LGV_GetIn_GetOut := NESSUNA_REQ_LGV;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + Taping *)
+			WORKAREA_STATE_OCCUPIED_TAPING:
+				WorkAreaState^[cwa].LGV_Req := NESSUNA_REQ_LGV;
+				WorkAreaState^[cwa].LGV_GetIn_GetOut := NESSUNA_REQ_LGV;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF WorkAreaState^[cwa].LGV_Req = 0 AND  WorkAreaState^[cwa].LGV_ReqAbort THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+						WorkAreaState^[cwa].LGV_ReqAbort := FALSE;
+					ELSE
+						//IF WorkArea^[cwa].Taped = 1 OR Forming^[WorkAreaState^[cwa].F].Tape = 0 THEN
+						//	WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPED;
+						//END_IF
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPING_DISABLED;
+				END_IF
+	
+			(* Occupied + Taping + Disabled *)
+			WORKAREA_STATE_OCCUPIED_TAPING_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPING;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + Taped *)
+			WORKAREA_STATE_OCCUPIED_TAPED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPED_DISABLED;
+				END_IF
+	
+			(* Occupied + Taped + Disabled *)
+			WORKAREA_STATE_OCCUPIED_TAPED_DISABLED:
+				WorkAreaState^[cwa].LGV_Req := NESSUNA_REQ_LGV;
+				WorkAreaState^[cwa].LGV_GetIn_GetOut := NESSUNA_REQ_LGV;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_TAPED;
+				ELSE
+					;
+				END_IF
+	
+			(* Occupied + Ended *)
+			WORKAREA_STATE_OCCUPIED_ENDED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF WorkAreaState^[cwa].LGV_Req = NESSUNA_REQ_LGV AND  WorkAreaState^[cwa].LGV_ReqAbort THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+						WorkAreaState^[cwa].LGV_ReqAbort := FALSE;
+					ELSIF WorkArea^[cwa].Typology = TYPOLOGY_PALLET	OR WorkArea^[cwa].Typology = TYPOLOGY_STACK AND NOT PX_WorkArea[cwa] THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ;
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED_DISABLED;
+				END_IF
+	
+			(* Occupied + Ended + Disabled *)
+			WORKAREA_STATE_OCCUPIED_ENDED_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_ENDED;
+				ELSE
+					;
+				END_IF
+			(* Occupied + LgvReq *)
+			WORKAREA_STATE_OCCUPIED_LGVREQ:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					//IF Forming^[WorkAreaState^[cwa].F].Tape = 1 AND WorkArea^[cwa].Taped < 1 THEN
+					//	WorkArea^[cwa].LGV_Req := NESSUNA_REQ_LGV;
+					//	WorkArea^[cwa].LGV_GetIn_GetOut := NESSUNA_REQ_LGV;
+					//	WorkArea^[cwa].LGV_ReqAbort := FALSE;
+					//	WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKED;
+					//	EXIT;
+					//END_IF
+					IF WorkAreaState^[cwa].LGV_ReqAbort AND WorkAreaState^[cwa].LGV_Req = NESSUNA_REQ_LGV THEN
+						WorkAreaState^[cwa].LGV_Req 			:= NESSUNA_REQ_LGV;
+						WorkAreaState^[cwa].LGV_GetIn_GetOut 	:= NESSUNA_REQ_LGV;
+					ELSIF (NOT WorkAreaState^[cwa].LGV_ReqAbort AND WorkAreaState^[cwa].LGV_Req = NESSUNA_REQ_LGV) AND WorkArea^[cwa].Typology = TYPOLOGY_PALLET THEN//gestione postazione a terra
+						//IF Forming^[WorkAreaState^[cwa].F].PackXP[WorkAreaState^[cwa].P].Grip = -1 OR
+						//	Forming^[WorkAreaState^[cwa].F].PackXN[WorkAreaState^[cwa].P].Grip = -1 THEN
+							(* Faccio la richiesta all'LGV di Tipo: PRELIEVO *)
+						//	WorkArea^[cwa].LGV_Req := REQ_LGV;
+						//	WorkArea^[cwa].LGV_GetIn_GetOut := REQ_PRELIEVO_LGV;  
+						//ELSE
+						//	WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+						//	EXIT;
+						//END_IF
+						WorkAreaState^[cwa].LGV_Req 			:= NESSUNA_REQ_LGV;
+						WorkAreaState^[cwa].LGV_GetIn_GetOut 	:= NESSUNA_REQ_LGV;  
+					ELSIF (NOT WorkAreaState^[cwa].LGV_ReqAbort AND WorkAreaState^[cwa].LGV_Req = NESSUNA_REQ_LGV) AND WorkArea^[cwa].Typology = TYPOLOGY_BUNDLE THEN//gestione bundle
+						WorkAreaState^[cwa].LGV_Req 			:= NESSUNA_REQ_LGV;
+						WorkAreaState^[cwa].LGV_GetIn_GetOut 	:= NESSUNA_REQ_LGV;
+						WorkAreaState^[cwa].State 				:= WORKAREA_STATE_FREE_WORKING;
+					ELSE
+						WorkAreaState^[cwa].LGV_Req := REQ_LGV;
+						WorkAreaState^[cwa].LGV_GetIn_GetOut := REQ_PRELIEVO_LGV_PIENO;
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED;				
+				END_IF
+	
+			(* Occupied + LgvReq + Disabled *)
+			WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED:
+				WorkAreaState^[cwa].LGV_Req := NESSUNA_REQ_LGV;
+				WorkAreaState^[cwa].LGV_GetIn_GetOut := NESSUNA_REQ_LGV;
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_LGVREQ;
+				ELSE
+					;
+				END_IF
+
+			{Region "GESTIONE LGV non USATE"}	
+			(* Occupied + LgvIn  - NOT USED !!!!!!!!!!!*)
+			WORKAREA_STATE_OCCUPIED_LGVIN:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF	
+			(* Occupied + LgvIn + Disabled  - NOT USED !!!!!!!!!!!*)
+			WORKAREA_STATE_OCCUPIED_LGVIN_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF
+			(* Occupied + LgvEnd  - NOT USED !!!!!!!!!!!*)
+			WORKAREA_STATE_OCCUPIED_LGVEND:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF
+			(* Occupied + LgvIn + Disabled - NOT USED !!!!!!!!!!! *)
+			WORKAREA_STATE_OCCUPIED_LGVEND_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					;
+				ELSE
+					;
+				END_IF
+			{endregion}
+
+
+			(* FREE + LgvReq *)
+			WORKAREA_STATE_FREE_LGVREQ:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					IF WorkAreaState^[cwa].LGV_ReqAbort AND WorkAreaState^[cwa].LGV_Req = NESSUNA_REQ_LGV THEN
+						WorkAreaState^[cwa].LGV_Req := NESSUNA_REQ_LGV;
+						WorkAreaState^[cwa].LGV_GetIn_GetOut := NESSUNA_REQ_LGV;
+					ELSIF (NOT WorkAreaState^[cwa].LGV_ReqAbort AND WorkAreaState^[cwa].LGV_Req = NESSUNA_REQ_LGV) AND WorkArea^[cwa].Typology = TYPOLOGY_PALLET THEN
+						WorkAreaState^[cwa].State := WORKAREA_STATE_OCCUPIED_WORKING;
+
+					ELSE
+						WorkAreaState^[cwa].LGV_Req 			:= REQ_LGV;
+						WorkAreaState^[cwa].LGV_GetIn_GetOut 	:= REQ_DEPOSITO_LGV_VUOTO;
+					END_IF	
+				ELSE
+					WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_LGVREQ_DISABLED;				
+				END_IF
+	
+
+			(* FREE + LgvReq + Disabled *)
+			WORKAREA_STATE_FREE_LGVREQ_DISABLED:
+				IF WorkArea^[cwa].Enable = 1 THEN
+					WorkAreaState^[cwa].State := WORKAREA_STATE_FREE_LGVREQ;
+				ELSE
+					WorkAreaState^[cwa].LGV_Req 			:= NESSUNA_REQ_LGV;
+					WorkAreaState^[cwa].LGV_GetIn_GetOut 	:= NESSUNA_REQ_LGV;
+				END_IF
+
+			(* Error *)
+			WORKAREA_STATE_ERROR:
+				;
+	
+		ELSE		//riferito al WorkAreaState^[cwa].State								
+			(* Stato Errato. viene Forzato lo stato di errore. Non dovrebbe MAI accadere *)
+			WorkAreaState^[cwa].State := WORKAREA_STATE_ERROR;
+				
+		END_CASE;  //riferito al WorkAreaState^[cwa].State
+	
+	END_FOR			// riferito a FOR pwa:=1 TO MAXAREA DO
+
+END_IF 				// riferito a IF WaitPositionRequest > 0 AND
+
+//TFPalletizerWorkAreaManagerTF := TRUE;]]></ST>
+    </Implementation>
+    <Folder Name="FALDA" Id="{ae00f510-4b52-40ac-b057-b96211686c69}" />
+    <Folder Name="LASTRA" Id="{243b257f-fd69-499e-8317-24f5934ef8fe}">
+      <Folder Name="Pareggiatore" Id="{d964441b-bb28-4fba-b1f2-33523b9e15a1}" />
+      <Folder Name="PickPoint" Id="{ba29b62a-01f3-48a1-8aa2-964bb0a791d6}" />
+      <Folder Name="WorkArea" Id="{2ef04b7d-b074-4c1d-945d-cab697d34ea3}" />
+    </Folder>
+    <Folder Name="PAREGGIATORE" Id="{901eb3b9-3249-43d7-a039-22fc0b813877}" />
+    <Folder Name="RIPOSO" Id="{e0368fa6-8cdf-4171-80ea-8a3358a01de2}" />
+    <Action Name="CICLO_PAREGGIATURA_END" Id="{ea110164-1c85-4d1c-bd0c-a01ccaa803d8}" FolderPath="PAREGGIATORE\">
+      <Implementation>
+        <ST><![CDATA[WorkAreaProductionList^[cwa].PElementList[ElList].Pareggiatura := PAREGGIATURA_ESEGUITA;
+WorkAreaManager^.State := WAMANAGER_NOP;
+RestoreCWA^ := TRUE;
+PreviousPWA^ := pwa;
+RETURN;//EXIT;
+
+(* Mission^.PPlace	:= WADiDepositoFinale; (* valorizzo il punto di deposito *)
+Mission^.PPick	:= INT_TO_UINT(NumPostazioneDiPareggiatura); (* valorizzo il punto di prelievo *)
+
+NLastraDaPrelevare := WorkAreaState^[Mission^.PPick].P-1;
+(* Il Valore di P indica il pacco da depositare, quindi se P-1 = TERMINATORE devo prelevare P-2 *)
+IF Forming^[WorkAreaState^[Mission^.PPick].F].PElement[WorkAreaState^[Mission^.PPick].P].Typology = TERMINATORE THEN
+	NLastraDaPrelevare := WorkAreaState^[Mission^.PPick].P-2;  							
+END_IF
+
+Mission^.TPick 	:= TPICK_LASTRA;	// Assegno il tipo di Prelievo
+Mission^.XDim 	:= WorkAreaProductionList^[cwa].PElement[WorkAreaState^[cwa].P].PElement.XDim; 	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+Mission^.YDim 	:= WorkAreaProductionList^[cwa].PElement[WorkAreaState^[cwa].P].PElement.YDim; 	// Assegno la dimensione Y del pacco presente nel punto di prelievo designato
+Mission^.ZDim 	:= WorkAreaProductionList^[cwa].PElement[WorkAreaState^[cwa].P].PElement.ZDim; 	// Assegno la dimensione Z del pacco presente nel punto di prelievo designato
+
+
+
+(* Assegnazione quote alla Missione *)
+TFWAM_CreaMissione_PrelLastraDaWA(NPosInLavoro				:= Mission^.PPick, //Numero Postazione di depositio
+									Angolo_Deposito 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].J, //Angolo di deposito dell'elemento
+									PosizioneAttuale_X      := ModuleAX_X^.Ax^.Status.ActPosition, //Posizione attuale asse X
+									TipologiaTraiettoria    := Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].Trajectory,
+									
+									Quota_PostX				:= WorkArea^[Mission^.PPick].X, //Quota X Postazione
+									Quota_PostY				:= WorkArea^[Mission^.PPick].Y, //Quota Y Postazione
+									Quota_PostZ				:= WorkArea^[Mission^.PPick].Z, //Quota Z Postazione
+									Quota_PostJ				:= WorkArea^[Mission^.PPick].J, //Quota J Postazione
+									
+									Offset_Postazione_X 	:= WorkAreaOffset^[Mission^.PPick].X, //Offset X Postazione
+									Offset_Postazione_Y 	:= WorkAreaOffset^[Mission^.PPick].Y, //Offset Y Postazione
+									Offset_Postazione_Z 	:= WorkAreaOffset^[Mission^.PPick].Z, //Offset Z Postazione
+									Offset_Postazione_J 	:= WorkAreaOffset^[Mission^.PPick].J, //Offset J Postazione
+									
+									Pallet_DimX				:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.XDim, //Dimensione X Pallet
+									Pallet_DimY				:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.YDim, //Dimensione Y Pallet
+									Pallet_DimZ				:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.ZDim, //Dimensione Z Pallet
+									
+									Offset_Pallet_X_0		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_X0, //Offset X Pallet o Casse
+									Offset_Pallet_Y_0		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_Y0, //Offset Y Pallet o Casse 
+									Offset_Pallet_Z_0		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_Z0, //Offset Z Pallet o Casse + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_0		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_J0, //Offset J Pallet o Casse + è grande + la lastra sarà inclinata verso l'angolo crescente
+									
+									Offset_Pallet_X_90		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_X90, //Offset X Pallet lato 0-90 
+									Offset_Pallet_Y_90		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_Y90, //Offset Y Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_90		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_Z90, //Offset Z Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_90		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_J90, //Offset J Pallet lato 0-90 + è grande + la lastra sarà inclinata in fase di deposito
+									
+									Offset_Pallet_X_180		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_X180, //Offset X Pallet lato 90-180
+									Offset_Pallet_Y_180		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_Y180, //Offset Y Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_180		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_Z180, //Offset Z Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_180		:= Forming^[WorkAreaState^[Mission^.PPick].F].Pallet.OFSDE_J180, //Offset J Pallet lato 90-180 + è grande + la lastra sarà inclinata in fase di deposito
+									
+									Quota_FormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].X, //Quota Deposito X da Formatura
+									Quota_FormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].Y, //Quota Deposito Y da Formatura
+									Quota_FormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].Z, //Quota Deposito Z da Formatura
+									Quota_FormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].J, //Quota Deposito Z da Formatura
+									
+									Distanza_ApproccioFormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].AX, //Quota Deposito X da Formatura
+									Distanza_ApproccioFormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].AY, //Quota Deposito Y da Formatura
+									Distanza_ApproccioFormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].AZ, //Quota Deposito Z da Formatura
+									Distanza_ApproccioFormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPick].F].PElement[NLastraDaPrelevare].AJ, //Quota Deposito Z da Formatura
+									
+									Quota_DestX 			=> Mission^.XPick, //Quota DESTINAZIONE X
+									Quota_DestY 			=> Mission^.YPick, //Quota DESTINAZIONE Y
+									Quota_DestZ 			=> Mission^.ZPick, //Quota DESTINAZIONE Z
+									Quota_DestJ 			=> Mission^.JPick, //Quota DESTINAZIONE J	
+									
+									Quota_ApproccioDestX 	=> Mission^.XPickApproach, //Quota APPROCCIO di DESTINAZIONE X
+									Quota_ApproccioDestY 	=> Mission^.YPickApproach, //Quota APPROCCIO di DESTINAZIONE Y
+									Quota_ApproccioDestZ 	=> Mission^.ZPickApproach, //Quota APPROCCIO di DESTINAZIONE Z
+									Quota_ApproccioDestJ 	=> Mission^.JPickApproach);//Quota APPROCCIO di DESTINAZIONE J	
+
+IF TFWAM_CreaMissione_PrelLastraDaWA.Errore.Code > 0 THEN
+		Errore.Code := TFWAM_CreaMissione_PrelLastraDaWA.Errore;
+		WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+		EXIT;
+END_IF
+	
+(* Valorizzazione quote di deposito Ciclo Lastra *)
+TFWAM_CreaMissione_DepLastraDaWA(NPosInLavoro			:= Mission^.PPlace, //Numero Postazione di depositio
+									Angolo_Deposito 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Angolo di deposito dell'elemento
+									PosizioneAttuale_X      := ModuleAX_X^.Ax^.Status.ActPosition, //Posizione attuale asse X
+									TipologiaTraiettoria    := Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Trajectory,
+										
+									Quota_PostX				:= WorkArea^[Mission^.PPlace].X, //Quota X Postazione
+									Quota_PostY				:= WorkArea^[Mission^.PPlace].Y, //Quota Y Postazione
+									Quota_PostZ				:= WorkArea^[Mission^.PPlace].Z, //Quota Z Postazione
+									Quota_PostJ				:= WorkArea^[Mission^.PPlace].J, //Quota J Postazione
+									
+									Offset_Postazione_X 	:= WorkAreaOffset^[Mission^.PPlace].X, //Offset X Postazione
+									Offset_Postazione_Y 	:= WorkAreaOffset^[Mission^.PPlace].Y, //Offset Y Postazione
+									Offset_Postazione_Z 	:= WorkAreaOffset^[Mission^.PPlace].Z, //Offset Z Postazione
+									Offset_Postazione_J 	:= WorkAreaOffset^[Mission^.PPlace].J, //Offset J Postazione
+									
+									Pallet_DimX				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.XDim, //Dimensione X Pallet
+									Pallet_DimY				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.YDim, //Dimensione Y Pallet
+									Pallet_DimZ				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.ZDim, //Dimensione Z Pallet
+									
+									Offset_Pallet_X_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X0, //Offset X Pallet o Casse
+									Offset_Pallet_Y_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y0, //Offset Y Pallet o Casse 
+									Offset_Pallet_Z_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z0, //Offset Z Pallet o Casse + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J0, //Offset J Pallet o Casse + è grande + la lastra sarà inclinata verso l'angolo crescente
+									
+									Offset_Pallet_X_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X90, //Offset X Pallet lato 0-90 
+									Offset_Pallet_Y_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y90, //Offset Y Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z90, //Offset Z Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J90, //Offset J Pallet lato 0-90 + è grande + la lastra sarà inclinata in fase di deposito
+									
+									Offset_Pallet_X_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X180, //Offset X Pallet lato 90-180
+									Offset_Pallet_Y_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y180, //Offset Y Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z180, //Offset Z Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J180, //Offset J Pallet lato 90-180 + è grande + la lastra sarà inclinata in fase di deposito
+									
+									Quota_FormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].X, //Quota Deposito X da Formatura
+									Quota_FormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Y, //Quota Deposito Y da Formatura
+									Quota_FormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Z, //Quota Deposito Z da Formatura
+									Quota_FormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Quota Deposito Z da Formatura
+									
+									Distanza_ApproccioFormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AX, //Quota Deposito X da Formatura
+									Distanza_ApproccioFormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AY, //Quota Deposito Y da Formatura
+									Distanza_ApproccioFormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AZ, //Quota Deposito Z da Formatura
+									Distanza_ApproccioFormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AJ, //Quota Deposito Z da Formatura
+									
+									Quota_DestX 			=> Mission^.XPlace, //Quota DESTINAZIONE X
+									Quota_DestY 			=> Mission^.YPlace, //Quota DESTINAZIONE Y
+									Quota_DestZ 			=> Mission^.ZPlace, //Quota DESTINAZIONE Z
+									Quota_DestJ 			=> Mission^.JPlace, //Quota DESTINAZIONE J	
+									
+									Quota_ApproccioDestX 	=> Mission^.XPlaceApproach, //Quota APPROCCIO di DESTINAZIONE X
+									Quota_ApproccioDestY 	=> Mission^.YPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Y
+									Quota_ApproccioDestZ 	=> Mission^.ZPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Z
+									Quota_ApproccioDestJ 	=> Mission^.JPlaceApproach);//Quota APPROCCIO di DESTINAZIONE J	
+
+IF TFWAM_CreaMissione_PrelLastraDaWA.Errore.Code > 0 THEN
+		Errore.Code := TFWAM_CreaMissione_PrelLastraDaWA.Errore;
+		EXIT;
+ELSE
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN;	// setto lo stato del WAMANAGER
+	RestoreCWA^ := TRUE;
+	PreviousPWA^ := pwa;
+	EXIT;
+END_IF*)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CICLO_PAREGGIATURA_RUN" Id="{48209740-0a10-4b1c-b0a8-4cc33eab97f2}" FolderPath="PAREGGIATORE\">
+      <Implementation>
+        <ST><![CDATA[IF Mission^.State = MISSION_STATE_PAREGGIATURA_RUN THEN
+	;
+ELSIF Mission^.State = MISSION_STATE_PAREGGIATURA_END OR WorkAreaProductionList^[cwa].PElementList[ElList].Pareggiatura = PAREGGIATURA_DA_ESEGUIRE THEN
+	;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_FALDA_END" Id="{d3a53a5f-9ff5-4df9-9ae3-4dc6654a3c65}" FolderPath="FALDA\">
+      <Implementation>
+        <ST><![CDATA[(* Aggiorno la struttura lastre della postazione *)
+WorkAreaState^[Mission^.PPlace].Slab[WorkAreaState^[Mission^.PPlace].P]  := Mission^.Slab;
+(* Incremento WorkArea^[cwa].P (P=P+1) *)
+WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1;
+WorkAreaProductionList^[Mission^.PPlace].PElementList[ElList].Stato := ELEMENTO_ELABORATO; //Dichiaro che l'elemnto della lista è stato elaborato
+WorkAreaManager^.State := WAMANAGER_NOP;
+RestoreCWA^ := TRUE;
+PreviousPWA^ := pwa;
+RETURN;//EXIT;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_FALDA_RUN" Id="{f903c77b-e098-43cf-8c7d-5c88a0586800}" FolderPath="FALDA\">
+      <Implementation>
+        <ST><![CDATA[IF Mission^.State = MISSION_STATE_DEPOSITO_FALDA_RUN THEN
+	;
+ELSIF Mission^.State = MISSION_STATE_DEPOSITO_FALDA_END THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_FALDA_END;	// setto lo stato del WAMANAGER
+	RETURN;//EXIT;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_LASTRA_PP_END" Id="{692279df-5b0f-48e2-8e6f-abdf1b00835b}" FolderPath="LASTRA\PickPoint\">
+      <Implementation>
+        <ST><![CDATA[(* Se era settata la velocità lenta di deposito pacco, questa viene resettata *)
+IF WorkAreaState^[Mission^.PPlace].Slow = 1 THEN
+	WorkAreaState^[Mission^.PPlace].Slow := 0;
+	DepositoPaccoInLenta := FALSE;
+END_IF
+(* Aggiorno la struttura lastre della postazione *)
+WorkAreaState^[Mission^.PPlace].Slab[WorkAreaState^[Mission^.PPlace].P]  := Mission^.Slab;
+(* Incremento WorkArea^[cwa].P (P=P+1) *)
+WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1;
+
+//IF HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio THEN
+	(* Imposto lo stato dell' apprendimento *)
+	CASE LatoDeposito OF			
+		(*0:
+			IF WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.Stato <> APPRENDIMENTO_ESEGUITO THEN
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.Stato := APPRENDIMENTO_ESEGUITO;
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+			ELSE
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+			END_IF*)
+		90:
+			IF WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato 				:= APPRENDIMENTO_ESEGUITO;
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaRilevata 		:= ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+				WorkAreaState^[Mission^.PPlace].Supporto.HMAX 	:=  MAX(WorkAreaState^[Mission^.PPlace].Supporto.HMAX,ModuleAX_Z^.QuotaAsseLetturaTasteggio);
+				WorkAreaState^[Mission^.PPlace].H 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+				WorkAreaState^[Mission^.PPlace].HPL 			:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;	 
+
+			ELSE
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato 				:= 	APPRENDIMENTO_ESEGUITO;
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaRilevata 		:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+				WorkAreaState^[Mission^.PPlace].Supporto.HMAX 	:=  MAX(WorkAreaState^[Mission^.PPlace].Supporto.HMAX,ModuleAX_Z^.QuotaAsseLetturaTasteggio);
+				WorkAreaState^[Mission^.PPlace].H 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+				WorkAreaState^[Mission^.PPlace].HPL 			:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;	 
+
+			END_IF
+		(*180:
+			IF WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.Stato <> APPRENDIMENTO_ESEGUITO THEN
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.Stato := APPRENDIMENTO_ESEGUITO;
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+			ELSE
+				WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+			END_IF*)
+	END_CASE
+//END_IF
+(* Controllo se la Pallettizzazione è TERMINATA *)
+IF Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Typology = TERMINATORE THEN
+	WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+	RestoreCWA^ := TRUE;
+	PreviousPWA^ := Mission^.PPlace;
+	RETURN;//EXIT;
+ELSE
+	WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+	RestoreCWA^ := TRUE;
+	PreviousPWA^ := Mission^.PPlace;
+	RETURN;//EXIT;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_LASTRA_PP_RUN" Id="{30acaa4c-a2ed-4beb-ae76-26b76d953a2a}" FolderPath="LASTRA\PickPoint\">
+      <Implementation>
+        <ST><![CDATA[
+IF Mission^.State = MISSION_STATE_DEPOSITO_LASTRA_PP_RUN THEN
+	;
+ELSIF Mission^.State = MISSION_STATE_DEPOSITO_LASTRA_PP_END THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_END;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_LASTRA_WA_END" Id="{587a21ea-99be-424c-bf07-0061766337df}" FolderPath="LASTRA\WorkArea\">
+      <Implementation>
+        <ST><![CDATA[
+(* Se era settata la velocità lenta di deposito pacco, questa viene resettata *)
+IF WorkAreaState^[Mission^.PPlace].Slow = 1 THEN
+	WorkAreaState^[Mission^.PPlace].Slow := 0;
+	DepositoPaccoInLenta := FALSE;
+END_IF
+
+(* Controllo se la Pallettizzazione è TERMINATA *)
+IF Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Typology = TERMINATORE THEN
+	WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+	WorkAreaProductionList^[Mission^.PPlace].PElementList[ElList].Stato := ELEMENTO_ELABORATO; //Dichiaro che l'elemento della lista è stato elaborato
+ELSE
+	WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+	WorkAreaProductionList^[Mission^.PPlace].PElementList[ElList].Stato := ELEMENTO_ELABORATO; //Dichiaro che l'elemento della lista è stato elaborato
+END_IF
+
+(* Aggiorno la struttura lastre della postazione *)
+WorkAreaState^[Mission^.PPlace].Slab[WorkAreaState^[Mission^.PPlace].P] := Mission^.Slab;
+(* Incremento WorkArea^[cwa].P (P=P+1) *)
+WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1;
+
+(* Imposto lo stato dell' apprendimento *)
+CASE LatoDeposito OF			
+	(*0:
+		IF WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.Stato <> APPRENDIMENTO_ESEGUITO THEN
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.Stato := APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		ELSE
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato0.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		END_IF*)
+	90:
+		IF WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato 				:= APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaRilevata 		:= ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPlace].Supporto.HMAX 	:=  MAX(WorkAreaState^[Mission^.PPlace].Supporto.HMAX,ModuleAX_Z^.QuotaAsseLetturaTasteggio);
+			WorkAreaState^[Mission^.PPlace].H 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPlace].HPL 			:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;	 
+
+		ELSE
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato 				:= 	APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaRilevata 		:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPlace].Supporto.HMAX 	:=  MAX(WorkAreaState^[Mission^.PPlace].Supporto.HMAX,ModuleAX_Z^.QuotaAsseLetturaTasteggio);
+			WorkAreaState^[Mission^.PPlace].H 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPlace].HPL 			:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;	 
+
+		END_IF
+	(*180:
+		IF WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.Stato <> APPRENDIMENTO_ESEGUITO THEN
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.Stato := APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		ELSE
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Y.Lato180.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		END_IF*)
+END_CASE
+
+
+//RestoreCWA^ := TRUE;
+//PreviousPWA^ := pwa;
+WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_LASTRA_WA_RUN" Id="{df76aedf-577c-4d47-bed3-bf49ba2e3d75}" FolderPath="LASTRA\WorkArea\">
+      <Implementation>
+        <ST><![CDATA[		
+IF Mission^.State = MISSION_STATE_DEPOSITO_LASTRA_WA_RUN THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN;
+ELSIF Mission^.State = MISSION_STATE_DEPOSITO_LASTRA_WA_END THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_END;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF	]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_PAREGGIATORE_RUN" Id="{067c5f0a-10d6-4320-9740-23482174cf77}" FolderPath="LASTRA\Pareggiatore\">
+      <Implementation>
+        <ST><![CDATA[IF Mission^.State = MISSION_STATE_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN THEN
+	;
+ELSIF Mission^.State = MISSION_STATE_DEPOSITO_LASTRA_SU_PAREGGIATORE_END THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_END;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF	]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_SU_PAREGGIATORE_END" Id="{1c09f636-e5de-4f0e-bbac-d10d3262ffec}" FolderPath="LASTRA\Pareggiatore\">
+      <Implementation>
+        <ST><![CDATA[(* Se era settata la velocità lenta di deposito pacco, questa viene resettata *)
+IF WorkAreaState^[Mission^.PPlace].Slow = 1 THEN
+	WorkAreaState^[Mission^.PPlace].Slow := 0;
+	DepositoPaccoInLenta := FALSE;
+END_IF
+(* Aggiorno la struttura lastre della postazione *)
+WorkAreaState^[Mission^.PPlace].Slab[WorkAreaState^[Mission^.PPlace].P]  := Mission^.Slab;
+(* Incremento WorkArea^[cwa].P (P=P+1) *)
+WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1;
+
+WorkAreaManager^.State 	:= WAMANAGER_CICLO_PAREGGIATURA_RUN;	// setto lo stato del WAMANAGER
+RestoreCWA^ := TRUE;
+PreviousPWA^ := pwa;
+RETURN;//EXIT;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="DEP_SU_PAREGGIATORE_RUN" Id="{721797e8-74d3-45b0-b6d4-6a337ea45850}" FolderPath="LASTRA\Pareggiatore\">
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="FALDA_INIT" Id="{5762d4e9-6314-4eb3-b497-1fb6ed1926c5}" FolderPath="FALDA\">
+      <Implementation>
+        <ST><![CDATA[(* Nel caso si esca esca dal ciclo continuo a valutare la postazione in esame *)
+RestoreCWA^ := TRUE;
+PreviousPWA^ := pwa;
+		
+(* Creo Missione Falda *)
+Mission^.PPick			:= ppick; 				(* valorizzo il punto di prelievo = workarea dove ho valutato la presenza delle falde *)
+Mission^.PPlace			:= cwa;					(* valorizzo il punto di deposito = workarea dove ho valutato di depositare la falda *)						
+IF TIPO_MAGAZZINO_FALDE = MAGAZZINO_FALDE_IN_PP THEN 		(* Se il magazzino delle falde è PickPoint *)
+	IF WorkPickPoint^[Mission^.PPick].Tipologia = MAGAZZINO_FALDE THEN
+		
+		CASE WorkPickPointState^[Mission^.PPick].Element.TypologyCode OF //Layer^[WorkPickPointStoreState^[Mission^.PPick].Code].Tipologia OF
+			FALDA_CARTONE :
+				Mission^.TPick 		:= TPICK_LAY_VENTOSE;			(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+			FALDA_POLISTIROLO :
+				IF Forming^[WorkAreaState^[Mission^.PPlace].F].AuxAttr.1 = 1 THEN
+					Mission^.TPick	:= TPICK_LAY_ARPIONI;			(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+				ELSE
+					Mission^.TPick	:= TPICK_LAY_VENTOSE;			(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+				END_IF
+		ELSE
+			Mission^.TPick 	:= TPICK_NOT_DEFINED;					(* valorizzo la tipologia di prelievo = tipo prelievo falda	*)
+			Errore.Code 	:= ErrWAM_TipologiaFaldaNONRiconosciuta;(* E' stata impostata una tipologia di falda non prevista per l'impianto *)
+			RETURN;//EXIT;
+		END_CASE
+	ELSE
+		Errore.Code := ErrWAM_PickPoint_NoMagazzinoFalde;(*Errore, Il Pick Point, non è di tipo Magazzino Falde *)
+		RETURN;//EXIT;
+	END_IF
+	Mission^.XPick			:= WorkPickPoint^[Mission^.PPick].X + (Layer^[WorkPickPointState^[WorkPickPoint^[Mission^.PPick].ID].Code].XDim/2); (* valorizzo la quota X di prelievo *)
+	Mission^.YPick			:= WorkPickPoint^[Mission^.PPick].Y + (Layer^[WorkPickPointState^[WorkPickPoint^[Mission^.PPick].ID].Code].YDim/2); (* valorizzo la quota Y di prelievo *)
+	Mission^.ZPick			:= WorkPickPoint^[Mission^.PPick].Z; (* in questo modo LA LENTA va sempre fino a zero...mi fermo al raggiungimento dell'intervento dei tastatori *)
+	Mission^.JPick			:= WorkPickPoint^[Mission^.PPick].J;
+ELSIF TIPO_MAGAZZINO_FALDE = MAGAZZINO_FALDE_IN_WA THEN 	(* Se il magazzino delle falde è una WorkArea *)
+	(*IF WorkArea^[Mission^.PPick].Typology = TYPOLOGY_LAYER THEN
+		CASE WorkAreaState^[Mission^.PPick].Typology_Description OF
+			FALDA_CARTONE :
+				Mission^.TPick 			:= TPICK_LAY_VENTOSE;			(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+			FALDA_POLISTIROLO :
+				IF Forming^[WorkAreaState^[Mission^.PPlace].F].AuxAttr.1 = 1 THEN
+					Mission^.TPick 		:= TPICK_LAY_ARPIONI;		(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+				ELSE
+					Mission^.TPick 		:= TPICK_LAY_VENTOSE;		(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+				END_IF
+		ELSE
+			Mission^.TPick 				:= TPICK_NOT_DEFINED;			(* valorizzo la tipologia di prelievo = tipo prelievo falda	*)
+			Errore.Code := ErrWAM_TipologiaFaldaNONRiconosciuta; 	(* E' stata impostata una tipologia di falda non prevista per l'impianto *)
+			EXIT;
+		END_CASE
+	ELSE
+		Errore.Code := ErrWAM_WorkArea_NoMagazzinoFalde; (* Errore, la WorkArea non è di tipo Magazzino Falde *)
+		EXIT;
+	END_IF*)
+	
+	IF Forming^[WorkAreaState^[Mission^.PPlace].F].AuxAttr.1 = 1 THEN
+		Mission^.TPick 		:= TPICK_LAY_ARPIONI;		(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+	ELSE
+		Mission^.TPick 		:= TPICK_LAY_VENTOSE;		(* valorizzo la tipologia di prelievo = tipo prelievo falda *)
+	END_IF
+	
+	Mission^.XPick			:= WorkArea^[Mission^.PPick].X;// + (Layer^[WorkArea^[Mission^.PPick].Layer].X / 2); (* valorizzo la quota X di prelievo  *)
+	Mission^.YPick			:= WorkArea^[Mission^.PPick].Y + (Layer^[WorkPickPointState^[Mission^.PPick].Code].YDim / 2); (* valorizzo la quota Y di prelievo *)
+	Mission^.ZPick			:= WorkArea^[Mission^.PPick].Z; (* in questo modo LA LENTA va sempre fino a zero...mi fermo al raggiungimento dell'intervento dei tastatori *)
+ELSE
+	Errore.Code := ErrWAM_TipologiaMagazzinoFaldaNONRiconosciuta; (*Errore, Nell'impianto è stata impostata una tipologia di magazzino falde non prevista!!!*)
+	RETURN;//EXIT;
+END_IF
+//IF WorkAreaState^[cwa].P = 0 THEN (* Se devo depositare la falda su una CASSA/CAVALLETTO *)
+//(*******************************************************************************************************************************)	
+//(********************************************* DEPOSITO FALDA SU CASSA/CAVALLETTO **********************************************)
+//(*******************************************************************************************************************************)
+TFWAM_CreaMissione_DepFaldaSuPallet(NPosInLavoro			:= Mission^.PPlace, //Numero Postazione di depositio
+									Angolo_Destinazione 	:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Angolo di deposito dell'elemento
+									PosizioneAttuale_X      := ModuleAX_X^.Ax^.Status.ActPosition, //Posizione attuale asse X
+									TipologiaTraiettoria    := Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Trajectory,
+									
+									Quota_PostX				:= WorkArea^[Mission^.PPlace].X, //Quota X Postazione
+									Quota_PostY				:= WorkArea^[Mission^.PPlace].Y, //Quota Y Postazione
+									Quota_PostZ				:= WorkArea^[Mission^.PPlace].Z, //Quota Z Postazione
+									Quota_PostJ				:= WorkArea^[Mission^.PPlace].Rx, //Quota J Postazione
+									
+									Offset_Postazione_X 	:= WorkAreaOffset^[Mission^.PPlace].X, //Offset X Postazione
+									Offset_Postazione_Y 	:= WorkAreaOffset^[Mission^.PPlace].Y, //Offset Y Postazione
+									Offset_Postazione_Z 	:= WorkAreaOffset^[Mission^.PPlace].Z, //Offset Z Postazione
+									Offset_Postazione_J 	:= WorkAreaOffset^[Mission^.PPlace].Rx, //Offset J Postazione
+									
+									Pallet_DimX				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.XDim, //Dimensione X Pallet
+									Pallet_DimY				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.YDim, //Dimensione Y Pallet
+									Pallet_DimZ				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.ZDim, //Dimensione Z Pallet
+									
+									Offset_Pallet_X_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X0, //Offset X Pallet o Casse
+									Offset_Pallet_Y_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y0, //Offset Y Pallet o Casse 
+									Offset_Pallet_Z_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z0, //Offset Z Pallet o Casse + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J0, //Offset J Pallet o Casse + è grande + la lastra sarà inclinata verso l'angolo crescente
+									
+									Offset_Pallet_X_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X90, //Offset X Pallet lato 0-90 
+									Offset_Pallet_Y_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y90, //Offset Y Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z90, //Offset Z Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J90, //Offset J Pallet lato 0-90 + è grande + la lastra sarà inclinata in fase di deposito
+									
+									Offset_Pallet_X_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X180, //Offset X Pallet lato 90-180
+									Offset_Pallet_Y_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y180, //Offset Y Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z180, //Offset Z Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J180, //Offset J Pallet lato 90-180 + è grande + la lastra sarà inclinata in fase di deposito
+									
+									Quota_FormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].X, //Quota Deposito X da Formatura
+									Quota_FormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Y, //Quota Deposito Y da Formatura
+									Quota_FormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Z, //Quota Deposito Z da Formatura
+									Quota_FormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Quota Deposito Z da Formatura
+									
+									Distanza_ApproccioFormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AX, //Distanza Deposito X da Formatura
+									Distanza_ApproccioFormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AY, //Distanza Deposito Y da Formatura
+									Distanza_ApproccioFormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AZ, //Distanza Deposito Z da Formatura
+									Distanza_ApproccioFormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AJ, //Distanza Deposito Z da Formatura
+									
+									Quota_DestX 			=> Mission^.XPlace, //Quota DESTINAZIONE X
+									Quota_DestY 			=> Mission^.YPlace, //Quota DESTINAZIONE Y
+									Quota_DestZ 			=> Mission^.ZPlace, //Quota DESTINAZIONE Z
+									Quota_DestJ 			=> Mission^.JPlace, //Quota DESTINAZIONE J	
+									
+									Quota_ApproccioDestX 	=> Mission^.XPlaceApproach, //Quota APPROCCIO di DESTINAZIONE X
+									Quota_ApproccioDestY 	=> Mission^.YPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Y
+									Quota_ApproccioDestZ 	=> Mission^.ZPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Z
+									Quota_ApproccioDestJ 	=> Mission^.JPlaceApproach);//Quota APPROCCIO di DESTINAZIONE J	
+	IF TFWAM_CreaMissione_DepFaldaSuPallet.Errore.Code > 0 THEN
+		Errore := TFWAM_CreaMissione_DepFaldaSuPallet.Errore;
+		RETURN;//EXIT;
+	END_IF
+	CASE Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.Tipologia OF
+		CAVALLETTO :
+			IF Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J > 90 THEN (* Se devo depositare la falda su CAVALLETTO lato 180°*)	
+				Mission^.XDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].XDim ;
+				Mission^.YDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].YDim;
+				Mission^.ZDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].ZDim;
+			ELSIF Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J < 90 THEN (* Se devo depositare la falda su CAVALLETTO lato 0°*)		
+				Mission^.XDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].XDim ;
+				Mission^.YDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].YDim;
+				Mission^.ZDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].ZDim;
+			END_IF
+			WorkAreaManager^.State := WAMANAGER_CICLO_PRELIEVO_FALDA_RUN;	(* Set Stato del WorkAreaManager *)
+			RestoreCWA^ := TRUE;
+			PreviousPWA^ := pwa;
+			RETURN;//EXIT;
+		CASSA_STANDARD :
+			Mission^.XDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].XDim ;
+			Mission^.YDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].YDim;
+			Mission^.ZDim			:= Layer^[Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[Mission^.PPlace].P].TypologyCode].ZDim;
+			WorkAreaManager^.State := WAMANAGER_CICLO_PRELIEVO_FALDA_RUN;	(* Set Stato del WorkAreaManager *)
+			RestoreCWA^ := TRUE;
+			PreviousPWA^ := pwa;
+			RETURN;//EXIT;
+	ELSE
+		Errore.Code := ErrWAM_TipologiaPalletNONRiconosciuta; 		(* Genero un errore che mi indica che la tipologia di "Pallet/Cassa/Cavallina" non è riconosciuto *)
+		RETURN;//EXIT;		
+	END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="LASTRA_PP_INIT" Id="{8c3ab7d6-65f9-452d-a9ea-353a875d31e9}" FolderPath="LASTRA\PickPoint\">
+      <Implementation>
+        <ST><![CDATA[(* Reset della memoria utilizzata per forzare il ciclo di riposo in ciclo di prelievo pacco *)
+ForzaPrelievoPaccoDuranteCicloDiRiposo := FALSE;			
+(* Definisco che la WORKAREA è positiva -> Default per lastre! *)
+Mission^.PPick 	:= ppick;								   			// Assegno il numero del Punto di prelievo
+Mission^.TPick 	:= TPICK_LASTRA;									// Assegno il tipo di Prelievo
+Mission^.PPlace := cwa;									   			// Assegno il numero della piazzola di deposito
+Mission^.XDim 	:= WorkPickPointState^[Mission^.PPick].Element.XDim ; 	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+Mission^.YDim 	:= WorkPickPointState^[Mission^.PPick].Element.YDim; 	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+Mission^.ZDim 	:= WorkPickPointState^[Mission^.PPick].Element.ZDim; 	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+
+(* Calcolo Delle quote di Prelievo *)
+XPick := TFPalletizer_CalcolaCoordinataPrelievo_PickPoint(WorkPickPoint,WorkPickPointState,WorkPickPointOffset,Mission^.PPick,'X');		
+YPick := TFPalletizer_CalcolaCoordinataPrelievo_PickPoint(WorkPickPoint,WorkPickPointState,WorkPickPointOffset,Mission^.PPick,'Y');
+ZPick := TFPalletizer_CalcolaCoordinataPrelievo_PickPoint(WorkPickPoint,WorkPickPointState,WorkPickPointOffset,Mission^.PPick,'Z');
+JPick := TFPalletizer_CalcolaCoordinataPrelievo_PickPoint(WorkPickPoint,WorkPickPointState,WorkPickPointOffset,Mission^.PPick,'J');	
+
+(* Assegnazione quote alla Missione *)
+Mission^.XPick			:= XPick;
+Mission^.YPick			:= YPick;
+Mission^.ZPick			:= ZPick;
+Mission^.JPick			:= JPick;
+
+Mission^.XPickApproach	:= XPick;							
+Mission^.YPickApproach	:= YPick;	  
+Mission^.ZPickApproach	:= ZPick + PickPlaceParameters^.ZPickApproach;//Quota prelievo + offset approccio... in mod da fare la lenta ottimizzata
+Mission^.JPickApproach	:= JPick;	
+	
+(* Set delle variabili per andare al punto di riposo *)
+X_Riposo	:= XPick;
+Y_Riposo	:= YPick;
+J_Riposo	:= JPick;
+Z_Riposo	:= QuotaFuoriIngombro_Z_AVUOTO;		
+
+IF WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+	IF WorkareaState^[Mission^.PPlace].TransportState.Supporto.Tipologia = e_Tipo_Pallet.CASSA_STANDARD THEN 
+		WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaStart 	:= 950;
+	ELSE
+		WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaStart 	:= 950;
+	END_IF
+END_IF
+//Disabilito apprendimento in deposito se disabilitato
+IF NOT HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio THEN
+	WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato := APPRENDIMENTO_DISABILITATO;
+END_IF
+(* Calcolo gli ingombri della pinza nelle varie direzioni *)
+IF Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J <= 87 THEN
+	LatoDeposito := 0;
+ELSIF Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J >= 93 THEN
+	LatoDeposito := 180;
+END_IF
+							
+TFCalcoliIngombroPinza(Mission := Mission,
+					WorkAreaManager := WorkAreaManager,
+					WorkAreaState := ADR(WorkAreaState),
+					ModuleAX_J := ModuleAX_J,
+					AngoloRotazioneDestinazionePinza:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J,
+					IngombroX_Pos 				:= ADR(IngombroX_Pos),
+					IngombroY_Pos 				:= ADR(IngombroY_Pos),
+					IngombroX_Neg 				:= ADR(IngombroX_Neg),
+					IngombroY_Neg 				:= ADR(IngombroY_Neg),
+					IngombroZ_Pos 				:= ADR(IngombroZ_Pos),
+					IngombroZ_Neg 				:= ADR(IngombroZ_Neg),
+					IngombroY_Tot 				:= ADR(IngombroY_Tot),
+					IngombroDestinazioneX_Pos 	:= ADR(IngombroDestinazioneX_Pos),
+					IngombroDestinazioneY_Pos 	:= ADR(IngombroDestinazioneY_Pos),
+					IngombroDestinazioneX_Neg 	:= ADR(IngombroDestinazioneX_Neg),
+					IngombroDestinazioneY_Neg 	:= ADR(IngombroDestinazioneY_Neg),
+					IngombroDestinazioneZ_Pos 	:= ADR(IngombroDestinazioneZ_Pos),
+					IngombroDestinazioneZ_Neg 	:= ADR(IngombroDestinazioneZ_Neg),
+					IngombroMaxX_Pos 			:= ADR(IngombroMaxX_Pos),
+					IngombroMaxY_Pos 			:= ADR(IngombroMaxY_Pos),
+					IngombroMaxX_Neg 			:= ADR(IngombroMaxX_Neg),
+					IngombroMaxY_Neg 			:= ADR(IngombroMaxY_Neg),
+					IngombroMaxZ_Pos 			:= ADR(IngombroMaxZ_Pos),
+					IngombroMaxZ_Neg 			:= ADR(IngombroMaxZ_Neg),
+					IngombroY_Pos_0  			:= ADR(IngombroY_Pos_0),		 		
+					IngombroY_Neg_180 			:= ADR(IngombroY_Neg_180),
+					IngombroY_Neg_0 			:= ADR(IngombroY_Neg_0),	
+					IngombroY_Pos_180 			:= ADR(IngombroY_Pos_180),
+					ScostamentoVerticalePuntoCentrale := ADR(ScostamentoVerticalePuntoCentrale));
+
+(* Valorizzazione quote di deposito Ciclo Lastra *)
+TFWAM_CreaMissione_DepLastraDaPP(NPosInLavoro			    := Mission^.PPlace, //Numero Postazione di depositio
+									Angolo_Destinazione 	:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Angolo di deposito dell'elemento
+									PosizioneAttuale_X      := ModuleAX_X^.Ax^.Status.ActPosition, //Posizione attuale asse X
+									TipologiaTraiettoria    := TRAIETTORIA_CON_APPROCCIO,//Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Trajectory,
+									Apprendimento			:= WorkAreaState^[Mission^.PPlace].Apprendimento,
+									CicloDiPrelievo         := FALSE,
+									HmaxElemento			:= WorkAreaState^[Mission^.PPlace].TransportState.Supporto.HMAX,
+									Offset_Apprendimento_X 	:= 0,//OffsetApprendimento.Lastra.X, //Offset X Postazione,
+									Offset_Apprendimento_Y 	:= OffsetApprendimento.Lastra.Y, //Offset Y Postazione
+									Offset_Apprendimento_Z 	:= OffsetApprendimento.Lastra.Z, //Offset Z Postazione
+									Offset_Apprendimento_J 	:= 0,//OffsetApprendimento.Lastra.J, //Offset J Postazione
+
+									Quota_PostX				:= WorkArea^[Mission^.PPlace].X, //Quota X Postazione
+									Quota_PostY				:= WorkArea^[Mission^.PPlace].Y, //Quota Y Postazione
+									Quota_PostZ				:= WorkArea^[Mission^.PPlace].Z, //Quota Z Postazione
+									Quota_PostJ				:= WorkArea^[Mission^.PPlace].Rx, //Quota J Postazione
+									
+									Offset_Postazione_X 	:= WorkAreaOffset^[Mission^.PPlace].X, //Offset X Postazione
+									Offset_Postazione_Y 	:= WorkAreaOffset^[Mission^.PPlace].Y, //Offset Y Postazione
+									Offset_Postazione_Z 	:= WorkAreaOffset^[Mission^.PPlace].Z, //Offset Z Postazione
+									Offset_Postazione_J 	:= WorkAreaOffset^[Mission^.PPlace].Rx, //Offset J Postazione
+									
+									Pallet_DimX				:= WorkAreaState^[Mission^.PPlace].Supporto.XDim, //Dimensione X Pallet
+									Pallet_DimY				:= WorkAreaState^[Mission^.PPlace].Supporto.YDim, //Dimensione Y Pallet
+									Pallet_DimZ				:= WorkAreaState^[Mission^.PPlace].Supporto.ZDim, //Dimensione Z Pallet
+									
+									Quota_FormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].X, //Quota Deposito X da Formatura
+									Quota_FormaturaY 		:= ABS(Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Y), //Quota Deposito Y da Formatura
+									Quota_FormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Z, //Quota Deposito Z da Formatura
+									Quota_FormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Quota Deposito Z da Formatura
+									
+									Distanza_ApproccioFormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AX, //Quota Deposito X da Formatura
+									Distanza_ApproccioFormaturaY 		:= PickPlaceParameters^.YPlaceApproach, 
+									Distanza_ApproccioFormaturaZ 		:= PickPlaceParameters^.ZPlaceApproach,
+									Distanza_ApproccioFormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AJ, //Quota Deposito Z da Formatura
+									
+									Quota_DestX 			=> Mission^.XPlace, //Quota DESTINAZIONE X
+									Quota_DestY 			=> Mission^.YPlace, //Quota DESTINAZIONE Y
+									Quota_DestZ 			=> Mission^.ZPlace, //Quota DESTINAZIONE Z
+									Quota_DestJ 			=> Mission^.JPlace, //Quota DESTINAZIONE J	
+									
+									Quota_ApproccioDestX 	=> Mission^.XPlaceApproach, //Quota APPROCCIO di DESTINAZIONE X
+									Quota_ApproccioDestY 	=> Mission^.YPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Y
+									Quota_ApproccioDestZ 	=> Mission^.ZPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Z
+									Quota_ApproccioDestJ 	=> Mission^.JPlaceApproach);//Quota APPROCCIO di DESTINAZIONE J	
+
+IF TFWAM_CreaMissione_DepLastraDaPP.Errore.Code > 0 THEN
+	Errore := TFWAM_CreaMissione_DepLastraDaPP.Errore;
+	RETURN;//EXIT;
+ELSE
+	RestoreCWA^ := TRUE;
+	PreviousPWA^ := pwa;
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_RUN;
+END_IF
+(* Setto l'uscita che mi determina il deposito del primo pacco in lenta *)
+IF WorkAreaState^[Mission^.PPlace].Slow = 1 THEN
+	DepositoPaccoInLenta := TRUE;
+END_IF	]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="LASTRA_WA_INIT" Id="{972dc595-b257-4443-ad76-c610d7b6e262}" FolderPath="LASTRA\WorkArea\">
+      <Implementation>
+        <ST><![CDATA[Mission^.PPlace	:= cwa; (* valorizzo il punto di deposito *)
+(* Aggiorno la struttura delle Lastre in missione *)
+Mission^.Slab := WorkAreaState^[Mission^.PPick].Slab[WorkAreaState^[cwa].P];
+
+NLastraDaPrelevare := WorkAreaState^[Mission^.PPick].P-1;
+IF NLastraDaPrelevare >= 1 THEN
+	NLastraDaPrelevare := 1 ;// añadido para probar
+ELSE
+	Errore.Code := ErrWA_NumPezzInPrelErrato;
+	RETURN;
+END_IF
+
+
+				
+Mission^.TPick 	:= TPICK_LASTRA;	// Assegno il tipo di Prelievo
+Mission^.XDim 	:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[NLastraDaPrelevare].XDim;// WorkAreaState^[Mission^.PPick].Slab[NLastraDaPrelevare].XDim;	// Assegno la dimensione X del pacco presente nel punto di prelievo designato
+Mission^.YDim 	:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[NLastraDaPrelevare].YDim;//WorkAreaState^[Mission^.PPick].Slab[NLastraDaPrelevare].YDim;	// Assegno la dimensione Y del pacco presente nel punto di prelievo designato
+Mission^.ZDim 	:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[NLastraDaPrelevare].ZDim;//WorkAreaState^[Mission^.PPick].Slab[NLastraDaPrelevare].ZDim; 	// Assegno la dimensione Z del pacco presente nel punto di prelievo designato
+ppick := Mission^.PPick;
+
+IF Mission^.XDim <=0	OR Mission^.YDim <= 0 THEN
+	Errore.Code := ErrEsMisionSinDimesionPieza;
+	RETURN;
+END_IF
+(* Valorizzazione del lato di prelievo nel caso di prelievo su cavallina *)
+IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //Se ho in prelievo il supporto di tipo bundle
+	IF ppickOld <> Mission^.PPick THEN 	//Ad ogni cambio di postazione setto il valore del lato iniziale a 0
+		TFClearApprendimento(ADR(WorkAreaState^[Mission^.PPick].Apprendimento));//Pulisco la struttura dell'apprendimento
+		LatoPrelievo := 180;				//Vado a prelevare sul lato 180	
+		TFWAM_CreaMissione_PrelLastraDaWA.Quota_FormaturaJ := 180; //Assegno la quota di 0° per il prelievo, in questo modo la pinza parte a fare il tasteggio in questa posizione					
+		IF LatoPrelievo = 0 THEN
+		(* Apprendimento lungo X *)
+			WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato0.Stato		:= APPRENDIMENTO_DISABILITATO;
+			WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato0.Stato		:= APPRENDIMENTO_DA_ESEGUIRE;
+		ELSIF LatoPrelievo = 180 THEN
+			WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato180.Stato	:= APPRENDIMENTO_DISABILITATO;
+			WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato	:= APPRENDIMENTO_DA_ESEGUIRE;
+		END_IF
+	ELSE
+		LatoPrelievo := 180;				//Vado a prelevare sul lato 180	
+		TFWAM_CreaMissione_PrelLastraDaWA.Quota_FormaturaJ := 180; //Assegno la quota di 0° per il prelievo, in questo modo la pinza parte a fare il tasteggio in questa posizione					
+		IF LatoPrelievo = 0 THEN
+		(* Apprendimento lungo X *)
+			WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato0.Stato		:= APPRENDIMENTO_DISABILITATO;
+			IF WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato0.Stato <> APPRENDIMENTO_ESEGUITO THEN
+				WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato0.Stato		:= APPRENDIMENTO_DA_ESEGUIRE;
+			END_IF
+		ELSIF LatoPrelievo = 180 THEN
+			WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato180.Stato	:= APPRENDIMENTO_DISABILITATO;
+			IF WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato <> APPRENDIMENTO_ESEGUITO THEN
+				WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato	:= APPRENDIMENTO_DA_ESEGUIRE;
+			END_IF
+		END_IF
+	END_IF
+ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto
+	
+	//IF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J > 90 THEN
+	//IF FormaturaAFRAMERT[cwa].PElement[WorkAreaState^[Mission^.PPick].P].J > 90 THEN
+	//IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPick].F].PElement[WorkAreaState^[Mission^.PPick].P].J > 90 THEN
+	//IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPick].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J > 90 THEN
+	IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J > 90 THEN
+		LatoPrelievo := 180;
+	//ELSIF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J < 90 THEN
+	//ELSIF FormaturaAFRAMERT[cwa].PElement[WorkAreaState^[Mission^.PPick].P].J  < 90 THEN
+	//ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPick].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J  < 90 THEN
+	ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J  < 90 THEN
+		LatoPrelievo := 0;
+	END_IF	
+		
+	IF ppickOld <> Mission^.PPick THEN 	//Ad ogni cambio di postazione setto il valore del lato iniziale a 0
+		TFClearApprendimento(ADR(WorkAreaState^[Mission^.PPick].Apprendimento));//Pulisco la struttura dell'apprendimento
+		TFWAM_CreaMissione_PrelLastraDaWA.Quota_FormaturaJ := 180; //Assegno la quota di 0° per il prelievo, in questo modo la pinza parte a fare il tasteggio in questa posizione					
+		WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato0.Stato		:= APPRENDIMENTO_DISABILITATO;
+		WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato0.Stato		:= APPRENDIMENTO_DA_ESEGUIRE;
+		WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato180.Stato	:= APPRENDIMENTO_DISABILITATO;
+		WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato	:= APPRENDIMENTO_DA_ESEGUIRE;
+	ELSE
+		TFWAM_CreaMissione_PrelLastraDaWA.Quota_FormaturaJ := 180; //Assegno la quota di 0° per il prelievo, in questo modo la pinza parte a fare il tasteggio in questa posizione					
+		IF LatoPrelievo = 0 THEN
+		(* Apprendimento lungo X *)
+			WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato0.Stato		:= APPRENDIMENTO_DISABILITATO;
+			IF WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato0.Stato <> APPRENDIMENTO_ESEGUITO THEN
+				WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato0.Stato		:= APPRENDIMENTO_DA_ESEGUIRE;
+				//WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato0.QuotaStart	:= 1000;
+			END_IF
+		ELSIF LatoPrelievo = 180 THEN
+			WorkAreaState^[Mission^.PPick].Apprendimento.X.Lato180.Stato	:= APPRENDIMENTO_DISABILITATO;
+			IF WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato <> APPRENDIMENTO_ESEGUITO THEN
+				WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato	:= APPRENDIMENTO_DA_ESEGUIRE;
+				//WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.QuotaStart	:= 1000;
+			END_IF
+		END_IF
+	END_IF
+ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia <> e_Tipo_Pallet.CAVALLETTO AND WorkareaState^[Mission^.PPick].Supporto.Tipologia <> e_Tipo_Pallet.BUNDLE THEN //Se NON ho in prelievo il supporto di tipo cavalletto
+	LatoPrelievo := 90; //Setto il lato di prelievo = 90
+	IF ppickOld <> ppick THEN 	//Ad ogni cambio di postazione setto il valore del lato iniziale a 0
+		TFClearApprendimento(ADR(WorkAreaState^[Mission^.PPick].Apprendimento));//Pulisco la struttura dell'apprendimento
+	END_IF
+	TFWAM_CreaMissione_PrelLastraDaWA.Quota_FormaturaJ := 90;//Assegno la quota di 90° per il prelievo, in questo modo la pinza preleverà in orizzontale
+	IF WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+		WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato90.Stato := APPRENDIMENTO_DA_ESEGUIRE;
+		IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CASSA_STANDARD THEN 
+			WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato90.QuotaStart 	:= 700;
+		ELSE
+			WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato90.QuotaStart 	:= 700;
+		END_IF
+	END_IF
+END_IF
+
+//Disabilito apprendimento in deposito se disabilitato
+IF NOT HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio AND FALSE THEN
+	WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato90.Stato := APPRENDIMENTO_DISABILITATO;	
+END_IF
+
+(* Memorizzo l'ultima postazione in cui è stato effettuato il prelievo *)
+UltimaPostazioneInPrelievo := Mission^.PPick;
+ppickOld := Mission^.PPick;
+
+//Z prelievo a seconda della tipologia 
+IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //SE PRELIEVO SU BUNDLE O CASSA
+	IF LatoPrelievo = 180 THEN
+		AngoloPrelievo 					:= 180-2;
+		AltezzaCentroLastraInclinata 	:=  ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
+		QuotaLastraYRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
+		QuotaLastraZRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z +  (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel ;
+	ELSIF LatoPrelievo = 0 THEN
+		AngoloPrelievo 					:= 2;
+		AltezzaCentroLastraInclinata 	:=  ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
+		QuotaLastraYRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
+		QuotaLastraZRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z + (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel ;
+	ELSE
+		AngoloPrelievo := 90;
+		AltezzaCentroLastraInclinata := 0;
+		QuotaLastraZRealTimePrelievo := 0;
+		QuotaLastraYRealTimePrelievo := 0;
+	END_IF
+ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN
+	IF LatoPrelievo = 180 THEN
+		AngoloPrelievo 					:= 180-2;
+		AltezzaCentroLastraInclinata 	:= ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
+		QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
+		QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z + (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaCaballete;
+	ELSIF LatoPrelievo = 0 THEN
+		AngoloPrelievo 					:= 3;
+		AltezzaCentroLastraInclinata 	:= ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
+		QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
+		QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z + (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaCaballete ;
+	ELSE
+		AngoloPrelievo := 90;
+		AltezzaCentroLastraInclinata := 0;
+		QuotaLastraZRealTimePrelievo := 0;
+		QuotaLastraYRealTimePrelievo := 0;
+	END_IF
+ELSE
+	IF LatoPrelievo = 90 THEN		AngoloPrelievo := 90;
+		AltezzaCentroLastraInclinata := 0;
+		QuotaLastraZRealTimePrelievo := 0;
+		QuotaLastraYRealTimePrelievo := 0;
+	ELSE
+		Errore.Code := ErrWA_SupportoInPrelivoNonPrevisto;
+	END_IF
+END_IF
+
+//CALCOLO INGOMBRI PINZA						
+
+;
+//OffSetZRecogidaEnAngulo				:=  -20 ;					
+//ScostamentoVerticalePuntoCentrale := ABS(Dimensioni_Pinza.Spessore * COS(deg_to_rad(-90+AngoloPrelievo))-Dimensioni_Pinza.Spessore);
+
+// Calculo Del Ingombro Pinza Mision Recogida lastra
+TFCalcoliIngombroPinza(Mission := Mission,
+						WorkAreaManager := WorkAreaManager,
+						WorkAreaState := ADR(WorkAreaState),
+						ModuleAX_J := ModuleAX_J,
+						AngoloRotazioneDestinazionePinza:= LatoPrelievo,//Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J+2,
+						IngombroX_Pos 				:= ADR(IngombroX_Pos),
+						IngombroY_Pos 				:= ADR(IngombroY_Pos),
+						IngombroX_Neg 				:= ADR(IngombroX_Neg),
+						IngombroY_Neg 				:= ADR(IngombroY_Neg),
+						IngombroZ_Pos 				:= ADR(IngombroZ_Pos),
+						IngombroZ_Neg 				:= ADR(IngombroZ_Neg),
+						IngombroY_Tot 				:= ADR(IngombroY_Tot),
+						IngombroDestinazioneX_Pos 	:= ADR(IngombroDestinazioneX_Pos),
+						IngombroDestinazioneY_Pos 	:= ADR(IngombroDestinazioneY_Pos),
+						IngombroDestinazioneX_Neg 	:= ADR(IngombroDestinazioneX_Neg),
+						IngombroDestinazioneY_Neg 	:= ADR(IngombroDestinazioneY_Neg),
+						IngombroDestinazioneZ_Pos 	:= ADR(IngombroDestinazioneZ_Pos),
+						IngombroDestinazioneZ_Neg 	:= ADR(IngombroDestinazioneZ_Neg),
+						IngombroMaxX_Pos 			:= ADR(IngombroMaxX_Pos),
+						IngombroMaxY_Pos 			:= ADR(IngombroMaxY_Pos),
+						IngombroMaxX_Neg 			:= ADR(IngombroMaxX_Neg),
+						IngombroMaxY_Neg 			:= ADR(IngombroMaxY_Neg),
+						IngombroMaxZ_Pos 			:= ADR(IngombroMaxZ_Pos),
+						IngombroMaxZ_Neg 			:= ADR(IngombroMaxZ_Neg),
+						IngombroY_Pos_0  			:= ADR(IngombroY_Pos_0),		 		
+						IngombroY_Neg_180 			:= ADR(IngombroY_Neg_180),
+						IngombroY_Neg_0 			:= ADR(IngombroY_Neg_0),	
+						IngombroY_Pos_180 			:= ADR(IngombroY_Pos_180),
+						ScostamentoVerticalePuntoCentrale := ADR(ScostamentoVerticalePuntoCentrale));
+
+
+
+
+
+(* Assegnazione quote alla Missione *)
+TFWAM_CreaMissione_PrelLastraDaWA(NPosInLavoro				:= Mission^.PPick, //Numero Postazione di lavoro
+									Angolo_Destinazione 	:= LatoPrelievo, //Angolo di deposito dell'elemento
+									PosizioneAttuale_X      := ModuleAX_X^.Ax^.Status.ActPosition, //Posizione attuale asse X
+									TipologiaTraiettoria    := TRAIETTORIA_CON_APPROCCIO,//Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Trajectory,
+									Apprendimento			:= WorkAreaState^[Mission^.PPick].Apprendimento,
+									CicloDiPrelievo         := TRUE,
+									HmaxElemento			:= WorkAreaState^[Mission^.PPick].Supporto.HMAX,
+									Offset_Apprendimento_X 	:= 0,//OffsetApprendimento.Lastra.X, //Offset X Postazione,
+									Offset_Apprendimento_Y 	:= OffsetApprendimento.Lastra.Y, //Offset Y Postazione
+									Offset_Apprendimento_Z 	:= OffsetApprendimento.Lastra.Z, //Offset Z Postazione
+									Offset_Apprendimento_J 	:= 0,//OffsetApprendimento.Lastra.J, //Offset J Postazione
+
+									Quota_PostX				:= WorkArea^[Mission^.PPick].X, //Quota X Postazione
+									Quota_PostY				:= WorkArea^[Mission^.PPick].Y, //Quota Y Postazione
+									Quota_PostZ				:= WorkArea^[Mission^.PPick].Z, //Quota Z Postazione
+									Quota_PostJ				:= WorkArea^[Mission^.PPick].Rx, //Quota J Postazione
+									
+									Offset_Postazione_X 	:= WorkAreaOffset^[Mission^.PPick].X, //Offset X Postazione
+									Offset_Postazione_Y 	:= WorkAreaOffset^[Mission^.PPick].Y, //Offset Y Postazione
+									Offset_Postazione_Z 	:= WorkAreaOffset^[Mission^.PPick].Z, //Offset Z Postazione
+									Offset_Postazione_J 	:= WorkAreaOffset^[Mission^.PPick].Rx, //Offset J Postazione
+									
+									Pallet_DimX				:= WorkAreaState^[Mission^.PPick].Supporto.XDim, //Dimensione X Pallet
+									Pallet_DimY				:= WorkAreaState^[Mission^.PPick].Supporto.YDim, //Dimensione Y Pallet
+									Pallet_DimZ				:= WorkAreaState^[Mission^.PPick].Supporto.ZDim, //Dimensione Z Pallet
+									Pallet_DimBaseUtile		:= WorkAreaState^[Mission^.PPick].Supporto.DimBaseUtile, //Dimensione Z Pallet
+									
+									Offset_Pallet_X_0		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X0, //Offset X Pallet o Casse
+									Offset_Pallet_Y_0		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y0, //Offset Y Pallet o Casse 
+									Offset_Pallet_Z_0		:= OffSetZRecogidaEnAngulo0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z0, //Offset Z Pallet o Casse + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_0		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J0, //Offset J Pallet o Casse + è grande + la lastra sarà inclinata verso l'angolo crescente
+															   
+									Offset_Pallet_X_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X90, //Offset X Pallet lato 0-90 
+									Offset_Pallet_Y_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y90, //Offset Y Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z90, //Offset Z Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J90, //Offset J Pallet lato 0-90 + è grande + la lastra sarà inclinata in fase di deposito
+															  
+									Offset_Pallet_X_180		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X180, //Offset X Pallet lato 90-180
+									Offset_Pallet_Y_180		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y180, //Offset Y Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_Z_180		:= OffSetZRecogidaEnAngulo180,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z180, //Offset Z Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+									Offset_Pallet_J_180		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J180, //Offset J Pallet lato 90-180 + è grande + la lastra sarà inclinata in fase di deposito
+									
+									Quota_FormaturaX 		:= 0,//Quota  X da Formatura
+									Quota_FormaturaY 		:= ABS(QuotaLastraYRealTimePrelievo),//Quota  Y da Formatura
+									Quota_FormaturaZ 		:= QuotaLastraZRealTimePrelievo,//Quota  Z da Formatura
+									Quota_FormaturaJ 		:= LatoPrelievo,//Quota  Z da Formatura
+									
+									Distanza_ApproccioFormaturaX 		:= PickPlaceParameters^.XPickApproach,
+									Distanza_ApproccioFormaturaY 		:= PickPlaceParameters^.YPickApproach, 
+									Distanza_ApproccioFormaturaZ 		:= PickPlaceParameters^.ZPickApproach,
+									Distanza_ApproccioFormaturaJ 		:= PickPlaceParameters^.JPickApproach,
+									
+									Quota_DestX 			=> Mission^.XPick, //Quota DESTINAZIONE X
+									Quota_DestY 			=> Mission^.YPick, //Quota DESTINAZIONE Y
+									Quota_DestZ 			=> Mission^.ZPick, //Quota DESTINAZIONE Z
+									Quota_DestJ 			=> Mission^.JPick, //Quota DESTINAZIONE J	
+									
+									Quota_ApproccioDestX 	=> Mission^.XPickApproach, //Quota APPROCCIO di DESTINAZIONE X
+									Quota_ApproccioDestY 	=> Mission^.YPickApproach, //Quota APPROCCIO di DESTINAZIONE Y
+									Quota_ApproccioDestZ 	=> Mission^.ZPickApproach, //Quota APPROCCIO di DESTINAZIONE Z
+									Quota_ApproccioDestJ 	=> Mission^.JPickApproach);//Quota APPROCCIO di DESTINAZIONE J	
+
+//Valorizziamo il preleivo di z a una quota positiva per evitare errori di interferenza									
+IF LatoPrelievo = 90 THEN
+	IF Mission^.ZPick <= 0 THEN
+		Mission^.ZPick := ModuleAX_Z^.AxisPar^.MinPosition;
+	END_IF
+END_IF 		
+//
+IF LatoPrelievo = 180 THEN
+	
+	IF HMI_OffsetDepositoLastra.J180 = 0 OR  HMI_OffsetDepositoLastra.J180 < 0 THEN 
+		Mission^.JPick := 180 - 2;
+	ELSIF HMI_OffsetDepositoLastra.J180 <= 4 AND   HMI_OffsetDepositoLastra.J180 > 0 THEN 
+		Mission^.JPick := 180 - HMI_OffsetDepositoLastra.J180;
+	ELSE 
+		Mission^.JPick := 180 - 2;	
+	END_IF
+	
+
+
+	
+	
+	
+	//IF WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+	//	Mission^.YPickApproach	:= MIN(Mission^.YPickApproach,WorkAreaState^[Mission^.PPick].Supporto.YDim + IngombroDestinazioneY_Neg);
+	//ELSE
+	//	Mission^.YPickApproach	:= WorkArea^[Mission^.PPick].Y + WorkAreaState^[Mission^.PPick].Supporto.YDim + IngombroDestinazioneY_Neg - 50;
+	//end_if
+	//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+	//Mission^.YPick 				:= Mission^.YPick - 80 ;	// modificado = 200
+	//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+	IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //SE PRELIEVO SU BUNDLE O CASSA
+		Y_PuntoPrelievo180 := Mission^.YPick ;
+		Mission^.YPick 				:= Mission^.YPick  - 100 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+		
+	ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto	
+		Y_PuntoPrelievo180 := Mission^.YPick ;
+		Mission^.YPick 				:= Mission^.YPick - 100 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+	END_IF
+
+ELSIF LatoPrelievo = 0 THEN
+	//Mission^.JPick := 3;
+	IF HMI_OffsetDepositoLastra.J0 > 4 THEN 
+		Mission^.JPick := 4;
+	ELSIF HMI_OffsetDepositoLastra.J0 <> 0 THEN 
+		Mission^.JPick := HMI_OffsetDepositoLastra.J0;	
+	ELSIF HMI_OffsetDepositoLastra.J0 = 0 THEN 
+		Mission^.JPick := 3;	
+	END_IF
+	Y_PuntoPrelievo0 := Mission^.YPick ;
+	
+	//IF WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN
+	//	Mission^.YPickApproach	:= MIN(Mission^.YPickApproach,WorkAreaState^[Mission^.PPick].Supporto.YDim + IngombroDestinazioneY_Neg);
+	//ELSE
+	//	Mission^.YPickApproach	:= WorkArea^[Mission^.PPick].Y + WorkAreaState^[Mission^.PPick].Supporto.YDim + IngombroDestinazioneY_Neg - 50;
+	//end_if
+	//Mission^.YPick 				:= Mission^.YPick+200;
+	// Anatoloia Canada
+	Mission^.YPick 				:= Mission^.YPick +40; // + 50 (*+ 50 *);
+	//Modificacion Anatolia EEUU
+	//Mission^.YPick 				:= Mission^.YPick -(Dimensioni_Pinza.DimTraveVerticale /2);
+END_IF											 			
+//									
+IF TFWAM_CreaMissione_PrelLastraDaWA.Errore.Code > 0 THEN
+	Errore := TFWAM_CreaMissione_PrelLastraDaWA.Errore;
+	WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+	RETURN;//EXIT;
+END_IF	
+
+(* Valorizzazione del lato di prelievo nel caso di depostio su cavallina *)
+IF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto
+	//IF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J > 90 THEN
+	IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J > 90 THEN
+		LatoDeposito := 180;
+	//ELSIF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J < 90 THEN
+	ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J  < 90 THEN
+		LatoDeposito := 0;
+	END_IF
+ELSIF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN
+	LatoDeposito := 180;
+ELSIF WorkareaState^[Mission^.PPlace].Supporto.Tipologia <> e_Tipo_Pallet.CAVALLETTO AND WorkareaState^[Mission^.PPlace].Supporto.Tipologia <> e_Tipo_Pallet.BUNDLE THEN //Se NON ho in prelievo il supporto di tipo cavalletto
+	IF PplaceOld <> Mission^.PPlace THEN 	//Ad ogni cambio di postazione setto il valore del lato iniziale a 0
+		TFClearApprendimento(ADR(WorkAreaState^[Mission^.PPlace].Apprendimento));//Pulisco la struttura dell'apprendimento
+	END_IF
+	LatoDeposito := 90; //Setto il lato di prelievo = 90
+	TFWAM_CreaMissione_PrelLastraDaWA.Quota_FormaturaJ := 90;//Assegno la quota di 90° per il prelievo, in questo modo la pinza preleverà in orizzontale
+	IF WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+		WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato := APPRENDIMENTO_DA_ESEGUIRE;
+		IF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.CASSA_STANDARD THEN 
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaStart 	:= 700;
+		ELSE
+			WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.QuotaStart 	:= 700;
+		END_IF
+	END_IF
+END_IF
+
+//Disabilito apprendimento in deposito se disabilitato
+IF NOT HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio AND FALSE THEN
+	WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato := APPRENDIMENTO_DISABILITATO;	
+END_IF
+
+//mettiamo un offset sul deposito bundle
+IF LatoDeposito = 180 THEN
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_0 := 0;// HMI_OffsetDepositoLastra.Y0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_0 := 0;//HMI_OffsetDepositoLastra.Z0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_0 := 0;
+
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_180 := HMI_OffsetDepositoLastra.Y180;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_180 := HMI_OffsetDepositoLastra.Z180;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_90  := 0;
+	AngoloDepositoLastra := 180; // := 180-1; Modificado 16-6-2025
+ELSIF LatoDeposito = 90 THEN
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_180 := 0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_180 := 0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_180 := 0;
+	IF NOT HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio THEN
+		TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_90  := (* 30 +*) HMI_OffsetDepositoLastra.Z90; // quitado el ´30
+	ELSE
+		TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_90  := 0;
+	END_IF
+	AngoloDepositoLastra := 90;
+ELSIF LatoDeposito = 0 THEN
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_180 := 0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_180 := 0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_180 := 0;
+
+	//POMGO EL MISMO OFFSET EN Z PARA CAVALINA TANTO EN 0 COMO 180 
+	//@@@@@@@@@@@@@@@@@@@@@@Para Quitar@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	//HMI_OffsetDepositoLastra.Z0 :=HMI_OffsetDepositoLastra.Z180 +10 ;
+	//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Y_0 := HMI_OffsetDepositoLastra.Y0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_0 := HMI_OffsetDepositoLastra.Z0;
+	TFWAM_CreaMissione_DepLastraDaWA.Offset_Pallet_Z_90  := 0;
+	AngoloDepositoLastra := 1;
+END_IF
+// Calculo Del Ingombro Pinza Mision deposito lastra
+TFCalcoliIngombroPinza(Mission := Mission,
+						WorkAreaManager := WorkAreaManager,
+						WorkAreaState := ADR(WorkAreaState),
+						ModuleAX_J := ModuleAX_J,
+						AngoloRotazioneDestinazionePinza:= AngoloDepositoLastra,//Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J+2,
+						IngombroX_Pos 				:= ADR(IngombroX_Pos),
+						IngombroY_Pos 				:= ADR(IngombroY_Pos),
+						IngombroX_Neg 				:= ADR(IngombroX_Neg),
+						IngombroY_Neg 				:= ADR(IngombroY_Neg),
+						IngombroZ_Pos 				:= ADR(IngombroZ_Pos),
+						IngombroZ_Neg 				:= ADR(IngombroZ_Neg),
+						IngombroY_Tot 				:= ADR(IngombroY_Tot),
+						IngombroDestinazioneX_Pos 	:= ADR(IngombroDestinazioneX_Pos),
+						IngombroDestinazioneY_Pos 	:= ADR(IngombroDestinazioneY_Pos),
+						IngombroDestinazioneX_Neg 	:= ADR(IngombroDestinazioneX_Neg),
+						IngombroDestinazioneY_Neg 	:= ADR(IngombroDestinazioneY_Neg),
+						IngombroDestinazioneZ_Pos 	:= ADR(IngombroDestinazioneZ_Pos),
+						IngombroDestinazioneZ_Neg 	:= ADR(IngombroDestinazioneZ_Neg),
+						IngombroMaxX_Pos 			:= ADR(IngombroMaxX_Pos),
+						IngombroMaxY_Pos 			:= ADR(IngombroMaxY_Pos),
+						IngombroMaxX_Neg 			:= ADR(IngombroMaxX_Neg),
+						IngombroMaxY_Neg 			:= ADR(IngombroMaxY_Neg),
+						IngombroMaxZ_Pos 			:= ADR(IngombroMaxZ_Pos),
+						IngombroMaxZ_Neg 			:= ADR(IngombroMaxZ_Neg),
+						IngombroY_Pos_0  			:= ADR(IngombroY_Pos_0),		 		
+						IngombroY_Neg_180 			:= ADR(IngombroY_Neg_180),
+						IngombroY_Neg_0 			:= ADR(IngombroY_Neg_0),	
+						IngombroY_Pos_180 			:= ADR(IngombroY_Pos_180),
+						ScostamentoVerticalePuntoCentrale := ADR(ScostamentoVerticalePuntoCentrale));
+
+ScostamentoVerticalePuntoCentrale := ABS(Dimensioni_Pinza.Spessore * COS(deg_to_rad(-90+AngoloDepositoLastra))-Dimensioni_Pinza.Spessore);		
+
+//Z prelievo a seconda della tipologia 
+IF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //Se ho in DEPOSITO il supporto di tipo BUNDLE
+	IF LatoDeposito <> 90 THEN
+		QuotaLastraYRealTimeDeposito 		:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Y;
+		QuotaLastraZRealTimeDeposito 		:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Z;
+	ELSE
+		Errore.Code := ErrWA_SupportoInPrelivoNonPrevisto;
+	END_IF
+ELSIF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in DEPOSITO il supporto di tipo CAVALLETTO
+	IF LatoDeposito <> 90 THEN
+		QuotaLastraYRealTimeDeposito 		:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Y;
+		QuotaLastraZRealTimeDeposito 		:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Z;
+	ELSE
+		Errore.Code := ErrWA_SupportoInPrelivoNonPrevisto;
+	END_IF
+ELSE
+	QuotaLastraZRealTimeDeposito := Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Z;
+	QuotaLastraYRealTimeDeposito := ABS(Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Y);
+END_IF	
+
+IF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO THEN
+	OffSetY180Cavallete := 0 ;	
+	ELSE 
+	OffSetY180Cavallete := 0 ;	
+	
+END_IF
+
+
+(* Valorizzazione quote di deposito Ciclo Lastra *)
+TFWAM_CreaMissione_DepLastraDaWA(NPosInLavoro			:= Mission^.PPlace, //Numero Postazione di lavoro
+								Angolo_Destinazione 	:= LatoDeposito, //Angolo di deposito dell'elemento
+								PosizioneAttuale_X      := ModuleAX_X^.Ax^.Status.ActPosition, //Posizione attuale asse X
+								TipologiaTraiettoria    := TRAIETTORIA_CON_APPROCCIO,//Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Trajectory,
+								Apprendimento			:= WorkAreaState^[Mission^.PPlace].Apprendimento,
+								CicloDiPrelievo         := FALSE,
+								HmaxElemento			:= WorkAreaState^[Mission^.PPlace].Supporto.HMAX,
+								
+								Offset_Apprendimento_X 	:= 0,//OffsetApprendimento.Lastra.X, //Offset X Postazione,
+								Offset_Apprendimento_Y 	:= TO_REAL(OffsetApprendimento.Lastra.Y), //Offset Y Postazione
+								Offset_Apprendimento_Z 	:= TO_REAL(Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].ZDim + OffsetApprendimento.Lastra.Z), //Offset Z Postazione
+								Offset_Apprendimento_J 	:= 0,//OffsetApprendimento.Lastra.J, //Offset J Postazione
+
+								Quota_PostX				:= WorkArea^[Mission^.PPlace].X, //Quota X Postazione
+								Quota_PostY				:= WorkArea^[Mission^.PPlace].Y, //Quota Y Postazione
+								Quota_PostZ				:= WorkArea^[Mission^.PPlace].Z, //Quota Z Postazione
+								Quota_PostJ				:= WorkArea^[Mission^.PPlace].Rx, //Quota J Postazione
+								
+								Offset_Postazione_X 	:= WorkAreaOffset^[Mission^.PPlace].X, //Offset X Postazione
+								Offset_Postazione_Y 	:= WorkAreaOffset^[Mission^.PPlace].Y, //Offset Y Postazione
+								Offset_Postazione_Z 	:= WorkAreaOffset^[Mission^.PPlace].Z, //Offset Z Postazione
+								Offset_Postazione_J 	:= WorkAreaOffset^[Mission^.PPlace].Rx, //Offset J Postazione
+								
+								Pallet_DimX				:= WorkAreaState^[Mission^.PPlace].Supporto.XDim, //Dimensione X Pallet
+								Pallet_DimY				:= WorkAreaState^[Mission^.PPlace].Supporto.YDim, //Dimensione Y Pallet
+								Pallet_DimZ				:= WorkAreaState^[Mission^.PPlace].Supporto.ZDim, //Dimensione Z Pallet
+								
+								Offset_Pallet_X_0		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X0, //Offset X Pallet o Casse
+								//Offset_Pallet_Y_0		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y0, //Offset Y Pallet o Casse 
+								//Offset_Pallet_Z_0		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z0, //Offset Z Pallet o Casse + è grande + il deposito si distanzia dal supporto
+								Offset_Pallet_J_0		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J0, //Offset J Pallet o Casse + è grande + la lastra sarà inclinata verso l'angolo crescente
+														   
+								Offset_Pallet_X_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X90, //Offset X Pallet lato 0-90 
+								Offset_Pallet_Y_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y90, //Offset Y Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+								//Offset_Pallet_Z_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z90, //Offset Z Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+								Offset_Pallet_J_90		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J90, //Offset J Pallet lato 0-90 + è grande + la lastra sarà inclinata in fase di deposito
+														  
+								Offset_Pallet_X_180		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X180, //Offset X Pallet lato 90-180
+								//Offset_Pallet_Y_180		:= OffSetY180Cavallete , //0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y180, //Offset Y Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+								//Offset_Pallet_Z_180		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z180, //Offset Z Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+								Offset_Pallet_J_180		:= 0,//Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J180, //Offset J Pallet lato 90-180 + è grande + la lastra sarà inclinata in fase di deposito
+								
+								Quota_FormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].X, //Quota Deposito X da Formatura
+								Quota_FormaturaY 		:= ABS(QuotaLastraYRealTimeDeposito),//ABS(Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Y), //Quota Deposito Y da Formatura
+								Quota_FormaturaZ 		:= ABS(QuotaLastraZRealTimeDeposito),//Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Z, //Quota Deposito Z da Formatura
+								Quota_FormaturaJ 		:= AngoloDepositoLastra,//Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Quota Deposito Z da Formatura
+								
+								Distanza_ApproccioFormaturaX 		:= 0,//PickPlaceParameters^.XPlaceApproach,
+								Distanza_ApproccioFormaturaY 		:= PickPlaceParameters^.YPlaceApproach, 
+								Distanza_ApproccioFormaturaZ 		:= PickPlaceParameters^.ZPlaceApproach,
+								Distanza_ApproccioFormaturaJ 		:= 0,//PickPlaceParameters^.JPlaceApproach,
+
+								Quota_DestX 			=> Mission^.XPlace, //Quota DESTINAZIONE X
+								Quota_DestY 			=> Mission^.YPlace, //Quota DESTINAZIONE Y
+								Quota_DestZ 			=> Mission^.ZPlace, //Quota DESTINAZIONE Z
+								Quota_DestJ 			=> Mission^.JPlace, //Quota DESTINAZIONE J	
+								
+								Quota_ApproccioDestX 	=> Mission^.XPlaceApproach, //Quota APPROCCIO di DESTINAZIONE X
+								Quota_ApproccioDestY 	=> Mission^.YPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Y
+								Quota_ApproccioDestZ 	=> Mission^.ZPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Z
+								Quota_ApproccioDestJ 	=> Mission^.JPlaceApproach);//Quota APPROCCIO di DESTINAZIONE J	
+
+//memorizzo la postazione di deposito
+PplaceOld := Mission^.PPlace;
+								
+IF LatoDeposito = 90 AND WorkAreaState^[Mission^.PPlace].Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+	Mission^.ZPlace := Mission^.ZPlace-50;
+END_IF						
+															
+(* Passo alla pinza i valori di dimensione della lastra *)
+ModulePinza^.ElementoInPrelievo.XDim := Mission^.XDim;
+ModulePinza^.ElementoInPrelievo.YDim := Mission^.YDim;
+ModulePinza^.ElementoInPrelievo.ZDim := Mission^.ZDim;
+ModulePinza^.ElementoInPrelievo.Typology := LASTRA;
+
+(* Se il FB di calcolo delle quote Restituisce un errore Mi fermo, altrimenti Eseguo la missione *)
+IF TFWAM_CreaMissione_DepLastraDaWA.Errore.Code > 0 THEN
+	Errore := TFWAM_CreaMissione_DepLastraDaWA.Errore;
+	WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+	RestoreCWA^ := TRUE;
+	PreviousPWA^ := pwa;
+	RETURN;//EXIT;
+ELSE
+	//IF Mission^.PPick = NumPostazioneDiPareggiatura THEN
+	//	WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN;
+	//ELSE
+		WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_RUN;
+	//END_IF
+	RestoreCWA^ := TRUE;
+	PreviousPWA^ := pwa;
+	RETURN;//EXIT;
+END_IF
+
+(* Setto l'uscita che mi determina il deposito del primo pacco in lenta *)
+IF WorkAreaState^[Mission^.PPick].Slow = 1 THEN
+	DepositoPaccoInLenta := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_DA_PAREGGIATORE_END" Id="{95350da3-6268-40e4-82d6-8c1d7fa2d160}" FolderPath="LASTRA\Pareggiatore\">
+      <Implementation>
+        <ST><![CDATA[(* Se era settata la velocità lenta di Prelievo pacco, questa viene resettata *)
+IF WorkAreaState^[Mission^.PPick].Slow = 1 THEN
+	WorkAreaState^[Mission^.PPick].Slow := 0;
+	DepositoPaccoInLenta := FALSE;
+END_IF
+(* Aggiorno la struttura delle Lastre Presenti *)
+Mission^.Slab := WorkAreaState^[Mission^.PPick].Slab[NLastraDaPrelevare];
+(* Decremento WorkArea^[cwa].P (P=P-1) *)
+WorkAreaState^[Mission^.PPick].P := WorkAreaState^[Mission^.PPick].P - 1;
+
+WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN;
+RestoreCWA^ := TRUE;
+PreviousPWA^ := pwa;
+RETURN;//EXIT;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_DA_PAREGGIATORE_RUN" Id="{df32ea60-f9f5-4b2e-acfc-28a07e09c64d}" FolderPath="LASTRA\Pareggiatore\">
+      <Implementation>
+        <ST><![CDATA[	
+IF Mission^.State = MISSION_STATE_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN;
+ELSIF Mission^.State = MISSION_STATE_PRELIEVO_LASTRA_DA_PAREGGIATORE_END THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_END;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF	]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_FALDA_END" Id="{432b773c-53d0-4572-8773-28b2a1cbd6b4}" FolderPath="FALDA\">
+      <Implementation>
+        <ST><![CDATA[CASE TIPO_MAGAZZINO_FALDE OF 
+	(* Se il magazzino delle falde è PickPoint *)
+	MAGAZZINO_FALDE_IN_PP: 		
+		IF WorkPickPoint^[Mission^.PPick].Tipologia = MAGAZZINO_FALDE THEN
+			IF WorkPickPoint^[Mission^.PPick].Learned_Z > WorkPickPoint^[Mission^.PPick].Z + Mission^.ZDim THEN
+				WorkPickPoint^[Mission^.PPick].Learn_Z 		:= ALTEZZA_CATASTA_FALDE;
+				WorkPickPoint^[Mission^.PPick].Learned_Z 	:= ModuleAX_Z^.Ax^.Status.ActPosition; 
+				WorkPickPoint^[Mission^.PPick].DoLearn_Z	:= APPRENDIMENTO_ESEGUITO;
+			ELSE
+				WorkPickPoint^[Mission^.PPick].Learn_Z 		:= ALTEZZA_CATASTA_FALDE;
+				WorkPickPoint^[Mission^.PPick].Learned_Z 	:= ALTEZZA_CATASTA_FALDE;
+				WorkPickPoint^[Mission^.PPick].DoLearn_Z 	:= APPRENDIMENTO_DA_ESEGUIRE;
+				//WorkAreaState^[Mission^.PPick].State := WORKAREA_STATE_OCCUPIED_ENDED;	
+			END_IF
+		ELSE
+			Errore.Code := ErrWAM_PickPoint_NoMagazzinoFalde;//Errore, Il Pick Point, non è di tipo Magazzino Falde
+			RETURN;//EXIT;
+		END_IF
+	(* Se il magazzino delle falde è una WorkArea *)
+	MAGAZZINO_FALDE_IN_WA:	
+		IF WorkArea^[Mission^.PPick].Typology = TYPOLOGY_LAYER THEN
+			IF WorkAreaState^[Mission^.PPick].H > WorkArea^[Mission^.PPick].Z + Mission^.ZDim THEN
+				WorkAreaState^[Mission^.PPick].H 			:= ModuleAX_Z^.Ax^.Status.ActPosition; 
+				WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato0.QuotaStart 	:= ALTEZZA_CATASTA_FALDE;
+				WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato0.QuotaRilevata 	:= ModuleAX_Z^.Ax^.Status.ActPosition;
+				WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato0.Stato		 	:= APPRENDIMENTO_ESEGUITO;
+			ELSE
+				WorkAreaState^[Mission^.PPick].H 			:= WorkArea^[Mission^.PPick].Z;
+				WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato0.QuotaStart 	:= ALTEZZA_CATASTA_FALDE;
+				WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato0.QuotaRilevata 	:= ALTEZZA_CATASTA_FALDE;
+				WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato0.Stato		 	:= APPRENDIMENTO_DA_ESEGUIRE;
+				//WorkAreaState^[Mission^.PPick].State := WORKAREA_STATE_OCCUPIED_ENDED;	
+			END_IF
+			(* Aggiorno la struttura delle Lastre Presenti *)
+			Mission^.Slab := WorkAreaState^[Mission^.PPick].Slab[NLastraDaPrelevare];
+			(* Decremento WorkArea^[cwa].P (P=P-1) *)
+			WorkAreaState^[Mission^.PPick].P := WorkAreaState^[Mission^.PPick].P - 1;
+		ELSE
+			Errore.Code := ErrWAM_WorkArea_NoMagazzinoFalde; // Errore, la WorkArea non è di tipo Magazzino Falde
+			RETURN;//	EXIT;
+		END_IF
+ELSE
+	Errore.Code := ErrWAM_TipologiaMagazzinoFaldaNONRiconosciuta;// Errore, Nell'impianto è stata impostata una tipologia di magazzino falde non prevista!!!
+	RETURN;//EXIT;		
+END_CASE
+WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_FALDA_RUN;
+RestoreCWA^ := TRUE;
+PreviousPWA^ := pwa;
+RETURN;//EXIT;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_FALDA_RUN" Id="{a30b094f-e701-4e4e-b5e6-b4731ca76176}" FolderPath="FALDA\">
+      <Implementation>
+        <ST><![CDATA[IF Mission^.State = MISSION_STATE_PRELIEVO_FALDA_RUN THEN
+	WorkAreaManager^.State := WAMANAGER_CICLO_PRELIEVO_FALDA_RUN;
+ELSIF Mission^.State = MISSION_STATE_PRELIEVO_FALDA_END THEN
+	WorkAreaManager^.State := WAMANAGER_CICLO_PRELIEVO_FALDA_END;
+	RestoreCWA^ := TRUE;
+	PreviousPWA^ := pwa;
+	RETURN;//EXIT;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_LASTRA_PP_END" Id="{e1b25cfa-705a-402a-99f7-1ad057e3d370}" FolderPath="LASTRA\PickPoint\">
+      <Implementation>
+        <ST><![CDATA[(* Se era settata la velocità lenta di Prelievo pacco, questa viene resettata *)
+IF WorkAreaState^[Mission^.PPick].Slow = 1 THEN
+	WorkAreaState^[Mission^.PPick].Slow := 0;
+	DepositoPaccoInLenta := FALSE;
+END_IF
+
+(* Aggiorno Altezza Pallet su Ultima Lastra depositata *)
+(*!!!!!!!!!!! ATTUALMENTE CI BASIAMO SULLE QUOTE INVIATE DA HMI PER IL DEPOSITO E ANDIAMO IN TASTEGGIO, LE CASSE SONO PIU' ALTE DELLA LASTRA DEPOSITATA E 
+IN CASO DI CAVALLETTO L'ALTEZZA E' FISSA... QUINDI, NON AGGIORNIAMO NESSUNA ALTEZZA!!!!!*)
+(**IF AbilitaAggiornamento_AltezzaWA_ConQuotaAsseZ THEN
+	WorkArea^[Mission^.PPlace].H := ModuloAsse_Z.Ax^.Status.ActPosition;
+ELSE
+	WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL + 
+									Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z;
+END_IF**)			
+CASE TIPOLOGIA_FUNZIONAMENTO_MACCHINA OF
+	FUNZIONAMENTO_PALLETTIZZATORE:
+									WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_RUN;
+									RestoreCWA^ 	:= TRUE;
+									PreviousPWA^ 	:= pwa;
+									RETURN;//EXIT;
+							
+ELSE
+	CASE WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[Mission^.PPlace].P].Pareggiatura OF
+		(* Se la Pareggiatura della Lastra è Disabilitata *)
+		PAREGGIATURA_DISABILITATA:
+									WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_RUN;
+									RestoreCWA^ := TRUE;
+									PreviousPWA^ := pwa;
+									RETURN;//EXIT;
+									
+		(* Se la Pareggiatura della Lastra è Abilitata e da Eseguire *)
+		PAREGGIATURA_DA_ESEGUIRE:
+									Mission^.PPlace := NumPostazioneDiPareggiatura;
+									(* Valorizzazione quote di deposito Ciclo Lastra *)
+									TFWAM_CreaMissione_DepLastraDaWA(NPosInLavoro			:= Mission^.PPlace, //Numero Postazione di depositio
+																		Angolo_Destinazione 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Angolo di deposito dell'elemento
+																		PosizioneAttuale_X      := ModuleAX_X^.Ax^.Status.ActPosition, //Posizione attuale asse X
+																		TipologiaTraiettoria    := Forming^[WorkAreaState^[cwa].F].PElement[WorkAreaState^[cwa].P].Trajectory,
+																			
+																		Quota_PostX				:= WorkArea^[Mission^.PPlace].X, //Quota X Postazione
+																		Quota_PostY				:= WorkArea^[Mission^.PPlace].Y, //Quota Y Postazione
+																		Quota_PostZ				:= WorkArea^[Mission^.PPlace].Z, //Quota Z Postazione
+																		Quota_PostJ				:= WorkArea^[Mission^.PPlace].Rx, //Quota J Postazione
+																		
+																		Offset_Postazione_X 	:= WorkAreaOffset^[Mission^.PPlace].X, //Offset X Postazione
+																		Offset_Postazione_Y 	:= WorkAreaOffset^[Mission^.PPlace].Y, //Offset Y Postazione
+																		Offset_Postazione_Z 	:= WorkAreaOffset^[Mission^.PPlace].Z, //Offset Z Postazione
+																		Offset_Postazione_J 	:= WorkAreaOffset^[Mission^.PPlace].Rx, //Offset J Postazione
+																		
+																		Pallet_DimX				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.XDim, //Dimensione X Pallet
+																		Pallet_DimY				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.YDim, //Dimensione Y Pallet
+																		Pallet_DimZ				:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.ZDim, //Dimensione Z Pallet
+																		
+																		Offset_Pallet_X_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X0, //Offset X Pallet o Casse
+																		Offset_Pallet_Y_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y0, //Offset Y Pallet o Casse 
+																		Offset_Pallet_Z_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z0, //Offset Z Pallet o Casse + è grande + il deposito si distanzia dal supporto
+																		Offset_Pallet_J_0		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J0, //Offset J Pallet o Casse + è grande + la lastra sarà inclinata verso l'angolo crescente
+																		
+																		Offset_Pallet_X_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X90, //Offset X Pallet lato 0-90 
+																		Offset_Pallet_Y_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y90, //Offset Y Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+																		Offset_Pallet_Z_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z90, //Offset Z Pallet lato 0-90 + è grande + il deposito si distanzia dal supporto
+																		Offset_Pallet_J_90		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J90, //Offset J Pallet lato 0-90 + è grande + la lastra sarà inclinata in fase di deposito
+																		
+																		Offset_Pallet_X_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_X180, //Offset X Pallet lato 90-180
+																		Offset_Pallet_Y_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Y180, //Offset Y Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+																		Offset_Pallet_Z_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_Z180, //Offset Z Pallet lato 90-180 + è grande + il deposito si distanzia dal supporto
+																		Offset_Pallet_J_180		:= Forming^[WorkAreaState^[Mission^.PPlace].F].Pallet.OFSDE_J180, //Offset J Pallet lato 90-180 + è grande + la lastra sarà inclinata in fase di deposito
+																		
+																		Quota_FormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].X, //Quota Deposito X da Formatura
+																		Quota_FormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Y, //Quota Deposito Y da Formatura
+																		Quota_FormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Z, //Quota Deposito Z da Formatura
+																		Quota_FormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J, //Quota Deposito Z da Formatura
+																		
+																		Distanza_ApproccioFormaturaX 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AX, //Quota Deposito X da Formatura
+																		Distanza_ApproccioFormaturaY 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AY, //Quota Deposito Y da Formatura
+																		Distanza_ApproccioFormaturaZ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AZ, //Quota Deposito Z da Formatura
+																		Distanza_ApproccioFormaturaJ 		:= Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].AJ, //Quota Deposito Z da Formatura
+																		
+																		Quota_DestX 			=> Mission^.XPlace, //Quota DESTINAZIONE X
+																		Quota_DestY 			=> Mission^.YPlace, //Quota DESTINAZIONE Y
+																		Quota_DestZ 			=> Mission^.ZPlace, //Quota DESTINAZIONE Z
+																		Quota_DestJ 			=> Mission^.JPlace, //Quota DESTINAZIONE J	
+																		
+																		Quota_ApproccioDestX 	=> Mission^.XPlaceApproach, //Quota APPROCCIO di DESTINAZIONE X
+																		Quota_ApproccioDestY 	=> Mission^.YPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Y
+																		Quota_ApproccioDestZ 	=> Mission^.ZPlaceApproach, //Quota APPROCCIO di DESTINAZIONE Z
+																		Quota_ApproccioDestJ 	=> Mission^.JPlaceApproach);//Quota APPROCCIO di DESTINAZIONE J		
+			IF TFWAM_CreaMissione_DepLastraDaWA.Errore.Code > 0 THEN
+				WorkAreaManager^.State 	:= WAMANAGER_NOP;	// setto lo stato del WAMANAGER
+				RETURN;//EXIT;
+			ELSE
+				WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN;
+				RestoreCWA^ := TRUE;
+				PreviousPWA^ := pwa;
+				RETURN;//EXIT;
+			END_IF	
+	ELSE
+		;
+	END_CASE
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_LASTRA_PP_RUN" Id="{194006f4-1041-48b1-b841-6e21804fd0bf}" FolderPath="LASTRA\PickPoint\">
+      <Implementation>
+        <ST><![CDATA[
+IF Mission^.State = MISSION_STATE_PRELIEVO_LASTRA_PP_RUN THEN
+	;
+ELSIF Mission^.State = MISSION_STATE_PRELIEVO_LASTRA_PP_END THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_END;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_LASTRA_WA_END" Id="{83317d89-60dd-48a2-a005-0e5a1034f3dd}" FolderPath="LASTRA\WorkArea\">
+      <Implementation>
+        <ST><![CDATA[
+(* Imposto lo stato dell' apprendimento *)
+CASE LatoPrelievo OF			
+	0:
+		IF WorkAreaState^[Mission^.PPICk].Apprendimento.Y.Lato0.Stato <> APPRENDIMENTO_ESEGUITO THEN
+			WorkAreaState^[Mission^.PPICk].Apprendimento.Y.Lato0.Stato := APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPICk].Apprendimento.Y.Lato0.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		ELSE
+			WorkAreaState^[Mission^.PPICk].Apprendimento.Y.Lato0.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		END_IF
+		
+	90:
+		IF  WorkAreaState^[Mission^.PPICk].Apprendimento.Z.Lato90.Stato <> APPRENDIMENTO_ESEGUITO THEN
+			WorkAreaState^[Mission^.PPICk].Apprendimento.Z.Lato90.Stato 				:= APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPICk].Apprendimento.Z.Lato90.QuotaRilevata 		:= ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPICk].Supporto.HMAX 	:=  MAX(WorkAreaState^[Mission^.PPick].Supporto.HMAX,ModuleAX_Z^.QuotaAsseLetturaTasteggio);
+			WorkAreaState^[Mission^.PPICk].H 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPICk].HPL 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;	 
+
+		ELSE
+			WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato90.Stato 				:= 	APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPick].Apprendimento.Z.Lato90.QuotaRilevata 		:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPick].Supporto.HMAX 	:=  MAX(WorkAreaState^[Mission^.PPick].Supporto.HMAX,ModuleAX_Z^.QuotaAsseLetturaTasteggio);
+			WorkAreaState^[Mission^.PPick].H 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+			WorkAreaState^[Mission^.PPick].HPL 				:=  ModuleAX_Z^.QuotaAsseLetturaTasteggio;	 
+
+		END_IF
+		
+	180:
+		IF WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato <> APPRENDIMENTO_ESEGUITO THEN
+			WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.Stato := APPRENDIMENTO_ESEGUITO;
+			WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		ELSE
+			WorkAreaState^[Mission^.PPick].Apprendimento.Y.Lato180.QuotaRilevata := ModuleAX_Y^.QuotaAsseLetturaTasteggio;
+		END_IF
+END_CASE
+
+(* Se era settata la velocità lenta di Prelievo pacco, questa viene resettata *)
+IF WorkAreaState^[Mission^.PPick].Slow = 1 THEN
+	WorkAreaState^[Mission^.PPick].Slow := 0;
+	DepositoPaccoInLenta := FALSE;
+END_IF
+
+(* Aggiorno Altezza Pallet su Ultima Lastra depositata *)
+(*!!!!!!!!!!! ATTUALMENTE CI BASIAMO SULLE QUOTE INVIATE DA HMI PER IL DEPOSITO E ANDIAMO IN TASTEGGIO, LE CASSE SONO PIU' ALTE DELLA LASTRA DEPOSITATA E 
+IN CASO DI CAVALLETTO L'ALTEZZA E' FISSA... QUINDI, NON AGGIORNIAMO NESSUNA ALTEZZA!!!!!*)
+(**IF AbilitaAggiornamento_AltezzaWA_ConQuotaAsseZ THEN
+	WorkArea^[Mission^.PPlace].H := ModuloAsse_Z.Ax^.Status.ActPosition;
+ELSE
+	WorkArea^[Mission^.PPlace].H := WorkArea^[Mission^.PPlace].HPL + 
+									Forming^[WorkAreaState^[Mission^.PPlace].F].PackXP[WorkAreaState^[Mission^.PPlace].P].Z;
+END_IF**)
+
+
+WorkAreaState^[Mission^.PPick].P := WorkAreaState^[Mission^.PPick].P - 1;
+WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN;
+RestoreCWA^ := TRUE;
+PreviousPWA^ := pwa;
+RETURN;//EXIT;
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="PREL_LASTRA_WA_RUN" Id="{77e8b8aa-1944-4bc5-9ce7-7ff8cc835ab8}" FolderPath="LASTRA\WorkArea\">
+      <Implementation>
+        <ST><![CDATA[IF Mission^.State = MISSION_STATE_PRELIEVO_LASTRA_WA_RUN THEN
+	;
+ELSIF Mission^.State = MISSION_STATE_PRELIEVO_LASTRA_WA_END THEN
+	WorkAreaManager^.State 	:= WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_END;
+ELSIF Mission^.State = MISSION_STATE_ERROR THEN
+	;
+END_IF	]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre">
+      <LineId Id="46574" Count="10" />
+      <LineId Id="46603" Count="1" />
+      <LineId Id="49181" Count="16" />
+      <LineId Id="49179" Count="0" />
+      <LineId Id="46620" Count="3" />
+      <LineId Id="48445" Count="5" />
+      <LineId Id="49025" Count="0" />
+      <LineId Id="48451" Count="15" />
+      <LineId Id="48529" Count="0" />
+      <LineId Id="48556" Count="1" />
+      <LineId Id="48555" Count="0" />
+      <LineId Id="48532" Count="4" />
+      <LineId Id="48467" Count="0" />
+      <LineId Id="48537" Count="0" />
+      <LineId Id="48468" Count="21" />
+      <LineId Id="48560" Count="0" />
+      <LineId Id="48558" Count="1" />
+      <LineId Id="48522" Count="0" />
+      <LineId Id="48524" Count="4" />
+      <LineId Id="48523" Count="0" />
+      <LineId Id="48490" Count="21" />
+      <LineId Id="48561" Count="2" />
+      <LineId Id="48512" Count="0" />
+      <LineId Id="48517" Count="4" />
+      <LineId Id="48513" Count="0" />
+      <LineId Id="48438" Count="0" />
+      <LineId Id="46630" Count="2" />
+      <LineId Id="48175" Count="0" />
+      <LineId Id="48208" Count="0" />
+      <LineId Id="49370" Count="0" />
+      <LineId Id="49375" Count="0" />
+      <LineId Id="49400" Count="0" />
+      <LineId Id="49394" Count="2" />
+      <LineId Id="49393" Count="0" />
+      <LineId Id="49374" Count="0" />
+      <LineId Id="48210" Count="3" />
+      <LineId Id="49377" Count="0" />
+      <LineId Id="48214" Count="14" />
+      <LineId Id="48178" Count="1" />
+      <LineId Id="48229" Count="1" />
+      <LineId Id="49365" Count="0" />
+      <LineId Id="49401" Count="0" />
+      <LineId Id="49380" Count="0" />
+      <LineId Id="49388" Count="1" />
+      <LineId Id="49382" Count="1" />
+      <LineId Id="49366" Count="0" />
+      <LineId Id="49362" Count="0" />
+      <LineId Id="49367" Count="2" />
+      <LineId Id="49363" Count="1" />
+      <LineId Id="48234" Count="15" />
+      <LineId Id="48183" Count="0" />
+      <LineId Id="48185" Count="1" />
+      <LineId Id="49354" Count="0" />
+      <LineId Id="49402" Count="0" />
+      <LineId Id="49397" Count="2" />
+      <LineId Id="49355" Count="0" />
+      <LineId Id="49357" Count="0" />
+      <LineId Id="49359" Count="2" />
+      <LineId Id="49358" Count="0" />
+      <LineId Id="49356" Count="0" />
+      <LineId Id="48190" Count="6" />
+      <LineId Id="48207" Count="0" />
+      <LineId Id="48198" Count="3" />
+      <LineId Id="48203" Count="3" />
+      <LineId Id="48169" Count="0" />
+      <LineId Id="46656" Count="21" />
+      <LineId Id="48411" Count="0" />
+      <LineId Id="46679" Count="12" />
+      <LineId Id="47829" Count="0" />
+      <LineId Id="47851" Count="0" />
+      <LineId Id="47830" Count="0" />
+      <LineId Id="47834" Count="0" />
+      <LineId Id="47845" Count="1" />
+      <LineId Id="47836" Count="0" />
+      <LineId Id="47847" Count="0" />
+      <LineId Id="47850" Count="0" />
+      <LineId Id="47849" Count="0" />
+      <LineId Id="47838" Count="1" />
+      <LineId Id="47835" Count="0" />
+      <LineId Id="46692" Count="25" />
+      <LineId Id="48871" Count="0" />
+      <LineId Id="46719" Count="186" />
+      <LineId Id="48716" Count="0" />
+      <LineId Id="46906" Count="0" />
+      <LineId Id="47678" Count="0" />
+      <LineId Id="47853" Count="0" />
+      <LineId Id="47852" Count="0" />
+      <LineId Id="46908" Count="2" />
+      <LineId Id="48014" Count="1" />
+      <LineId Id="46912" Count="0" />
+      <LineId Id="47517" Count="0" />
+      <LineId Id="46913" Count="16" />
+      <LineId Id="47520" Count="0" />
+      <LineId Id="47518" Count="0" />
+      <LineId Id="46930" Count="1" />
+      <LineId Id="47526" Count="0" />
+      <LineId Id="46932" Count="2" />
+      <LineId Id="47524" Count="1" />
+      <LineId Id="47673" Count="0" />
+      <LineId Id="47519" Count="0" />
+      <LineId Id="47521" Count="1" />
+      <LineId Id="47674" Count="0" />
+      <LineId Id="47523" Count="0" />
+      <LineId Id="46935" Count="179" />
+      <LineId Id="48406" Count="1" />
+      <LineId Id="48405" Count="0" />
+      <LineId Id="47115" Count="2" />
+      <LineId Id="48403" Count="1" />
+      <LineId Id="48402" Count="0" />
+      <LineId Id="47118" Count="2" />
+      <LineId Id="48409" Count="1" />
+      <LineId Id="48408" Count="0" />
+      <LineId Id="47121" Count="256" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.CICLO_PAREGGIATURA_END">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="144" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.CICLO_PAREGGIATURA_RUN">
+      <LineId Id="2" Count="0" />
+      <LineId Id="6" Count="1" />
+      <LineId Id="11" Count="2" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_FALDA_END">
+      <LineId Id="2" Count="7" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_FALDA_RUN">
+      <LineId Id="2" Count="6" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_LASTRA_PP_END">
+      <LineId Id="3" Count="8" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="12" Count="45" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_LASTRA_PP_RUN">
+      <LineId Id="2" Count="6" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_LASTRA_WA_END">
+      <LineId Id="2" Count="5" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="109" Count="3" />
+      <LineId Id="116" Count="2" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="32" Count="4" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="69" Count="32" />
+      <LineId Id="123" Count="1" />
+      <LineId Id="131" Count="2" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="27" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_LASTRA_WA_RUN">
+      <LineId Id="2" Count="6" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_PAREGGIATORE_RUN">
+      <LineId Id="2" Count="0" />
+      <LineId Id="6" Count="2" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_SU_PAREGGIATORE_END">
+      <LineId Id="2" Count="12" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.DEP_SU_PAREGGIATORE_RUN">
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.FALDA_INIT">
+      <LineId Id="2" Count="152" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.LASTRA_PP_INIT">
+      <LineId Id="2" Count="14" />
+      <LineId Id="158" Count="0" />
+      <LineId Id="17" Count="36" />
+      <LineId Id="159" Count="0" />
+      <LineId Id="54" Count="19" />
+      <LineId Id="151" Count="3" />
+      <LineId Id="74" Count="1" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="78" Count="26" />
+      <LineId Id="120" Count="30" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.LASTRA_WA_INIT">
+      <LineId Id="788" Count="0" />
+      <LineId Id="791" Count="3" />
+      <LineId Id="802" Count="5" />
+      <LineId Id="1692" Count="0" />
+      <LineId Id="1689" Count="0" />
+      <LineId Id="808" Count="4" />
+      <LineId Id="1229" Count="0" />
+      <LineId Id="1694" Count="0" />
+      <LineId Id="1693" Count="0" />
+      <LineId Id="1695" Count="0" />
+      <LineId Id="1697" Count="0" />
+      <LineId Id="1696" Count="0" />
+      <LineId Id="814" Count="3" />
+      <LineId Id="1383" Count="1" />
+      <LineId Id="1361" Count="6" />
+      <LineId Id="818" Count="0" />
+      <LineId Id="820" Count="0" />
+      <LineId Id="1388" Count="1" />
+      <LineId Id="1354" Count="2" />
+      <LineId Id="1510" Count="0" />
+      <LineId Id="1357" Count="0" />
+      <LineId Id="1511" Count="0" />
+      <LineId Id="1358" Count="1" />
+      <LineId Id="1509" Count="0" />
+      <LineId Id="1360" Count="0" />
+      <LineId Id="1507" Count="0" />
+      <LineId Id="1353" Count="0" />
+      <LineId Id="828" Count="0" />
+      <LineId Id="1549" Count="0" />
+      <LineId Id="1564" Count="0" />
+      <LineId Id="1559" Count="0" />
+      <LineId Id="1699" Count="0" />
+      <LineId Id="1701" Count="0" />
+      <LineId Id="1725" Count="0" />
+      <LineId Id="1786" Count="0" />
+      <LineId Id="1560" Count="1" />
+      <LineId Id="1700" Count="0" />
+      <LineId Id="1702" Count="0" />
+      <LineId Id="1787" Count="0" />
+      <LineId Id="1562" Count="1" />
+      <LineId Id="1565" Count="0" />
+      <LineId Id="1577" Count="1" />
+      <LineId Id="1580" Count="0" />
+      <LineId Id="1583" Count="1" />
+      <LineId Id="1586" Count="1" />
+      <LineId Id="1589" Count="0" />
+      <LineId Id="1591" Count="5" />
+      <LineId Id="1608" Count="0" />
+      <LineId Id="1597" Count="4" />
+      <LineId Id="1609" Count="0" />
+      <LineId Id="1602" Count="1" />
+      <LineId Id="1566" Count="0" />
+      <LineId Id="832" Count="1" />
+      <LineId Id="1496" Count="0" />
+      <LineId Id="1493" Count="1" />
+      <LineId Id="1492" Count="0" />
+      <LineId Id="835" Count="0" />
+      <LineId Id="1249" Count="0" />
+      <LineId Id="836" Count="6" />
+      <LineId Id="1245" Count="3" />
+      <LineId Id="1235" Count="0" />
+      <LineId Id="843" Count="3" />
+      <LineId Id="1339" Count="0" />
+      <LineId Id="848" Count="0" />
+      <LineId Id="1635" Count="0" />
+      <LineId Id="849" Count="0" />
+      <LineId Id="1369" Count="0" />
+      <LineId Id="1263" Count="0" />
+      <LineId Id="1464" Count="0" />
+      <LineId Id="1466" Count="0" />
+      <LineId Id="1612" Count="4" />
+      <LineId Id="851" Count="0" />
+      <LineId Id="1371" Count="0" />
+      <LineId Id="852" Count="0" />
+      <LineId Id="1465" Count="0" />
+      <LineId Id="1467" Count="0" />
+      <LineId Id="853" Count="0" />
+      <LineId Id="1636" Count="0" />
+      <LineId Id="1639" Count="14" />
+      <LineId Id="1637" Count="0" />
+      <LineId Id="1654" Count="0" />
+      <LineId Id="1656" Count="0" />
+      <LineId Id="1668" Count="4" />
+      <LineId Id="1655" Count="0" />
+      <LineId Id="1638" Count="0" />
+      <LineId Id="1264" Count="0" />
+      <LineId Id="1279" Count="0" />
+      <LineId Id="1690" Count="0" />
+      <LineId Id="1337" Count="0" />
+      <LineId Id="1277" Count="1" />
+      <LineId Id="1751" Count="0" />
+      <LineId Id="1756" Count="29" />
+      <LineId Id="1752" Count="3" />
+      <LineId Id="854" Count="26" />
+      <LineId Id="1709" Count="0" />
+      <LineId Id="881" Count="34" />
+      <LineId Id="1381" Count="0" />
+      <LineId Id="1372" Count="0" />
+      <LineId Id="916" Count="0" />
+      <LineId Id="1376" Count="0" />
+      <LineId Id="1379" Count="1" />
+      <LineId Id="1378" Count="0" />
+      <LineId Id="1391" Count="0" />
+      <LineId Id="1390" Count="0" />
+      <LineId Id="1791" Count="2" />
+      <LineId Id="1798" Count="3" />
+      <LineId Id="1794" Count="0" />
+      <LineId Id="1393" Count="0" />
+      <LineId Id="1796" Count="1" />
+      <LineId Id="1795" Count="0" />
+      <LineId Id="1726" Count="0" />
+      <LineId Id="1729" Count="0" />
+      <LineId Id="1476" Count="4" />
+      <LineId Id="1737" Count="0" />
+      <LineId Id="1481" Count="0" />
+      <LineId Id="1738" Count="0" />
+      <LineId Id="1733" Count="0" />
+      <LineId Id="1750" Count="0" />
+      <LineId Id="1734" Count="0" />
+      <LineId Id="1739" Count="0" />
+      <LineId Id="1735" Count="1" />
+      <LineId Id="1749" Count="0" />
+      <LineId Id="1732" Count="0" />
+      <LineId Id="1698" Count="0" />
+      <LineId Id="1617" Count="0" />
+      <LineId Id="1715" Count="0" />
+      <LineId Id="1717" Count="1" />
+      <LineId Id="1723" Count="1" />
+      <LineId Id="1720" Count="2" />
+      <LineId Id="1716" Count="0" />
+      <LineId Id="1712" Count="0" />
+      <LineId Id="1620" Count="4" />
+      <LineId Id="1711" Count="0" />
+      <LineId Id="1789" Count="0" />
+      <LineId Id="1625" Count="0" />
+      <LineId Id="1790" Count="0" />
+      <LineId Id="1788" Count="0" />
+      <LineId Id="1392" Count="0" />
+      <LineId Id="1375" Count="0" />
+      <LineId Id="917" Count="8" />
+      <LineId Id="1703" Count="0" />
+      <LineId Id="926" Count="1" />
+      <LineId Id="1704" Count="0" />
+      <LineId Id="928" Count="4" />
+      <LineId Id="1501" Count="2" />
+      <LineId Id="1499" Count="0" />
+      <LineId Id="934" Count="1" />
+      <LineId Id="1250" Count="0" />
+      <LineId Id="936" Count="6" />
+      <LineId Id="1251" Count="0" />
+      <LineId Id="1253" Count="2" />
+      <LineId Id="1252" Count="0" />
+      <LineId Id="1491" Count="0" />
+      <LineId Id="1483" Count="0" />
+      <LineId Id="1482" Count="0" />
+      <LineId Id="1632" Count="2" />
+      <LineId Id="1631" Count="0" />
+      <LineId Id="1484" Count="0" />
+      <LineId Id="1486" Count="0" />
+      <LineId Id="1543" Count="0" />
+      <LineId Id="1516" Count="0" />
+      <LineId Id="1487" Count="0" />
+      <LineId Id="1489" Count="1" />
+      <LineId Id="1541" Count="0" />
+      <LineId Id="1545" Count="0" />
+      <LineId Id="1542" Count="0" />
+      <LineId Id="1546" Count="2" />
+      <LineId Id="1518" Count="0" />
+      <LineId Id="1513" Count="0" />
+      <LineId Id="1628" Count="2" />
+      <LineId Id="1705" Count="0" />
+      <LineId Id="1627" Count="0" />
+      <LineId Id="1707" Count="0" />
+      <LineId Id="1706" Count="0" />
+      <LineId Id="1708" Count="0" />
+      <LineId Id="1514" Count="1" />
+      <LineId Id="1544" Count="0" />
+      <LineId Id="1517" Count="0" />
+      <LineId Id="1485" Count="0" />
+      <LineId Id="943" Count="2" />
+      <LineId Id="1691" Count="0" />
+      <LineId Id="946" Count="27" />
+      <LineId Id="1520" Count="0" />
+      <LineId Id="1528" Count="0" />
+      <LineId Id="1673" Count="0" />
+      <LineId Id="1529" Count="0" />
+      <LineId Id="1532" Count="2" />
+      <LineId Id="1537" Count="0" />
+      <LineId Id="1539" Count="0" />
+      <LineId Id="1519" Count="0" />
+      <LineId Id="1677" Count="3" />
+      <LineId Id="1686" Count="0" />
+      <LineId Id="1683" Count="0" />
+      <LineId Id="1676" Count="0" />
+      <LineId Id="1684" Count="1" />
+      <LineId Id="1674" Count="0" />
+      <LineId Id="1742" Count="2" />
+      <LineId Id="1746" Count="2" />
+      <LineId Id="1745" Count="0" />
+      <LineId Id="1741" Count="0" />
+      <LineId Id="1740" Count="0" />
+      <LineId Id="974" Count="61" />
+      <LineId Id="1506" Count="0" />
+      <LineId Id="1504" Count="0" />
+      <LineId Id="1256" Count="0" />
+      <LineId Id="1505" Count="0" />
+      <LineId Id="1061" Count="0" />
+      <LineId Id="1262" Count="0" />
+      <LineId Id="1260" Count="0" />
+      <LineId Id="1257" Count="0" />
+      <LineId Id="1198" Count="4" />
+      <LineId Id="1204" Count="13" />
+      <LineId Id="1219" Count="4" />
+      <LineId Id="1225" Count="2" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_DA_PAREGGIATORE_END">
+      <LineId Id="2" Count="12" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_DA_PAREGGIATORE_RUN">
+      <LineId Id="2" Count="4" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_FALDA_END">
+      <LineId Id="2" Count="0" />
+      <LineId Id="50" Count="46" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_FALDA_RUN">
+      <LineId Id="2" Count="8" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_LASTRA_PP_END">
+      <LineId Id="2" Count="99" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_LASTRA_PP_RUN">
+      <LineId Id="2" Count="6" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_LASTRA_WA_END">
+      <LineId Id="194" Count="0" />
+      <LineId Id="238" Count="8" />
+      <LineId Id="282" Count="0" />
+      <LineId Id="247" Count="15" />
+      <LineId Id="283" Count="0" />
+      <LineId Id="263" Count="7" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="2" Count="4" />
+      <LineId Id="11" Count="9" />
+      <LineId Id="272" Count="2" />
+      <LineId Id="278" Count="2" />
+      <LineId Id="275" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFPalletizerWorkAreaManagerTF_Lastre.PREL_LASTRA_WA_RUN">
+      <LineId Id="3" Count="0" />
+      <LineId Id="7" Count="1" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

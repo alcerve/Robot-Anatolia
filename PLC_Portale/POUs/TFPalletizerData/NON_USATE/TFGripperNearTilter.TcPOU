@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFGripperNearTilter" Id="{18aa30e6-ffd4-4084-929a-b15a4f17b2e1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFGripperNearTilter : BOOL
+VAR_INPUT
+	PickPoint : TFMachinePalletizer_WorkPickPoint;
+	Radius : LREAL;
+	Modules : POINTER TO TFMachinePalletizer_Modules;
+	
+END_VAR
+VAR
+	Distance : LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFGripperNearTilter := FALSE;
+
+Distance := SQRT(((Modules^.Robot.XAx^.AxRef^.NcToPlc.ActPos-PickPoint.Xh)*(Modules^.Robot.XAx^.AxRef^.NcToPlc.ActPos-PickPoint.Xh))+
+					((Modules^.Robot.YAx^.AxRef^.NcToPlc.ActPos-PickPoint.Yh)*(Modules^.Robot.YAx^.AxRef^.NcToPlc.ActPos-PickPoint.Yh))+
+					((Modules^.Robot.ZAx^.AxRef^.NcToPlc.ActPos-PickPoint.Zh)*(Modules^.Robot.ZAx^.AxRef^.NcToPlc.ActPos-PickPoint.Zh)));
+
+
+IF Distance <= Radius THEN
+	TFGripperNearTilter := TRUE;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFGripperNearTilter">
+      <LineId Id="35" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="40" Count="1" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

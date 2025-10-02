@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="IO_TRASPORTI" Id="{dc076d36-dd5b-42e2-8840-b6ce6e4212a8}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+	MAXDIMARRAYPACCHI : UINT := 20; //Dimensione array dei pacchi sui trasporti
+END_VAR
+
+VAR_GLOBAL
+	I_Trasporti_GEN_GLOBAL_ALARM_STOP 			(*AT %I**): BOOL; // Allarme Bloccante Trasporti
+	I_Trasporti_PaccoSuRibaltino 				(*AT %I**) : DUT_Struttura_Dati_Pacco;  // Dati del Pacco SUl Ribaltino
+	I_Trasporti_NumeroPacchiSuLinea 			(*AT %I**) : UINT; //Numero di pacchi presenti sulla linea
+	I_Trasporti_NumeroUltimiTrasportiOccupati 	(*AT %I**) : UINT; //Numero degli ultimi trasporti occupati da un pacco
+	                                            (*      *)
+	I_Trasporti_GEN_ARRESTO_IN_FASE_ESEGUITO  	(*AT %I**): BOOL; //Stop in fase dei trasporti eseguito
+	                                            (*      *)
+	                                            (*      *)
+	O_Trasporti_NumeroDiTrasportiDaValutare 	(*AT %Q**) : UINT; //Numero di trasporti da controllare
+	O_Trasporti_GEN_RICH_ARRESTO_PALL 			(*AT %Q**) : BOOL; //Richiesta di stop in fase ai trasporti
+	O_Centralina_Emergenze_Zona_Reggiatrice_OK	(*AT %Q**) : BOOL; //Sicurezze OK zona reggiatrice
+	O_Centralina_Emergenze_Globali_OK			(*AT %Q**) : BOOL;	// Sicurezze globali OK - visualizzazione su pannello
+	O_Centralina_Emergenze_PAL_OK 				(*AT %Q**) : BOOL;	// Sicurezze Pallettizzatore OK - gestione traini dentro a pal
+	                                            (*      *)
+	                                            (*      *)
+	O_Trasporti_GEN_IN_RBT_WD 					(*AT %Q**) : BOOL;							// Segnale di wd
+	O_Trasporti_GEN_IN_RBT_FI 					(*AT %Q**) : BOOL;							// Segnale di FI rbt
+	O_Trasporti_GEN_IN_RBT_CMD_ORIZ 			(*AT %Q**) : BOOL;							// Segnale di ROTAZIONE ORIZZONTALE DA RBT
+	O_Trasporti_GEN_IN_RBT_CMD_VERT 			(*AT %Q**) : BOOL;							// Segnale di ROTAZIONE VERTICALE DA RBT
+	O_Trasporti_GEN_IN_RBT_AUTO 				(*AT %Q**) : BOOL;							// Stato auto robot
+	O_Trasporti_EmergenzeOK						(*AT %Q**) : BOOL;							// Emergenze OK ai trasporti
+	
+	I_Trasporti_GEN_OUT_RBT_WD 						(*AT %I**) : BOOL;							// Segnale di wd
+	I_Trasporti_GEN_OUT_PACCO_PRONTO_AL_PRELIEVO 	(*AT %I**) : BOOL;			// Bit segnalazione a RBT di prelievo pacco
+	I_Trasporti_GEN_OUT_COMANDI_RBT_ABILITATI 		(*AT %I**) : BOOL;			// Bit segnalazione a RBT di Comandi disponibili
+	I_Trasporti_GEN_OUT_RBT_LINEA_ARRESTO_IN_FASE 	(*AT %I**) : BOOL;		// Segnale Linea in arresto in fase
+	I_Trasporti_GEN_OUT_AUTO_RBT 					(*AT %I**) : BOOL;					// Feedback sistema auto a robot
+	I_Trasporti_GEN_QUOTA_RIBALTINO					(*AT %I**) : REAL;		// Quota ASSE Bandella attuale ribaltino
+                                                    (*      *)
+	I_Trasporti_GEN_OUT_ArrayPacchi 				(*AT %I**) :  DUT_ArrayPacchi; //Array Contenente i pacchi sui trasporti
+	I_GEN_GLOBAL_ALARM_STOP							(*AT %I**) : Bool;//Indica che i trasporti sono in allarme
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

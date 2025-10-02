@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFProgramLogUpdate" Id="{edeb9045-9b4c-495a-9063-90dd04711502}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFProgramLogUpdate : BOOL // Funzione che aggiorna il log dei programmi eseguiti
+VAR_INPUT
+	ActualProgram 	: POINTER TO Descrittore_Programma;
+	ProgramLog		: POINTER TO ProgrammaLog;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ProgramLog^.Programma[10] := ProgramLog^.Programma[9];
+ProgramLog^.Programma[9] := ProgramLog^.Programma[8];
+ProgramLog^.Programma[8] := ProgramLog^.Programma[7];
+ProgramLog^.Programma[7] := ProgramLog^.Programma[6];
+ProgramLog^.Programma[6] := ProgramLog^.Programma[5];
+ProgramLog^.Programma[5] := ProgramLog^.Programma[4];
+ProgramLog^.Programma[4] := ProgramLog^.Programma[3];
+ProgramLog^.Programma[3] := ProgramLog^.Programma[2];
+ProgramLog^.Programma[2] := ProgramLog^.Programma[1];
+ProgramLog^.Programma[1] := ProgramLog^.Programma[0];
+ProgramLog^.Programma[0] := ActualProgram^;]]></ST>
+    </Implementation>
+    <LineIds Name="TFProgramLogUpdate">
+      <LineId Id="10" Count="7" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

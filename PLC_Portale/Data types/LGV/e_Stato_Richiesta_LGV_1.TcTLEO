@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.10">
+  <EnumerationTextList Name="e_Stato_Richiesta_LGV_1" Id="{0cb26ea8-089b-446b-bb52-49e74504cdd0}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Stato Richiesta LGV
+TYPE e_Stato_Richiesta_LGV_1 :
+(
+	NESSUNA_REQ_LGV	 	:= 0,	(* NESSUNA RICHIESTA/CHIAMATA LGV *)
+	REQ_LGV			 	:= 1 	(* CHIAMATA LGV *)
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NESSUNA_REQ_LGV"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"REQ_LGV"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{191d0971-0c6b-46b3-9229-8e6f6db225b2}</v>
+          <v n="GuidReInit">{7829e2cd-ef87-46fb-8d96-c09857f2564b}</v>
+          <v n="GuidExitX">{ecc842a2-5974-4846-86e8-2a7c43ad2e45}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

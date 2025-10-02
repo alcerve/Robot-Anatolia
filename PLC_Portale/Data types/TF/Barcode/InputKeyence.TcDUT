@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="InputKeyence" Id="{a7f621e6-6def-4e3e-852e-4ad6336a07cb}">
+    <Declaration><![CDATA[TYPE InputKeyence :
+STRUCT
+	StateComunication	: UINT; //Se = 0 comunicazione ok, altrimenti comunicazione interrotta
+	
+	Error 				: BOOL;//Barcode in errore
+	Busy 				: BOOL;//Barcode pronto per nuovo comando
+	
+	ReadComplete 		: BOOL;//Barcoda con lettura completa
+	ResultDataAvaible 	: BOOL;//Dato disponibile da Barcode
+	GeneralErrorCode 	: UINT;//Errore generico da Barcode
+	ResultDataSize 		: INT;//Dimensione del dato letto
+	
+	ResultData 			: ARRAY [0..127] OF BYTE;//Byte di dati letti
+
+	MatchingLevel		: INT; //Percentuale qualità codice letto
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFCentratoreParameters" Id="{95166ec3-3d7d-4ab0-b2af-b8915f73c73f}">
+    <Declaration><![CDATA[TYPE TFCentratoreParameters :
+STRUCT
+	SogliaCentraturaEseguita	: REAL := 20; //Spazio Extra per fermata su sensore in fase di centratura	
+	AbilitaCentratore			: bool := true; //Abilitazione centratore
+	
+	//Chiusura
+	VelocitaChiusura		: REAL := 20; // [%] Percentuale Velocità chiusura(fino a sensori)
+	VelocitaPareggiatura	: REAL := 20; // [%] Percentuale Velocità pareggiatura
+	AccChiusura				: REAL := 20; // [%] Percentuale Accelerazione chiusura
+	DecChiusura				: REAL := 20; // [%] Percentuale Decelerazione chiusra
+	//Apertura
+	VelocitaApertura		: REAL := 100; // [%] Percentuale Velocità apertura 
+	AccApertura				: REAL := 100; // [%] Percentuale Accelerazione apertura
+	DecApertura				: REAL := 100; // [%] Percentuale Decelerazione apertura
+	
+	//Manulai
+	VelocitaJog				: REAL := 50; // [%] Percentuale Velocità Manuale
+	AccJog					: REAL := 50; // [%] Percentuale Accelerazione Manuale
+	DecJog					: REAL := 50; // [%] Percentuale Decelerazione Manuale
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

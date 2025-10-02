@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_AxeParameters" Id="{684c7d7e-1453-4bf8-a6e3-c7f47878638d}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_AxeParameters :
+STRUCT
+	
+	HomeDefine		: REAL	:= 0.0;	(* READ	- Home Define (Posizione di Azzeramento Encoder) *)
+	HomePosition	: REAL	:= 0.0;	(* READ	- Home Position (Posizione di Home) *)
+	MaxVelocity		: REAL	:= 0.0;	(* READ	- Max Velocity (Velocità Massima) *)
+	MaxAcceleration	: REAL	:= 0.0;	(* READ	- Max Acceleration (Accelerazione Massima) *)
+	MaxDeceleration	: REAL	:= 0.0;	(* READ	- Max Deceleration (Decelerazione Massima) *)
+	MinPosition		: REAL	:= 0.0;
+	MaxPosition		: REAL	:= 0.0;
+	MaxTorque		: REAL	:= 0.0;
+	ManSlowVelocity	: REAL	:= 0.0; (* READ - Manual Slow Velocity (% of MaxVelocity) *)
+	ManFastVelocity	: REAL	:= 0.0; (* READ - Manual Fast Velocity (% of MaxVelocity) *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

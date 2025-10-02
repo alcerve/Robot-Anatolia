@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_Mission" Id="{cc45d3fe-32d5-4e94-9021-10570306266d}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_Mission :
+STRUCT
+	
+	State			: e_Stato_Missione	:= MISSION_STATE_NOP; (* Stato Missione *)
+	PPick			: UINT	:= 0;		(* Puntatore Tabella WorkPickPoint(Lastra)/WorkArea(Lastra/LAYER) *)
+	TPick			: e_Tipo_PresaEndEffector	:= 0;		(* Tipo di Prelievo: 0=Pick From PickPoint (PACCO), 1=Pick From WorkArea (PALLET), 2=Pick From WorkArea (FALDA) *)
+	PPlace			: UINT	:= 0;		(* Puntatore Tabella WorkArea *)
+	
+	XPick			: LREAL	:= 0.0;		(* (mm) Punto di Prelievo X - Quota assoluta di impianto DA ORIGINE *)
+	YPick			: LREAL	:= 0.0;		(* (mm) Punto di Prelievo Y - Quota assoluta di impianto DA ORIGINE *)
+	ZPick			: LREAL	:= 0.0;		(* (mm) Punto di Prelievo Z - Quota assoluta di impianto DA ORIGINE *)
+	JPick			: LREAL	:= 0.0;		(* (mm) Punto di Prelievo - Quota di Rotazione lungo asse X *)
+	KPick			: LREAL	:= 0.0;		(* (mm) Punto di Prelievo - Quota di Rotazione lungo asse Y *)
+	WPick			: LREAL	:= 0.0;		(* (mm) Punto di Prelievo - Quota di Rotazione lungo asse Z *)
+
+	XPickApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio X - Quota assoluta di impianto DA ORIGINE *)
+	YPickApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Y - Quota assoluta di impianto DA ORIGINE *)
+	ZPickApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Z - Quota assoluta di impianto DA ORIGINE *)
+	JPickApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio - Quota di Rotazione lungo asse X *)
+	KPickApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio - Quota di Rotazione lungo asse Y *)
+	WPickApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio - Quota di Rotazione lungo asse Z *)
+	
+	XPlace			: LREAL	:= 0.0;		(* (mm) Punto di Deposito X - Quota assoluta di impianto DA ORIGINE *)
+	YPlace			: LREAL	:= 0.0;		(* (mm) Punto di Deposito Y - Quota assoluta di impianto DA ORIGINE *)
+	ZPlace			: LREAL	:= 0.0;		(* (mm) Punto di Deposito Z - Quota assoluta di impianto DA ORIGINE *)
+	JPlace			: LREAL	:= 0.0;		(* (mm) Punto di Deposito - Quota di Rotazione lungo asse X *)
+	KPlace			: LREAL	:= 0.0;		(* (mm) Punto di Deposito - Quota di Rotazione lungo asse Y *)
+	WPlace			: LREAL	:= 0.0;		(* (mm) Punto di Deposito - Quota di Rotazione lungo asse Z *)
+
+	XPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio X - Quota assoluta di impianto DA ORIGINE *)
+	YPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Y - Quota assoluta di impianto DA ORIGINE *)
+	ZPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Z - Quota assoluta di impianto DA ORIGINE *)
+	JPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio - Quota di Rotazione lungo asse X *)
+	KPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio - Quota di Rotazione lungo asse Y *)
+	WPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio - Quota di Rotazione lungo asse Z *)
+	
+	(* Deposito secondario utilizzato per depositi intermedi -> Es. x falda *)
+	XPlaceSecondario			: LREAL	:= 0.0;		(* (mm) Punto di Deposito X Secondario - Quota assoluta di impianto DA ORIGINE *)
+	YPlaceSecondario			: LREAL	:= 0.0;		(* (mm) Punto di Deposito Y Secondario - Quota assoluta di impianto DA ORIGINE *)
+	ZPlaceSecondario			: LREAL	:= 0.0;		(* (mm) Punto di Deposito Z Secondario - Quota assoluta di impianto DA ORIGINE *)
+	JPlaceSecondario			: LREAL	:= 0.0;		(* (mm) Punto di Deposito Secondario - Quota di Rotazione lungo asse X *)
+	KPlaceSecondario			: LREAL	:= 0.0;		(* (mm) Punto di Deposito Secondario - Quota di Rotazione lungo asse Y *)
+	WPlaceSecondario			: LREAL	:= 0.0;		(* (mm) Punto di Deposito Secondario - Quota di Rotazione lungo asse Z *)
+
+	XPlaceApproachSecondario	: LREAL	:= 0.0;		(* (mm) Punto di Approccio X Secondario- Quota assoluta di impianto DA ORIGINE *)
+	YPlaceApproachSecondario	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Y Secondario- Quota assoluta di impianto DA ORIGINE *)
+	ZPlaceApproachSecondario	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Z Secondario- Quota assoluta di impianto DA ORIGINE *)
+	JPlaceApproachSecondario	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Secondario- Quota di Rotazione lungo asse X *)
+	KPlaceApproachSecondario	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Secondario- Quota di Rotazione lungo asse Y *)
+	WPlaceApproachSecondario	: LREAL	:= 0.0;		(* (mm) Punto di Approccio Secondario- Quota di Rotazione lungo asse Z *)
+
+	XDim			: REAL	:= 0.0;		(* (mm) Dimensione X del Lastra/Pallet/Falda *)
+	YDim			: REAL	:= 0.0;		(* (mm) Dimensione Y del Lastra/Pallet/Falda *)
+	ZDim			: REAL	:= 0.0;		(* (mm) Dimensione Z del Lastra/Pallet/Falda *)
+	
+	Slab			: TFMachinePalletizer_PlaceElement; (* Struttura Usata per Tracciare l'elemento presente in pinza *)
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

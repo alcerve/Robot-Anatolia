@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_IN" Id="{30a35963-d415-4da3-98dc-262a29e46690}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_IN :
+STRUCT
+	Mode : Mode;
+	
+	PowerOk : BOOL;
+	
+	SensorAir : BOOL;
+	Sensor24Volt : BOOL;
+	
+	PX_WorkArea : ARRAY [1..MAXAREA] OF BOOL;
+	
+	HandlingRun : BOOL;
+	
+	Y_BeltSafety : BOOL;
+	Z_BeltSafety : BOOL;
+	PX_GripPresence : BOOL;
+			
+	WD_Trasporti : BOOL; //Watch DOG da Trasporti
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

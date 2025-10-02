@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachineTransportIN" Id="{0c4f8951-f7a9-44e1-a807-fec028b79fee}">
+    <Declaration><![CDATA[TYPE TFMachineTransportIN :
+STRUCT
+	Mode : Mode;
+	PowerOk : BOOL;
+	SensorAir : BOOL;
+	Sensor24Volt : BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

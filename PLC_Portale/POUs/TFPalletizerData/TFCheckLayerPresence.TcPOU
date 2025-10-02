@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCheckLayerPresence" Id="{b9005176-eeb3-466f-bded-8b1f1544ddbe}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCheckLayerPresence : INT
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	PX_WorkArea : ARRAY [1..MAXAREA] OF BOOL;
+END_VAR
+VAR
+	NStack : INT;
+	i : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFCheckLayerPresence := 0;
+NStack := 0;
+
+FOR i:=1 TO MAXAREAPRESENT DO
+	IF WorkArea^[i].Enable = 1 AND WorkArea^[i].Typology = TYPOLOGY_LAYER AND (*WorkAreaState^[i].State = WORKAREA_STATE_OCCUPIED_WORKING*)  PX_WorkArea[i] THEN
+		RETURN;
+	END_IF
+END_FOR
+TFCheckLayerPresence := 1;
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCheckLayerPresence">
+      <LineId Id="10" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="14" Count="1" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="20" Count="2" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

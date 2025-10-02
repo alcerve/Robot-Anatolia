@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="Supervisor_Variable" Id="{2c7c8f5c-8165-4bde-9144-1f2e0651657d}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+	HMI_ReqCambioWorkOrder      : BOOL; (* Bit che si alza per indicare a HMI la richiesta di un cambio di W.O.*)
+	HMI_ConfermaCambioWorkOrder : BOOL; (* Conferma da operatore su HMI per cambio Workorder *)
+	LGV_Data 					: ARRAY[1..MAXAREA] OF ST_SupervisorData;		//Dati per supervisore
+	
+END_VAR
+VAR_GLOBAL PERSISTENT
+	
+	Request_WorkOrder 	: ST_WorkOrder; 	(* Nuovo ordine di lavoro - SCRITTO DA WMS *)
+	
+	ReadyToChange		: BOOL; 			(* Indica che la macchina è pronta a eseguire il cambio di produzione - SCRITTO DA PLC *)
+	Actual_WorkOrder	: ST_WorkOrder;		(* Ordine di lavoro in esecuzione - SCRITTO DA PLC *)
+	
+	OLD_Actual_WorkOrder : ST_WorkOrder;	(* Ultimo Ordine di lavoro in esecuzione prima del cambio *)
+
+	HMI_CambioOrdineAutomatico 	: BOOL := TRUE; (* Se TRUE l'ordine viene attivato autoomaticamente *) 
+	StatisticData				:  ST_StatisticData;
+END_VAR	]]></Declaration>
+  </GVL>
+</TcPlcObject>

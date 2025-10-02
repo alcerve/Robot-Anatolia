@@ -1,0 +1,215 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<safetyApplication Crc="2417835589" xmlns:dm0="http://schemas.microsoft.com/VisualStudio/2008/DslTools/Core" dslVersion="1.4.0.0" Id="e6f2fae4-998b-4628-a760-31d8da5ad0a2" name="" mapState="false" mapDiag="false" groupOrderId="0" passificationAllowed="false" temporaryDeactivationAllowed="false" permamentDeactivationAllowed="false" xmlid="0" analogFBOutputReplacementValues="Zero" verifyAnalogFBInputsIfStart="false" userFbId="e6f2fae4-998b-4628-a760-31d8da5ad0a2" xmlns="http://schemas.microsoft.com/dsltools/SafetyApplicationLanguage">
+  <networks>
+    <safetyApplicationHasNetworks Id="6d3665ba-5d02-4e24-ba1b-9cf7cc505222">
+      <Network Id="b016c1fb-eb1d-439e-9761-3026ae137b0c" name="Network1" networkName="RichiestaIngresso" intId="1" networkOrderId="0">
+        <functionBlocks>
+          <networkHasFunctionBlocks Id="baf03ec5-9cc9-4fb1-814a-9d49e7fbb3e2">
+            <fBTon Id="d54805d2-e77a-47ca-867a-684482019e1f" name="FBTon1" instanceName="FiltroRichiestaIngresso" orderOfExecution="1" mapState="false" mapDiag="false" functionName="safeTon">
+              <inPorts>
+                <functioBlockHasInPorts Id="e5a297a5-3cb1-4e55-876b-3dda849f26be">
+                  <inPort Id="010a4db8-b358-45e5-b9b7-1d487523d72a" name="TonIn" portName="TonIn" portNum="2" objectIndex="8" varId="1" filter="2" portDataType="1" assignedVariable="IO.IO.Input2.DecOut5" channelInterface="Activated" deactivate1="Make Contact (NO)" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+              </inPorts>
+              <outPorts>
+                <functionBlockHasOutPorts Id="b19509e6-f12b-4085-81a3-ec25c8b373fd">
+                  <outPort Id="e8e0ff4d-7fb3-4bd0-8bbe-dd4c45f159df" name="TonOut" portName="TonOut" portNum="4" objectIndex="1" varId="4" filter="6" portDataType="1" assignedVariable="BarriereSicurezza.MemRicIngManCONSOLLE.Set" replacementValue="0" />
+                </functionBlockHasOutPorts>
+              </outPorts>
+              <parameterPorts>
+                <functionBlockHasParamPorts Id="46228597-4614-42fc-8849-b4fdddb6985c">
+                  <parameterPort Id="7ea9bdee-4bbf-44d8-889b-a0413e181a8a" name="Delay Time (s)" portName="Delay Time (s)" portNum="4" objectIndex="0" varId="0" filter="0" portDataType="0" timing="1" userFbPortName="Delay Time (s)" useInUserFb="false" />
+                </functionBlockHasParamPorts>
+              </parameterPorts>
+            </fBTon>
+          </networkHasFunctionBlocks>
+          <networkHasFunctionBlocks Id="2ec18343-b03b-4868-b611-984c5054859a">
+            <fBSr Id="6381c59b-558a-4841-9b96-af2c57b87c33" name="FBSr1" instanceName="MemRicIng" orderOfExecution="2" mapState="false" mapDiag="false" functionName="safeSr">
+              <inPorts>
+                <functioBlockHasInPorts Id="058a4e98-42c2-4b96-a9d0-f9aa4d31c6cc">
+                  <inPort Id="0f5abb31-970e-4a6a-9213-a69acca8c5bc" name="Set" portName="Set" portNum="2" objectIndex="8" varId="1" filter="2" portDataType="1" assignedVariable="BarriereSicurezza.DelayRichInManCONSOLLE.TonOut" channelInterface="Activated" deactivate1="Break Contact (NC)" maxDeviation="0" resetTime="0">
+                    <localRefLinkTargetFBPorts>
+                      <localReferenceLink Id="1900fe10-2b1a-4d2f-a6ae-9779fb7f5d5b">
+                        <outPortMoniker name="//Network1/FBTon1/TonOut" />
+                      </localReferenceLink>
+                    </localRefLinkTargetFBPorts>
+                  </inPort>
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="c8cbaa8f-ddf3-4312-930c-6fb646f98cdd">
+                  <inPort Id="618434df-2fa0-4b2e-bb6b-2f1d03451c34" name="Reset" portName="Reset" portNum="3" objectIndex="9" varId="2" filter="2" portDataType="1" assignedVariable="BarriereSicurezza.ResetRichInManCONSOLLE.AndOut" channelInterface="Activated" deactivate1="Break Contact (NC)" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+              </inPorts>
+              <outPorts>
+                <functionBlockHasOutPorts Id="5c3989e0-af37-4fd0-a3d1-7963f32d2faa">
+                  <outPort Id="09ed3f75-9997-4dfc-9c9d-b8c8bc84e75a" name="SrOut" portName="SrOut" portNum="4" objectIndex="1" varId="4" filter="6" portDataType="1" assignedVariable="BarriereSicurezza.RestartManRichIn.AndIn3;BarriereSicurezza.RestartAutoRichIn.AndIn3;BarriereSicurezza.ValutaMemoriaRichiestaIngresso.OrIn1;BarriereSicurezza.OrMemorieRicIngresso.OrIn1;BarriereSicurezza.ResetRichInManCONSOLLE.AndIn1" replacementValue="0" />
+                </functionBlockHasOutPorts>
+              </outPorts>
+            </fBSr>
+          </networkHasFunctionBlocks>
+          <networkHasFunctionBlocks Id="30d58c71-31ca-464f-b1ad-a388415d3db8">
+            <fBAnd Id="6c6bf644-731d-4506-84ba-eefb19bf18f2" name="FBAnd3" instanceName="ResetRichIn" orderOfExecution="3" mapState="false" mapDiag="false" functionName="safeAnd">
+              <inPorts>
+                <functioBlockHasInPorts Id="2596e8bb-2c3c-4b12-a176-afaedb29a9b1">
+                  <inPort Id="5259d0f2-36bc-454a-b85a-c33e6d1baede" name="AndIn1" portName="AndIn1" portNum="2" objectIndex="8" varId="2" filter="3" portDataType="1" assignedVariable="BarriereSicurezza.MemRicIngManCONSOLLE.SrOut" channelInterface="Deactivated" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="479eacd8-2a3e-486f-8ecb-6659fc6d11b8">
+                  <inPort Id="34f72ab5-032d-47c5-803a-7d7485f5c03e" name="AndIn2" portName="AndIn2" portNum="3" objectIndex="9" varId="3" filter="2" portDataType="1" assignedVariable="IO.IO.Input2.DecOut8" channelInterface="Activated" deactivate1="Break Contact (NC)" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="a3389461-f9da-467a-b97c-7cef565d2706">
+                  <inPort Id="3371ec3d-2bb4-42aa-becd-ec64fcc62baa" name="AndIn3" portName="AndIn3" portNum="4" objectIndex="10" varId="4" filter="2" portDataType="1" assignedVariable="IO.IO.Input2.DecOut5" channelInterface="Activated" deactivate1="Break Contact (NC)" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="f5f776c0-ea41-43dd-8d9f-c6caf51b1f0e">
+                  <inPort Id="531e91f0-4a30-4f6e-8d95-0ed6bde95ec0" name="AndIn4" portName="AndIn4" portNum="5" objectIndex="11" varId="5" filter="2" portDataType="1" channelInterface="Deactivated" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="40363531-51fa-464d-8896-9305ffb42083">
+                  <inPort Id="f305d417-a1e0-4548-980b-d70b08ef1a5b" name="AndIn5" portName="AndIn5" portNum="6" objectIndex="12" varId="6" filter="2" portDataType="1" channelInterface="Deactivated" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="5fea0a80-3727-42b9-8da3-c757f68d09d7">
+                  <inPort Id="f9f1a23b-a23a-49bc-a58c-ea2e340e089b" name="AndIn6" portName="AndIn6" portNum="7" objectIndex="13" varId="7" filter="2" portDataType="1" channelInterface="Deactivated" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="bd6e53bd-eec2-4023-8d46-3163894d14dd">
+                  <inPort Id="f2e3080f-8463-4e20-ae68-d65cb2496045" name="AndIn7" portName="AndIn7" portNum="8" objectIndex="14" varId="8" filter="2" portDataType="1" channelInterface="Deactivated" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+                <functioBlockHasInPorts Id="21eb23c8-79b2-4c0e-90b9-de2cba84ce2f">
+                  <inPort Id="1fe2bd70-9c62-49a0-b65f-7c9b0d77161e" name="AndIn8" portName="AndIn8" portNum="9" objectIndex="15" varId="9" filter="2" portDataType="1" channelInterface="Deactivated" maxDeviation="0" resetTime="0" />
+                </functioBlockHasInPorts>
+              </inPorts>
+              <outPorts>
+                <functionBlockHasOutPorts Id="211ca9a2-a270-4700-9f85-07f0dff53045">
+                  <outPort Id="656cd450-e0e6-4167-ba2f-87c98053dfa8" name="AndOut" portName="AndOut" portNum="8" objectIndex="1" varId="20" filter="7" portDataType="1" assignedVariable="BarriereSicurezza.MemRicIngManCONSOLLE.Reset" replacementValue="0" />
+                </functionBlockHasOutPorts>
+              </outPorts>
+            </fBAnd>
+          </networkHasFunctionBlocks>
+        </functionBlocks>
+      </Network>
+    </safetyApplicationHasNetworks>
+  </networks>
+  <variables>
+    <safetyApplicationHasVariables Id="dd11012d-b14b-4b2c-a53d-903b3be63d19">
+      <variable Id="74c73502-45a3-4ade-98f7-d2282023abaa" name="SelettoreRichiestaIngresso" isLocal="false">
+        <sourceUsages>
+          <variableHasSourceUsages Id="0dd7dade-6fe7-46f7-9e24-affb741b8ee7">
+            <variableUsages Id="5b694a67-3652-4e39-bf4c-a99782627153" />
+          </variableHasSourceUsages>
+        </sourceUsages>
+        <targetUsages>
+          <variableHasTargetUsages Id="520b090e-db8e-436b-b652-ff04789b6c2a">
+            <variableUsages Id="960019de-143d-4847-a557-5bd184475eb1">
+              <usages>
+                <variableUsagesHasUsages Id="f9915965-e296-47c6-ba3f-e4d3800a96e0">
+                  <fbPortUsage Id="86679110-9597-4e14-9fcf-421a3edf464d">
+                    <functionBlockPort>
+                      <fbPortUsageReferencesFunctionBlockPort Id="35c82bc3-2f33-4930-a522-90a55fab57c4">
+                        <inPortMoniker name="//Network1/FBTon1/TonIn" />
+                      </fbPortUsageReferencesFunctionBlockPort>
+                    </functionBlockPort>
+                  </fbPortUsage>
+                </variableUsagesHasUsages>
+                <variableUsagesHasUsages Id="f6084994-8ffd-4c3f-8874-30b3972c3072">
+                  <fbPortUsage Id="be8998a9-6e20-4957-bd68-bedf8f4a99df">
+                    <functionBlockPort>
+                      <fbPortUsageReferencesFunctionBlockPort Id="c8d3aa34-83cf-4d0b-9729-15016749cb87">
+                        <inPortMoniker name="//Network1/FBAnd3/AndIn2" />
+                      </fbPortUsageReferencesFunctionBlockPort>
+                    </functionBlockPort>
+                  </fbPortUsage>
+                </variableUsagesHasUsages>
+              </usages>
+            </variableUsages>
+          </variableHasTargetUsages>
+        </targetUsages>
+      </variable>
+    </safetyApplicationHasVariables>
+    <safetyApplicationHasVariables Id="9748f6a2-f4bd-48c0-8bb5-6d1c6d601d21">
+      <variable Id="767d0e8f-93a6-4494-bc5f-674806b2a613" name="ResetRichiestaIngresso" isLocal="false">
+        <sourceUsages>
+          <variableHasSourceUsages Id="071f5141-cacb-4614-af80-29eca06887d5">
+            <variableUsages Id="2ba43665-9114-4f25-94e4-2200ef65d948">
+              <usages>
+                <variableUsagesHasUsages Id="7dd2f007-19c7-4cbb-a616-de0dcead13f0">
+                  <fbPortUsage Id="f648dd21-425f-4f02-ac51-552157883518">
+                    <functionBlockPort>
+                      <fbPortUsageReferencesFunctionBlockPort Id="7c0d0a15-f89a-4012-a9df-57e5e1fa6485">
+                        <outPortMoniker name="//Network1/FBAnd3/AndOut" />
+                      </fbPortUsageReferencesFunctionBlockPort>
+                    </functionBlockPort>
+                  </fbPortUsage>
+                </variableUsagesHasUsages>
+              </usages>
+            </variableUsages>
+          </variableHasSourceUsages>
+        </sourceUsages>
+        <targetUsages>
+          <variableHasTargetUsages Id="8f9b54e5-845b-4de3-8c50-abfd0c36dfa2">
+            <variableUsages Id="34bbbc1f-9286-48f2-8e83-d87162244f9e">
+              <usages>
+                <variableUsagesHasUsages Id="053fd60e-b231-4e27-9b99-2cf13bfcda6e">
+                  <fbPortUsage Id="ee26635e-da41-4194-a1c9-bcc7d39715cd">
+                    <functionBlockPort>
+                      <fbPortUsageReferencesFunctionBlockPort Id="32c5ff92-3ec9-4fe5-bce1-bce3ba79885f">
+                        <inPortMoniker name="//Network1/FBSr1/Reset" />
+                      </fbPortUsageReferencesFunctionBlockPort>
+                    </functionBlockPort>
+                  </fbPortUsage>
+                </variableUsagesHasUsages>
+              </usages>
+            </variableUsages>
+          </variableHasTargetUsages>
+        </targetUsages>
+      </variable>
+    </safetyApplicationHasVariables>
+    <safetyApplicationHasVariables Id="bc07e454-1982-4ec4-99ec-70214b947b8b">
+      <variable Id="3adcf34e-d543-42e9-a574-bd0e029fcade" name="PulsanteResetRichiestaIngresso" isLocal="false">
+        <sourceUsages>
+          <variableHasSourceUsages Id="1f21295f-28c8-4e9a-9580-cd4936868df0">
+            <variableUsages Id="9d74c3bc-561e-4be2-9d35-688d031e5d97" />
+          </variableHasSourceUsages>
+        </sourceUsages>
+        <targetUsages>
+          <variableHasTargetUsages Id="3cf77be1-18e7-4b93-9d57-317b791624d7">
+            <variableUsages Id="783f5b69-65cd-465a-8de6-97ebf397b702">
+              <usages>
+                <variableUsagesHasUsages Id="a1daebe3-52b1-4da6-af63-0a3d3c9bd06f">
+                  <fbPortUsage Id="a7bc2a9e-95d9-4bb2-b5b5-1bb04782e861">
+                    <functionBlockPort>
+                      <fbPortUsageReferencesFunctionBlockPort Id="c0196d14-73c0-4dfb-87b7-8cdd43df14c6">
+                        <inPortMoniker name="//Network1/FBAnd3/AndIn3" />
+                      </fbPortUsageReferencesFunctionBlockPort>
+                    </functionBlockPort>
+                  </fbPortUsage>
+                </variableUsagesHasUsages>
+              </usages>
+            </variableUsages>
+          </variableHasTargetUsages>
+        </targetUsages>
+      </variable>
+    </safetyApplicationHasVariables>
+    <safetyApplicationHasVariables Id="3920bf2e-f2cc-4bd0-95a2-e07fb8ccbbcf">
+      <variable Id="953884fa-6ac1-4e8c-82c5-0261b87bf9d1" name="RichiestaIngressoAttiva" isLocal="false">
+        <sourceUsages>
+          <variableHasSourceUsages Id="5862074a-5bf7-4f91-83e2-7ed885be5281">
+            <variableUsages Id="9e7e7f2a-91ba-4d60-8b95-087dfb31695f">
+              <usages>
+                <variableUsagesHasUsages Id="364d6931-3ea2-440d-b96d-7d3f1c85b03d">
+                  <fbPortUsage Id="88115217-8dac-4153-bbd6-17357dc5a471">
+                    <functionBlockPort>
+                      <fbPortUsageReferencesFunctionBlockPort Id="ea1b24bd-f1c7-4142-a8ed-fb3b2a911ad9">
+                        <outPortMoniker name="//Network1/FBSr1/SrOut" />
+                      </fbPortUsageReferencesFunctionBlockPort>
+                    </functionBlockPort>
+                  </fbPortUsage>
+                </variableUsagesHasUsages>
+              </usages>
+            </variableUsages>
+          </variableHasSourceUsages>
+        </sourceUsages>
+        <targetUsages>
+          <variableHasTargetUsages Id="66a52bdb-6f37-4eb3-ac8d-d349013491e4">
+            <variableUsages Id="d61f8288-0c93-4d23-a991-d2d26c696249" />
+          </variableHasTargetUsages>
+        </targetUsages>
+      </variable>
+    </safetyApplicationHasVariables>
+  </variables>
+</safetyApplication>

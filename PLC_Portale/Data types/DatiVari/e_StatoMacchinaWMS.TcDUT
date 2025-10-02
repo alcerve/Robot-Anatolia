@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_StatoMacchinaWMS" Id="{5d8521a9-d5ce-4a86-b3a6-6017c00aaa44}">
+    <Declaration><![CDATA[{attribute 'strict'}
+TYPE e_StatoMacchinaWMS :
+(
+	NotDefined 			:= 0,
+	Allarme 			:= 3,
+	ConsegnaMateriale 	:= 4,//attesa ricezione materiale da linea con ordine attivo
+	Svuotamento			:= 5,
+	Working 			:= 7,
+	Manuale 			:= 10,
+	RitiroMateriale 	:= 13,//Baie piene, attesa veicolo
+	Asservimento 		:= 14	//Macchina ferma con richiesta di ingresso da veicolo
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

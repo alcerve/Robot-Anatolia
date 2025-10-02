@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPackCodePresentToZone" Id="{a0adf196-61b4-44cf-bbef-c418284dfa06}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPackCodePresentToZone : INT
+VAR_INPUT
+	HandlingPackTable : POINTER TO TFHandlingPackTable;
+	WorkAreaZone : POINTER TO TFMachinePalletizer_WorkAreaZone;
+	WorkArea : INT;
+END_VAR
+VAR
+	w : INT;
+	n : INT;
+	i : INT;
+	a : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPackCodePresentToZone := 0; 
+
+FOR w:=MAXHANDLINGPACK TO 1 BY -1 DO
+	IF HandlingPackTable^.Table[w,1].PC > 0 THEN
+		FOR n:=1 TO MAXZONE DO
+			FOR a:=1 TO MAXAREA DO
+				IF WorkAreaZone^.Zone[n].WorkArea[a] = WorkArea THEN
+					FOR i:=1 TO MAXFORMINGCODE DO
+						(* Verifico se il Pacco presente nel WPP è destinato ad una Zona *)
+						IF WorkAreaZone^.Zone[n].Code[i] = HandlingPackTable^.Table[w,1].PC THEN
+							TFPackCodePresentToZone := HandlingPackTable^.Table[w,1].PC;
+							RETURN;
+						END_IF
+					END_FOR
+				END_IF
+			END_FOR
+		END_FOR
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="TFPackCodePresentToZone">
+      <LineId Id="12" Count="1" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="78" Count="6" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

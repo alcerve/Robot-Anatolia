@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_StatoWorkOrder" Id="{667882e8-04dc-4fba-8c8f-d6593b58ba84}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE e_StatoWorkOrder :
+(
+	NON_ESEGUITO 	:= 0,
+	DA_ESEGUIRE		:= 1,
+	IN_ESECUZIONE 	:= 2,
+	TERMINATO		:= 3
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

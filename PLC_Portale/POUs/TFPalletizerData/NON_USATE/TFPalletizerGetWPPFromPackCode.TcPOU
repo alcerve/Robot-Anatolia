@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerGetWPPFromPackCode" Id="{3925f32a-6810-494d-b066-e00a76341028}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerGetWPPFromPackCode : INT
+VAR_INPUT
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+	PCode : INT;
+END_VAR
+VAR
+	wpp : INT;
+	pc : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Per tutte le WorkPickPoint Attive *)
+FOR wpp:=1 TO MAXPICKPOINT DO
+//	IF WorkPickPoint^[wpp].Enable = 1 THEN
+		(* Verifico disponibilità Pacco *)
+		IF WorkPickPointState^[wpp].State = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+			(* Verifico se il codice è giusto *)
+			IF WorkPickPointState^[wpp].Code =  PCode AND PCode > 0 THEN
+				TFPalletizerGetWPPFromPackCode := wpp;
+				RETURN;
+			END_IF
+		END_IF
+//	END_IF
+END_FOR
+TFPalletizerGetWPPFromPackCode := -1;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerGetWPPFromPackCode">
+      <LineId Id="50" Count="5" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="62" Count="1" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

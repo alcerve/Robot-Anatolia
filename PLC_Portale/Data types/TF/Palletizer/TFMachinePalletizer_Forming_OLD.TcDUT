@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_Forming_OLD" Id="{1b705584-e7c9-4a17-bcb3-4534e29bcf24}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_Forming_OLD :
+STRUCT
+	
+	Enable		: INT							:= -1;	(* READ			- Formatura Abilitata 0=no, 1=si, -1 dato non valido *)
+	Code		: ARRAY[1..MAXFORMINGCODE] OF INT;		(* READ			- Codici di Pallettizzazione (0..n=, -1 dato non valido) *)
+	Pallet		: INT							:= -1;	(* READ			- Tipo di pallet assegnato (0 = tipo 0, 1 = tipo 1, 2 = tipo 2,  …. , 0 / -1 dato non valido *)
+	Layer		: INT							:= -1;	(* READ			- Tipo di falda dopo il pallet (0 = assente, 1 = tipo 1, 2 = tipo 2,  …. , -1 dato non valido *)
+	NLayer		: INT							:= -1;	(* READ			- Numero di falde da depositare ad inizio pallettizzazione *)
+	Tape		: INT							:= -1;	(* READ			- Da Nastrare (0=no, 1=si, -1= non valido) *)
+	LGVAttr		: INT								:= -1;  (* READ			- Attributi LGV (0=no, 1=si, -1= non valido) *)
+	
+	PX			: REAL							:= 0.0;	(* READ			- (mm) Pack X Dimension - Dimensione X (valore nominale) del pacco ribaltato in posizione verticale(al momento definiti come orizzontali) *)
+	PY			: REAL							:= 0.0;	(* READ			- (mm) Pack Y Dimension - Dimensione Y (valore nominale) del pacco ribaltato in posizione verticale *)
+	PZ			: REAL							:= 0.0;	(* READ			- (mm) Pack Z Dimension - Dimensione Z (valore nominale) del pacco ribaltato in posizione verticale *)
+	PIZ			: REAL							:= 0.0;	(* READ			- (mm) Pack Z Pick  Offset - Offset Prelievo in Z *)
+	PLZ			: REAL							:= 0.0; (* READ			- (mm) Pack Z Place Offset - Offset Deposito in Z *)
+	AX			: REAL							:= 0.0; (* READ			- (mm) Approach X Distance - Distanza Accostamento X *)
+	AY			: REAL							:= 0.0; (* READ			- (mm) Approach Y Distance - Distanza Accostamento X *)
+	AZ			: REAL							:= 0.0; (* READ			- (mm) Approach Z Distance - Distanza Accostamento X *)
+	KLT			: REAL							:= 0.0;	(* READ			- (%)  Valore di Coppia in presa Longitudinale *)
+	KTT			: REAL							:= 0.0;	(* READ			- (%)  Valore di Coppia in Presa Trasversale *)
+	KM			: INT							:= 0;	(* READ			- Modo Presa Pacco: 1=Position, 2=Position+Torque *)
+
+	PickPosition: INT							:= 0; 	(* READ 		- 0 = misto, 1 = verticale, 2 = orizzontale*)
+	PackXP		: ARRAY[1..MAXFORMINGPACK] OF TFMachinePalletizer_FormingPack; (* Tabella Pacchi X Positiva - Usata quando la X di Prelievo è Maggiore rispetto la quota di destinazione "Posizione Pallet" *)
+	PackXN		: ARRAY[1..MAXFORMINGPACK] OF TFMachinePalletizer_FormingPack; (* Tabella Pacchi X Negativa - Usata quando la X di Prelievo è Minore rispetto la quota di destinazione "Posizione Pallet" *)
+	
+	GUID		: UINT;
+	RecipeCode 	: UINT;              (* codice Ricetta *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

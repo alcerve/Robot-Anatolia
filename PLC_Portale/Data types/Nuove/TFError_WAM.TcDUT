@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFError_WAM" Id="{24f63ef1-ddd5-449a-abbf-bbaf750a2235}">
+    <Declaration><![CDATA[TYPE TFError_WAM :
+STRUCT
+	Code 		: UINT; (*Codice di errore*)
+	ExtraCode 	: UINT; (*Codice di errore EXTRA*)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

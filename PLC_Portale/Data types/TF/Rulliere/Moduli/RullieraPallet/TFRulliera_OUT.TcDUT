@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFRulliera_OUT" Id="{d51a01d3-6101-4de6-a428-dcd8cdbf7b26}">
+    <Declaration><![CDATA[TYPE TFRulliera_OUT :
+STRUCT
+		FTC_Presenza1 : BOOL;
+		FTC_Presenza2 : BOOL;
+		FTC_Presenza3 : BOOL;	
+		
+		
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPackOnPickPoint" Id="{1b4232c3-d445-43d2-ae79-174f0fad6996}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPackOnPickPoint : BOOL
+VAR_INPUT
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+END_VAR
+VAR
+	wpp : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPackOnPickPoint := FALSE;
+
+FOR wpp:=1 TO MAXPICKPOINT DO
+	(* Verifico disponibilità Pacco *)
+	IF WorkPickPointState^[wpp].State = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+		TFPackOnPickPoint := TRUE;
+	END_IF
+END_FOR	]]></ST>
+    </Implementation>
+    <LineIds Name="TFPackOnPickPoint">
+      <LineId Id="18" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="12" Count="4" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

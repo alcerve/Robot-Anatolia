@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Offset_Sicurezza_Anticipo_Movimenti" Id="{d3cdacb9-199e-43b0-ac0c-dfb1dff200a9}">
+    <Declaration><![CDATA[TYPE Offset_Sicurezza_Anticipo_Movimenti :
+STRUCT
+	OffsetSicurezzaAnticipo_X : REAL := 100; 
+	OffsetSicurezzaAnticipo_Y : REAL := 100; 
+	OffsetSicurezzaAnticipo_Z : REAl := 100;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

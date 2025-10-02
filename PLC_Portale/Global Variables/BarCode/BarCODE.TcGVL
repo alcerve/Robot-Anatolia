@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="BarCODE" Id="{14ef7726-0407-44e5-9781-42c82e96feb5}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+	MAXNUMBARCODE		: INT := 4;		(* Identifica il numero dei BARCODE presenti nella WA (uno per ogni cassa nella WA) valorizza l'array dei BARCODE nella WASTATE *)
+	DIMBARCODE			: INT := 13; 	(* Identifica la lunghezza del BARCODE *)
+
+	(* Stati BARCODE *)
+	LETTURA_DA_ESUGUIRE : INT := 0; 
+	LETTURA_IN_CORSO 	: INT := 1;
+	LETTURA_ESEGUITA 	: INT := 2;
+	ERRORE				: INT := 3;
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

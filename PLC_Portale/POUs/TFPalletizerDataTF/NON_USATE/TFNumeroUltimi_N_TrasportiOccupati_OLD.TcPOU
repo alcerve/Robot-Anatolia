@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFNumeroUltimi_N_TrasportiOccupati_OLD" Id="{88ce3afc-eb66-4df5-9e6d-4fe85d4332c7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFNumeroUltimi_N_TrasportiOccupati_OLD : UINT // Restituisce il numero di trasporti occupati, dall'ultimo all' n-esimo
+VAR_INPUT
+	HandlingPackTable : POINTER TO TFHandlingPackTable;
+	NTrasportiDaControllare : UINT;
+END_VAR
+VAR
+	i : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFNumeroUltimi_N_TrasportiOccupati := 0; 
+
+FOR i:= MAXHANDLINGPACK TO (MAXHANDLINGPACK - NTrasportiDaControllare - 1) BY -1 DO
+	IF i >= NTrasportiDaControllare THEN
+		IF HandlingPackTable^.Table[i,1].PP THEN
+			TFNumeroUltimi_N_TrasportiOccupati := TFNumeroUltimi_N_TrasportiOccupati +1;
+		END_IF
+	ELSE
+		RETURN;
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="TFNumeroUltimi_N_TrasportiOccupati_OLD">
+      <LineId Id="9" Count="1" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="34" Count="1" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

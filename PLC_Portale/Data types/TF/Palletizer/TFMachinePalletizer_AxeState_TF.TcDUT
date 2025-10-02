@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_AxeState_TF" Id="{79cf9849-e661-4105-a9d7-c5031741a4a4}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_AxeState_TF :
+STRUCT
+	
+	Position	: LREAL	:= 0.0;	(* Actual Position *)
+	Velocity	: LREAL	:= 0.0;	(* Actual Velocity *)
+	Torque		: REAL	:= 0.0;	(* Actual Torque *)
+	Error		: UDINT	:= 0;	(* Error Code *)
+	PowerActive	: BOOL  := FALSE; (* TRUE=Power Enable *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

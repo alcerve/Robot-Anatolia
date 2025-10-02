@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachineTransportElementWeintek" Id="{3d0f2f14-f005-4338-93cb-8227cec980b3}">
+    <Declaration><![CDATA[TYPE TFMachineTransportElementWeintek :
+STRUCT
+	
+	IDElement 		: UDINT := 0; //ID univoco generato dalla macchina  per il tracking degli alementi
+	Barcode			: STRING := '';
+	DataElementOk 	: BOOL := FALSE;///Indica che i dati sono stati acquisiti e sono ok
+	DataElement 	: TFMachinePalletizer_DataElement;
+	DimElement 		: TFDimensionElement; //Dimensioni 
+	Supporto		: TFMachinePalletizer_Pallet_Weintek; (* Struttura del supporto presente sul punto di prelievo *)
+	Zone			: INT := 0; //Zona di appartenenza dell'elemento
+	ErrorAck		: BOOL := FALSE;//Se true, si attende un comando da parte dell'opperatore per far ripartire il ciclo
+	CentraturaEsterna : INT; //Stato della centratura estarna
+	CentraturaInterna : INT; //Stato della centratura interna
+	Empty 			  : BOOL := FALSE;	//Se TRUE significa che l'elemento è un vuoto
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

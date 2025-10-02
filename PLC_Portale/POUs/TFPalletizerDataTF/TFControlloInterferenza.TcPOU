@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFControlloInterferenza" Id="{c49834d9-9228-4c4a-9b1d-f6cae0ebf5de}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFControlloInterferenza : uINT
+VAR_INPUT
+	Traiettoria : POINTER TO TFTraiettoria;
+	WorkSpace : POINTER TO TFMachinePalletizer_WorkSpace;
+	WorkFootprint : POINTER TO ARRAY [1..MAXFOOTPRINT] OF TFMachinePalletizer_WorkFootprint;
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_Ax;
+	//ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+END_VAR
+VAR
+	
+
+END_VAR	]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFControlloInterferenza := 0;
+
+(* 1° Step - Check Start/End Points Inside WorkSpace *)
+IF Traiettoria^.StartPoint.X < 0.0 OR Traiettoria^.StartPoint.X > WorkSpace^.X OR
+	Traiettoria^.StartPoint.Y < 0.0 OR Traiettoria^.StartPoint.Y > WorkSpace^.Y OR
+	Traiettoria^.StartPoint.Z < 0.0 OR Traiettoria^.StartPoint.Z > WorkSpace^.Z OR
+	Traiettoria^.EndPoint.X < 0.0 OR Traiettoria^.EndPoint.X > WorkSpace^.X OR
+	Traiettoria^.EndPoint.Y < 0.0 OR Traiettoria^.EndPoint.Y > WorkSpace^.Y OR
+	(*Traiettoria^.EndPoint.Z < 0.0 OR*) Traiettoria^.EndPoint.Z > WorkSpace^.Z THEN
+	TFControlloInterferenza := (ErrQUOTEDEPOSITO_NONCONFORMI); // Outside Limit
+	RETURN;
+END_IF
+
+(* Controllo che le quote di fuori ingombro non superino il valore massimo ammesso dell'asse Z *)
+IF QuotaFuoriIngombro_Z_ConFALDA >= WorkSpace^.Z AND (Mission^.State = MISSION_STATE_PRELIEVO_FALDA_RUN OR Mission^.State = MISSION_STATE_DEPOSITO_FALDA_RUN OR Mission^.State = MISSION_STATE_DEPOSITO_FALDA_DEPAL_RUN ) THEN
+	TFControlloInterferenza := (ErrQUOTAZ_FALDAFUORIING_ELEVATA);
+	RETURN;
+ELSIF QuotaFuoriIngombro_Z_AVUOTO >= WorkSpace^.Z AND (Mission^.State <> MISSION_STATE_NOP) THEN
+	TFControlloInterferenza := (ErrQUOTAZ_VUOTOFUORIING_ELEVATA);
+	RETURN;
+ELSIF QuotaFuoriIngombro_Z_ConPEZZO >= WorkSpace^.Z AND (Mission^.State = MISSION_STATE_PRELIEVO_LASTRA_DEPAL_RUN OR Mission^.State = MISSION_STATE_DEPOSITO_LASTRA_DEPAL_RUN) THEN
+	TFControlloInterferenza := (ErrQUOTAZ_PACCOFUORIING_ELEVATA);
+	RETURN;
+END_IF
+
+(* Controllo che gli assi abbiano quote "sensate" ovvero che rientrano nei limiti imposti dallo spazio di lavoro *)
+IF ModuleAX_X^.Ax^.AxRef^.NcToPlc.ActPos >  ModuleAX_X^.Ax^.Parameter.MAXPosition OR 
+	ModuleAX_X^.Ax^.AxRef^.NcToPlc.ActPos < ModuleAX_X^.Ax^.Parameter.MinPosition THEN
+		TFControlloInterferenza := (ErroreACT_POSX_NONCONFORME);
+		RETURN;
+END_IF
+IF ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos > ModuleAX_Y^.Ax^.Parameter.MAXPosition OR 
+	ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos <  ModuleAX_Y^.Ax^.Parameter.MinPosition THEN
+		TFControlloInterferenza := (ErroreACT_POSY_NONCONFORME);
+		RETURN;
+END_IF
+IF ModuleAX_Z^.Ax^.AxRef^.NcToPlc.ActPos > ModuleAX_Z^.Ax^.Parameter.MAXPosition OR 
+	ModuleAX_Z^.Ax^.AxRef^.NcToPlc.ActPos <  ModuleAX_Z^.Ax^.Parameter.MinPosition THEN 
+		TFControlloInterferenza := (ErroreACT_POSZ_NONCONFORME);
+		RETURN;
+END_IF
+IF ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos > ModuleAX_J^.Ax^.Parameter.MAXPosition OR 
+	ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos <  ModuleAX_J^.Ax^.Parameter.MinPosition THEN 
+		TFControlloInterferenza := (ErroreACT_POSJ_NONCONFORME);
+		RETURN;
+END_IF
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFControlloInterferenza">
+      <LineId Id="3" Count="0" />
+      <LineId Id="213" Count="1" />
+      <LineId Id="219" Count="1" />
+      <LineId Id="713" Count="0" />
+      <LineId Id="711" Count="1" />
+      <LineId Id="222" Count="0" />
+      <LineId Id="224" Count="0" />
+      <LineId Id="223" Count="0" />
+      <LineId Id="4914" Count="1" />
+      <LineId Id="5046" Count="1" />
+      <LineId Id="5182" Count="0" />
+      <LineId Id="5048" Count="1" />
+      <LineId Id="5183" Count="0" />
+      <LineId Id="5050" Count="1" />
+      <LineId Id="5184" Count="0" />
+      <LineId Id="5052" Count="0" />
+      <LineId Id="5453" Count="0" />
+      <LineId Id="5476" Count="0" />
+      <LineId Id="5454" Count="1" />
+      <LineId Id="5470" Count="0" />
+      <LineId Id="5472" Count="0" />
+      <LineId Id="5462" Count="1" />
+      <LineId Id="5459" Count="0" />
+      <LineId Id="5471" Count="0" />
+      <LineId Id="5473" Count="0" />
+      <LineId Id="5464" Count="1" />
+      <LineId Id="5461" Count="0" />
+      <LineId Id="5457" Count="0" />
+      <LineId Id="5474" Count="0" />
+      <LineId Id="5456" Count="0" />
+      <LineId Id="5466" Count="2" />
+      <LineId Id="5475" Count="0" />
+      <LineId Id="5469" Count="0" />
+      <LineId Id="5318" Count="0" />
+      <LineId Id="5501" Count="0" />
+      <LineId Id="5500" Count="0" />
+      <LineId Id="5319" Count="1" />
+      <LineId Id="315" Count="10" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,441 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCiclo_Prelievo_Falda" Id="{8f8f7049-ef68-4d30-83ed-2cb5a57f3cc8}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCiclo_Prelievo_Falda
+VAR_INPUT
+	Ciclo 		: POINTER TO Stato_Ciclo_Lavoro;
+	Programma  : POINTER TO TFProgramma_Ciclo_Falda_Lastre;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	StartInterpolazioneAssi : POINTER TO BOOL;
+	QuotaPassModePuntoIntermedio : ARRAY [1..3] OF REAL;
+	ModulePinza : POINTER TO TFModulePalletizer_Pinza;
+	AbilitazioneGlobalePassMode	: BOOL;
+	InterrompiCiclo : BOOL;
+	Abilita_Ciclo_Step : BOOL;
+	Command_Step : BOOL;
+	AbilitazioneAnticipoDinamicoMovimenti : bool;
+END_VAR
+VAR_OUTPUT
+	STEPDone	: BOOL;
+END_VAR
+VAR
+	ComandoInviatoTRIG : bool;
+	StepInto: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Set della variabile che mi permette di fare lo STEP nel ciclo *)
+StepInto := (Abilita_Ciclo_Step AND Command_Step) OR NOT Abilita_Ciclo_Step;
+
+(* Reset Anticipo Dinamico se non ho l'abilitazione *)
+IF NOT AbilitazioneAnticipoDinamicoMovimenti  OR NOT HMI_DisabilitaAnticipiGLOBALE THEN
+	QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaY_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+END_IF
+
+IF NOT InterrompiCiclo THEN
+	IF Ciclo^.Stato = TERMINATO OR Ciclo^.Stato = ANNULLATO THEN
+		Ciclo^.Passo := 0;
+	ELSIF Ciclo^.Stato = INTERROTTO THEN
+		Ciclo^.Passo := 999;
+	END_IF
+	Ciclo^.Stato := IN_ESECUZIONE;
+	CASE Ciclo^.Passo OF
+	(* Case 0 *)
+			0:  Ciclo^.Stato := IN_ESECUZIONE;
+				Ciclo^.Passo := 10;
+				STEPDone := FALSE;
+		
+			(* Case 10 - Spengo aspirazione *)
+			10:	IF ModulePinza^.CmdNext.Code = '' THEN
+					IF (Abilita_Ciclo_Step AND Command_Step) OR NOT Abilita_Ciclo_Step THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						TFCommandSend(CmdUNLOAD,ParametersArray,ModulePinza^.Cmd);
+						Ciclo^.Passo := 11;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+			(* Case 11 - Attesa aspirazione off*)
+			11:
+				IF TFStateCodeGet(ModulePinza^.State) = StateERROR  THEN
+					Ciclo^.Passo := 0;	
+					STEPDone := TRUE;
+				ELSIF NOT TFStateCodeGet(ModulePinza^.State) = StateUNLOAD_RUN  THEN
+					Ciclo^.Passo := 10;	
+					STEPDone := TRUE;								
+				ELSE
+					IF TFStateCodeGet(ModulePinza^.State) = StateUNLOAD_END THEN
+						Ciclo^.Passo := 20;
+						STEPDone := TRUE;
+					END_IF	
+				END_IF;
+				
+			(* Case 20 - PROGRAMMA[0] ASSE Z -> TRASLAZIONE A QUOTA DI FUORI INGOMBRO *)	
+			20:	Ciclo^.Stato := IN_ESECUZIONE;
+				IF StepInto THEN
+					TFParametersArrayClear(ADR(ParametersArray));
+					Programma_Z[54].Stato := DA_ESEGUIRE;
+					Programma_Z[54].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+					ProgrammaToModule_Z := Programma_Z[54];
+					Ciclo^.Passo := 21;
+					STEPDone := FALSE;
+				END_IF
+				
+			(* Case 21 - Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione*)
+			21: 
+				IF Programma_Z[54].Stato = TERMINATO OR 
+					Asse_Z_InFinestraDiPassMode OR 
+					QuotaAnticipoDinamicaZ_Raggiunta OR
+					(ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaFuoriIngombro_Z_AVUOTO-5) THEN
+						Ciclo^.Passo := 22;
+						STEPDone := TRUE;
+				ELSIF Programma_Z[0].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 21;										
+				END_IF
+				
+			(* Case 22 - Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			22: IF Programma_Z[54].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 20;
+				ELSE	
+					Ciclo^.Passo := 23;
+					STEPDone := TRUE;									
+				END_IF
+				
+			(* Case 23 - Vado a quota di fuori ingombro colonne con Y *)
+			23:
+				IF Programma_Z[54].Stato = INTERROTTO THEN
+					 Ciclo^.Passo := 20;										
+				ELSE
+					//IF FuoriIngombroYNecessario THEN
+						IF StepInto THEN
+							TFParametersArrayClear(ADR(ParametersArray));
+							Programma_Y[56].Stato := DA_ESEGUIRE;
+							Programma_Y[56].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_Y := Programma_Y[56];
+							Ciclo^.Passo := 24;
+							STEPDone := FALSE;
+						END_IF
+					//ELSE
+					//	Ciclo^.Passo := 24;
+					//	STEPDone := FALSE;
+					//END_IF
+				END_IF
+			
+			(* Case 24 - *)
+			24: IF Programma_Z[54].Stato = INTERROTTO OR
+					Programma_Y[56].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 20;
+				ELSIF Programma_Y[56].Stato = TERMINATO OR Asse_Y_InFinestraDiPassMode THEN// OR NOT FuoriIngombroYNecessario THEN	
+					Ciclo^.Passo := 40;
+					STEPDone := TRUE;									
+				END_IF
+				
+			(* Case 40 - PROGRAMMA[] ASSE Y -> TRASLAZIONE A QUOTA DI PRELIEVO FALDA  *)	
+			40:	
+				IF Programma_Z[54].Stato = INTERROTTO OR 
+					Programma_Y[56].Stato = INTERROTTO THEN
+						Ciclo_Pelievo_Falda.Passo := 20;										
+				ELSE
+					IF StepInto THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						
+						Programma_X[51].Stato := DA_ESEGUIRE;
+						(*IF NOT Pinza_InIngombroColonne_Destinazione THEN
+							Programma_Y[51].Stato := DA_ESEGUIRE;
+							Programma_Y[54].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//NO_INTERPOLAZIONE_ASSE
+							ProgrammaToModule_Y := Programma_Y[51];
+						END_IF*)
+						Programma_J[10].Stato := DA_ESEGUIRE;
+						Programma_K[51].Stato := DA_ESEGUIRE;
+						
+						Programma_X[51].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//NO_INTERPOLAZIONE_ASSE
+						//Programma_Y[54].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//NO_INTERPOLAZIONE_ASSE
+						Programma_J[10].InterpolaAsse := INTERPOLAZIONE_ASSE;//TRUE;//NO_INTERPOLAZIONE_ASSE
+						Programma_K[51].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+						
+						ProgrammaToModule_X := Programma_X[51];
+						//ProgrammaToModule_Y := Programma_Y[51];
+						ProgrammaToModule_J := Programma_J[10];
+						ProgrammaToModule_K := Programma_K[51];
+						
+						ProgrammaToModule_Z.InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+						
+						StartInterpolazioneAssi^ := TRUE; //Abilito l'interpolazione degli assi
+						
+						TFCommandSend(CmdLOAD,ParametersArray,ModulePinza^.Cmd);
+						
+						Ciclo^.Passo := 41;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+				
+			(* Case 41 - PROGRAMMA[51] ASSE Y -> TRASLAZIONE A QUOTA DI PRELIEVO FALDA  *)	
+			41:	
+				IF Programma_Z[54].Stato = INTERROTTO OR 
+					Programma_Y[56].Stato = INTERROTTO OR 
+					Programma_J[10].Stato = INTERROTTO OR 
+					Programma_K[51].Stato = INTERROTTO OR 
+					Programma_X[51].Stato = INTERROTTO THEN
+					  Ciclo_Pelievo_Falda.Passo := 20;										
+				ELSE
+					STEPDone := TRUE;
+					IF QuotaX_ConsensoRotazionePinza_Raggiunta OR NOT Pinza_InIngombroColonne_Destinazione THEN 
+						IF StepInto THEN
+							TFParametersArrayClear(ADR(ParametersArray));
+							Programma_Y[51].Stato := DA_ESEGUIRE;
+							Programma_Y[51].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_Y := Programma_Y[51];
+							
+							Ciclo^.Passo := 42;
+							STEPDone := FALSE;
+						END_IF
+					END_IF
+				END_IF
+					
+			(* Case 42 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			42: 
+				ComandoInviatoTRIG := FALSE;
+				IF Programma_Z[54].Stato = INTERROTTO OR 
+					Programma_Y[51].Stato = INTERROTTO OR  
+					Programma_J[10].Stato = INTERROTTO OR 
+					Programma_K[51].Stato = INTERROTTO OR 
+					Programma_X[51].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 20;	
+				ELSIF (Programma_X[51].Stato = TERMINATO OR Asse_X_InFinestraDiPassMode OR QuotaAnticipoDinamicaX_Raggiunta) AND 
+					(Programma_Y[51].Stato = TERMINATO OR Asse_Y_InFinestraDiPassMode) AND
+					(Programma_J[10].Stato = TERMINATO OR Asse_J_InFinestraDiPassMode) THEN
+						Ciclo^.Passo := 80;
+						STEPDone := TRUE;							
+				END_IF
+							
+			(* Case 80 - PROGRAMMA[51] ASSE Z -> TRASLAZIONE A QUOTA AMMESSA IN VELOCE DI PRELIEVO FALDA  *)
+			80:
+				IF Programma_X[51].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 40;		//NON DOVREBBE MAI CAPITARE IN QUESTO PUNTO								
+				ELSE
+					IF StepInto THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						Programma_Z[51].Stato := DA_ESEGUIRE;
+						Programma_Z[51].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+						ProgrammaToModule_Z := Programma_Z[51];
+						Ciclo^.Passo := 81;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+			(* Case 81 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			81: 
+				IF Programma_X[51].Stato = INTERROTTO OR 
+				Programma_Z[51].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 40;									
+				ELSE
+					IF (Programma_Z[51].Stato = TERMINATO OR
+					(ModuleAX_Z^.Ax^.Status.ActPosition <= Programma^.Quota_StartLenta_Prelievo_Falda_Z + 50 AND Programma_Z[51].Stato = IN_ESECUZIONE)) AND
+					Programma_X[51].Stato = TERMINATO THEN	// controllo che la X sia in posizione corretta per poter iniziare la lenta senza collisioni
+						Ciclo^.Passo := 100;
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+			
+		 	(* Case 100 - PROGRAMMA[52] ASSE Z -> TRASLAZIONE IN LENTA A QUOTA DI PRELIEVO FALDA  *)
+			100:
+				IF Programma_Z[51].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 40; //NON DOVREBBE ACCADERE										
+				ELSE
+					IF StepInto THEN
+						Programma_Z[52].Stato := DA_ESEGUIRE;
+						Programma_Z[52].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;//FALSE;//NO_INTERPOLAZIONE_ASSE
+						ProgrammaToModule_Z := Programma_Z[52];
+						Ciclo^.Passo := 101;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+				
+			(* Case 101 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			101: 
+				IF Programma_Z[52].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 20; //NON DOVREBBE ACCADERE										
+				ELSE
+					IF Programma_Z[52].Stato = TERMINATO THEN
+						Ciclo^.Passo := 1000;
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+				
+				(* Case 1000 *)
+			1000:
+				Ciclo^.Stato := TERMINATO;
+				Ciclo^.Passo := 1000;
+				
+			(* Case 9999 - Ciclo NON annullato o NON terminato*)
+			9999:
+				Ciclo^.Stato := INTERROTTO;
+				Ciclo^.Passo := 9999;
+	ELSE						
+		;
+			
+	END_CASE;
+ELSE								//Se il ciclo deve essere interrotto, setto il suo nuovo stato
+	Ciclo^.Stato := INTERROTTO;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFCiclo_Prelievo_Falda">
+      <LineId Id="1385" Count="7" />
+      <LineId Id="1376" Count="0" />
+      <LineId Id="1379" Count="0" />
+      <LineId Id="330" Count="0" />
+      <LineId Id="1036" Count="3" />
+      <LineId Id="335" Count="0" />
+      <LineId Id="161" Count="1" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="12" Count="2" />
+      <LineId Id="804" Count="0" />
+      <LineId Id="776" Count="0" />
+      <LineId Id="763" Count="0" />
+      <LineId Id="777" Count="1" />
+      <LineId Id="775" Count="0" />
+      <LineId Id="805" Count="0" />
+      <LineId Id="764" Count="0" />
+      <LineId Id="803" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="765" Count="0" />
+      <LineId Id="780" Count="0" />
+      <LineId Id="766" Count="1" />
+      <LineId Id="779" Count="0" />
+      <LineId Id="768" Count="6" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="806" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="846" Count="0" />
+      <LineId Id="1064" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="232" Count="0" />
+      <LineId Id="322" Count="0" />
+      <LineId Id="234" Count="0" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="288" Count="0" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="1418" Count="1" />
+      <LineId Id="845" Count="0" />
+      <LineId Id="289" Count="0" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="213" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="1240" Count="0" />
+      <LineId Id="1242" Count="1" />
+      <LineId Id="1250" Count="0" />
+      <LineId Id="1312" Count="0" />
+      <LineId Id="1309" Count="1" />
+      <LineId Id="1251" Count="6" />
+      <LineId Id="1347" Count="0" />
+      <LineId Id="1258" Count="7" />
+      <LineId Id="1349" Count="2" />
+      <LineId Id="1348" Count="0" />
+      <LineId Id="1241" Count="0" />
+      <LineId Id="1314" Count="0" />
+      <LineId Id="1316" Count="6" />
+      <LineId Id="1315" Count="0" />
+      <LineId Id="80" Count="1" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="1313" Count="0" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="808" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="1105" Count="0" />
+      <LineId Id="1116" Count="0" />
+      <LineId Id="847" Count="0" />
+      <LineId Id="1445" Count="0" />
+      <LineId Id="1094" Count="0" />
+      <LineId Id="1447" Count="1" />
+      <LineId Id="1446" Count="0" />
+      <LineId Id="1112" Count="0" />
+      <LineId Id="1123" Count="0" />
+      <LineId Id="1065" Count="0" />
+      <LineId Id="1113" Count="1" />
+      <LineId Id="1084" Count="0" />
+      <LineId Id="1124" Count="0" />
+      <LineId Id="1093" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="1066" Count="0" />
+      <LineId Id="1121" Count="0" />
+      <LineId Id="1214" Count="1" />
+      <LineId Id="1067" Count="0" />
+      <LineId Id="1119" Count="0" />
+      <LineId Id="1118" Count="0" />
+      <LineId Id="1196" Count="1" />
+      <LineId Id="1117" Count="0" />
+      <LineId Id="296" Count="0" />
+      <LineId Id="244" Count="0" />
+      <LineId Id="809" Count="0" />
+      <LineId Id="1183" Count="0" />
+      <LineId Id="1266" Count="0" />
+      <LineId Id="1268" Count="1" />
+      <LineId Id="1304" Count="3" />
+      <LineId Id="1270" Count="2" />
+      <LineId Id="1301" Count="1" />
+      <LineId Id="1273" Count="2" />
+      <LineId Id="1282" Count="0" />
+      <LineId Id="1287" Count="0" />
+      <LineId Id="1300" Count="0" />
+      <LineId Id="1297" Count="2" />
+      <LineId Id="1303" Count="0" />
+      <LineId Id="1267" Count="0" />
+      <LineId Id="1210" Count="1" />
+      <LineId Id="1006" Count="0" />
+      <LineId Id="621" Count="0" />
+      <LineId Id="636" Count="3" />
+      <LineId Id="622" Count="1" />
+      <LineId Id="690" Count="0" />
+      <LineId Id="692" Count="1" />
+      <LineId Id="626" Count="1" />
+      <LineId Id="435" Count="0" />
+      <LineId Id="267" Count="0" />
+      <LineId Id="362" Count="3" />
+      <LineId Id="816" Count="0" />
+      <LineId Id="367" Count="0" />
+      <LineId Id="851" Count="0" />
+      <LineId Id="1212" Count="0" />
+      <LineId Id="368" Count="1" />
+      <LineId Id="371" Count="1" />
+      <LineId Id="817" Count="0" />
+      <LineId Id="355" Count="0" />
+      <LineId Id="374" Count="1" />
+      <LineId Id="642" Count="0" />
+      <LineId Id="376" Count="3" />
+      <LineId Id="641" Count="0" />
+      <LineId Id="380" Count="3" />
+      <LineId Id="716" Count="0" />
+      <LineId Id="730" Count="0" />
+      <LineId Id="357" Count="0" />
+      <LineId Id="384" Count="0" />
+      <LineId Id="406" Count="1" />
+      <LineId Id="855" Count="0" />
+      <LineId Id="857" Count="0" />
+      <LineId Id="1213" Count="0" />
+      <LineId Id="859" Count="1" />
+      <LineId Id="862" Count="2" />
+      <LineId Id="854" Count="0" />
+      <LineId Id="395" Count="2" />
+      <LineId Id="579" Count="0" />
+      <LineId Id="399" Count="1" />
+      <LineId Id="402" Count="3" />
+      <LineId Id="853" Count="0" />
+      <LineId Id="409" Count="0" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="196" Count="1" />
+      <LineId Id="1031" Count="4" />
+      <LineId Id="156" Count="1" />
+      <LineId Id="159" Count="1" />
+      <LineId Id="208" Count="2" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="TFPalletizerInPosizioneRiposo" Id="{512eb037-7a7e-48e5-85ac-0fd0fdfd9d00}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerInPosizioneRiposo : BOOL
+VAR_INPUT
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	//ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+END_VAR
+VAR
+	offsetX : REAL;
+	offsetY : REAL;
+	offsetZ : REAL;
+	offsetJ : REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerInPosizioneRiposo := FALSE;
+offsetX := 20;
+offsetY := 20;
+offsetZ := 20;
+offsetJ := 5;
+
+IF  (ModuleAX_X^.Ax^.AxRef^.NcToPlc.SetPos >= X_Riposo - offsetX AND ModuleAX_X^.Ax^.AxRef^.NcToPlc.SetPos <= X_Riposo + offsetX) 
+	AND (ModuleAX_Y^.Ax^.AxRef^.NcToPlc.SetPos >= Y_Riposo - offsetY AND ModuleAX_Y^.Ax^.AxRef^.NcToPlc.SetPos <= Y_Riposo + offsetY)
+	AND (ModuleAX_Z^.Ax^.AxRef^.NcToPlc.SetPos >= Z_Riposo - offsetZ AND ModuleAX_Z^.Ax^.AxRef^.NcToPlc.SetPos <= Z_Riposo + offsetZ)
+	AND (ModuleAX_J^.Ax^.AxRef^.NcToPlc.SetPos >= J_Riposo - offsetJ AND ModuleAX_J^.Ax^.AxRef^.NcToPlc.SetPos <= J_Riposo + offsetJ) THEN
+		
+		TFPalletizerInPosizioneRiposo := TRUE;
+END_IF
+			]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerInPosizioneRiposo">
+      <LineId Id="61" Count="12" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

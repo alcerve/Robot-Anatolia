@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="TFClearWorkAreaArray" Id="{bba9fb4f-0cd7-44ad-aac8-f60bba7a2ab1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFClearWorkAreaArray : BOOL
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	k : uINT;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Copia dello stato delle WA in un backup *)
+IF WorkAreaState^[k].ID > 0 THEN
+	WorkAreaStateBK[k] := WorkAreaState^[k];
+END_IF
+
+WorkAreaState^[k] := EmptyWorkAreaState;
+WorkAreaState^[k].State		:= WORKAREA_STATE_FREE_ENABLED;	(* Stato Area di Lavoro/Piazzola
+																			(0=Assente e Area Disabilitata,
+																			1=Presente e Area Disabilitata,
+																			2=Assente in Lavorazione,
+																			3=Presente in Lavorazione,
+																			4=Presente con Pallettizzazione Terminata,
+																			5=Presente con Pallettizzazione Terminata e Area Disabilitata,
+																			6=Presente in Nastratura,
+																			7=Presente in Nastratura e Area Disabilitata,
+																			8=Presente con Nastratura Terminata,
+																			9=Presente con Nastratura Terminata e Area Disabilitata,
+																			10=Presente con Lavorazione Terminata,
+																			11=Presente con Lavorazione Terminata e Area Disabilitata,
+																			12=Presente con LGV in Richiesta Ingresso,
+																			13=Presente con LGV in Richiesta Ingresso e Area Disabilitata,
+																			14=Presente con LGV in Ingombro,
+																			15=Presente con LGV in Ingombro e Area Disabilitata,
+																			16=Presente con LGV Fuori Ingombro e Pallet Estratto,
+																			17=Presente con LGV Fuori Ingombro e Pallet Estratto e Area Disabilitata, NOT USED !!!!!!!!!!!
+																			99=Errore
+																			-1 dato non valido) *)
+																			
+//TFClearWorkAreaStateSlab(WorkAreaState,k);																			
+																			
+WorkAreaState^[k].F					:= -1;	(* Forming Pointer - Puntatore tabella formature (1..n=, -1 dato non valido *)
+WorkAreaState^[k].P					:= -1;	(* Pack Pointer - Puntatore tabella ELEMENTO (0..n-1=, -1 dato non valido),Numero ELEMENTO successivo da depositare *)
+              
+WorkAreaState^[k].Code				:= -1;	(* Codice di Pallettizzazione (0..n=, -1 dato non valido) x lastre, se Magazzino Falde, codice della falda *)
+              
+WorkAreaState^[k].PackPointerModified	:= FALSE;		(* Se TRUE, indica che è stata effettuata una modfica sui dati della WA da parte dell' HMI (Settata da HMI e resettata da PLC) *)
+WorkAreaState^[k].PackPointer			:= -1;			(* Rappresenta l'indice del pacco da depositare dopo modfica manuale,cioè con PackPointerModified=TRUE *)
+
+WorkAreaState^[k].Slab := EmptySlabArray;
+
+WorkAreaState^[k].LGVAttr				:= 0;
+
+TFClearWorkAreaBCRead(WorkAreaState);//Resetto i vari stati dl BARCODE
+
+WorkAreaState^[k].H					:= 0.0; (* (mm) Altezza Reale. Viene calcolata dal PLC dopo ogni prelievo (Vuoti o Falde) o deposito Pallet e durante la pallettizzazione *)
+WorkAreaState^[k].HPL				:= 0.0; (* (mm) Altezza del pallett utilizzato + altezza layers utilizzati *)
+
+TFClearApprendimento(ADR(WorkAreaState^[k].Apprendimento));//Azzeramento apprendimento
+
+(*
+(* Apprendimenti nelle varie direzioni *)
+WorkAreaState^[k].DoLearn_Y0		:= APPRENDIMENTO_DA_ESEGUIRE;	(* Stato apprendimento Direzione Y LATO 0° 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+WorkAreaState^[k].Learn_Y0			:= 0.0;	(* (mm) Quota inizio Apprendimento Direzione Y LATO 0° *)
+WorkAreaState^[k].Learned_Y0		:= 0.0; (* Quota rilevata durante apprendimento Direzione Y LATO 0° *)
+
+WorkAreaState^[k].DoLearn_Y180		:= APPRENDIMENTO_DA_ESEGUIRE;	(* Stato apprendimento Direzione Y LATO 180° 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+WorkAreaState^[k].Learn_Y180		:= 0.0;	(* (mm) Quota inizio Apprendimento Direzione Y LATO 180° *)
+WorkAreaState^[k].Learned_Y180		:= 0.0; (* Quota rilevata durante apprendimento Direzione Y LATO 180° *)
+
+WorkAreaState^[k].DoLearn_Z			:= APPRENDIMENTO_DA_ESEGUIRE;	(* Stato apprendimento Direzione Z 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+WorkAreaState^[k].Learn_Z			:= 0.0;	(* (mm) Quota inizio Apprendimento Direzione Z *)
+WorkAreaState^[k].Learned_Z			:= 0.0; (* Quota rilevata durante apprendimento Direzione Z *)
+*)
+WorkAreaState^[k].RefuseLGV       	:= FALSE;	(* Abilitazione chiamata LGV a termine pallettizzazione - TRUE= Non chiama LGV quando pallet pieno, FALSE= viene eseguita richiesta LGV *)
+              
+WorkAreaState^[k].LGV_Req			:= 0;	(* Richiesta LGV (0=Nop, 1=Richiesta LGV, 2= Consenso Ingresso, -1= non valido) *)
+WorkAreaState^[k].LGV_GetIn_GetOut	:= 0;	(* Tipo Richiesta LGV  (0=Nop, 1=Richiesta Prelievo, 2= Richiesta Deposito, -1= non valido) *)	
+WorkAreaState^[k].LGV_ReqAbort		:= FALSE; (* Aborto chimata LGV *)
+
+
+TFClearWorkAreaArray := TRUE;
+	
+	
+	
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFClearWorkAreaArray">
+      <LineId Id="267" Count="73" />
+      <LineId Id="154" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

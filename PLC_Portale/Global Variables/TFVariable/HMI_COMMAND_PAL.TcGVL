@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="HMI_COMMAND_PAL" Id="{c6786034-7a1b-4ecc-8a18-ba36f3884e00}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+	HMI_CommandSTEP : BOOL; // Comando dello step successivo con funzione ciclo in Step attivata
+	
+	HMI_AckBarcodeNonRiconosciuto : UINT;(*comando di gestione comportamento in caso di mancata lettura o lettura errata rispetto a quanto previsto
+										 0= nessn comportamento, 1 =proseguo il ciclo e vado a depositare in postazione, 2 = vado a depositare in scarto*)
+
+	HMI_Stop : BOOL;
+
+	HMI_ForzaEspulsioneWA 	: ARRAY[1..MAXAREA] OF BOOL;//Variabile per forzare espulsione della postazione
+	HMI_CodiceEspulsione	: ARRAY[1..MAXAREA] OF uint;//Varibile che identifica il codice di errrore da attribuire alla postazione, in questo modo si definisce la destinazione
+	HMI_ManualClearWA 		: ARRAY[1..MAXAREA] OF BOOL;//Variabile per forzare pulizia postazione
+	HMI_ManualRestoreWA 	: ARRAY[1..MAXAREA] OF BOOL;//Variabile per forzare ricreazione dati su postazione
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

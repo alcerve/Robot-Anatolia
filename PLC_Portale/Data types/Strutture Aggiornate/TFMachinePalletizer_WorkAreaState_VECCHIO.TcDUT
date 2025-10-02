@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkAreaState_VECCHIO" Id="{e02bcd3f-101e-4ccb-90d7-4c4e4339f258}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkAreaState_VECCHIO :
+STRUCT
+	State		: e_Stato_WorkArea	:= WORKAREA_STATE_FREE_DISABLED;	(* Stato Area di Lavoro/Piazzola
+																			(0=Assente e Area Disabilitata,
+																			1=Presente e Area Disabilitata,
+																			2=Assente in Lavorazione,
+																			3=Presente in Lavorazione,
+																			4=Presente con Pallettizzazione Terminata,
+																			5=Presente con Pallettizzazione Terminata e Area Disabilitata,
+																			6=Presente in Nastratura,
+																			7=Presente in Nastratura e Area Disabilitata,
+																			8=Presente con Nastratura Terminata,
+																			9=Presente con Nastratura Terminata e Area Disabilitata,
+																			10=Presente con Lavorazione Terminata,
+																			11=Presente con Lavorazione Terminata e Area Disabilitata,
+																			12=Presente con LGV in Richiesta Ingresso,
+																			13=Presente con LGV in Richiesta Ingresso e Area Disabilitata,
+																			14=Presente con LGV in Ingombro,
+																			15=Presente con LGV in Ingombro e Area Disabilitata,
+																			16=Presente con LGV Fuori Ingombro e Pallet Estratto,
+																			17=Presente con LGV Fuori Ingombro e Pallet Estratto e Area Disabilitata, NOT USED !!!!!!!!!!!
+																			99=Errore
+																			-1 dato non valido) *)
+	F			: INT	:= -1;	(* Forming Pointer - Puntatore tabella formature (1..n=, -1 dato non valido *)
+	P			: INT	:= -1;	(* Pack Pointer - Puntatore tabella LASTRE (0..n-1=, -1 dato non valido),Numero lastra successiva da depositare *)
+	//L			: INT	:= -1;	(* Codice Layer da depositare in Layer Orrizontale o cavalletto lato 0°(0=Da Depositare, 1=Depositato o Nessun Layer Previsto, -1= dato non valido *)
+	//NL			: INT	:= -1;	(* Numero Layer depositati in Orrizontale o su cavalletto lato 90° *)
+	//L2			: INT 	:= -1;	(* Codice Layer da depositare su cavalletto lato 180° (0=Da Depositare, 1=Depositato o Nessun Layer Previsto, -1= dato non valido *)
+	//NL2			: INT	:= -1;	(* Numero Layer depositati su cavalletto lato 180° *)
+	//PN			: INT	:= -1;	(* Positive/Negative Pointer - Puntatore tabella pacchi Positiva/Negativa (0=Positiva, 1=Negativa, -1 dato non valido *)
+	PackPointerModified	: BOOL	:= FALSE;		(* Se TRUE, indica che è stata effettuata una modfica sui dati della WA da parte dell' HMI (Settata da HMI e resettata da PLC) *)
+	PackPointer			: INT	:= -1;			(* Rappresenta l'indice del pacco da depositare dopo modfica manuale,cioè con PackPointerModified=TRUE *)
+	//NLP			: ARRAY[1..MAXFORMINGPACK] OF INT;//   := -1;	(* Numero di Falde depositate sul Pacco/Lastra *)
+	Slab		: ARRAY[1..MAXFORMINGSLAB] OF TFMachinePalletizer_PlaceElement; (* Struttura Usata per Tracciare Gli Elementi Depositati sulla Workarea *)
+	LGVAttr		: INT;
+	BCRead		: ARRAY[1..MAXNUMBARCODE] OF TFMachinePalletizer_BarCode;
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

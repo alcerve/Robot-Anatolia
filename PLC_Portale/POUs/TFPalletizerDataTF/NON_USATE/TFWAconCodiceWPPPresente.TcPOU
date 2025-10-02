@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFWAconCodiceWPPPresente" Id="{44eb7b2a-2d69-435e-9f70-759be00d73fa}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFWAconCodiceWPPPresente : BOOL // Valuta se esiste una WA in lavorazione con il codice del pacco sul ribaltino, se esiste ritorna true, altrimenti false
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+	ppick : INT;
+END_VAR
+VAR
+	wa : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Valuta se esiste una WA in lavorazione con il codice del pacco sul ribaltino, se esiste ritorna true, altrimenti false
+TFWAconCodiceWPPPresente := FALSE;
+
+(* Per tutte le WorkArea Attive e in Lavorazione *)
+FOR wa:=1 TO MAXAREA DO
+		IF WorkArea^[wa].Enable = 1 THEN
+		(* Verifico se è in lavorazione *)
+			IF WorkAreaState^[wa].State = WORKAREA_STATE_OCCUPIED_WORKING AND WorkArea^[wa].Typology = TYPOLOGY_PALLET THEN
+				(* Verifico se il codice della WA è uguale al codice sul ribaltino *)
+				IF WorkAreaState^[wa].Code = WorkPickPointState^[ppick].Code THEN
+					TFWAconCodiceWPPPresente := TRUE;
+					RETURN;
+				END_IF
+			END_IF
+		END_IF
+END_FOR
+				
+				
+		
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFWAconCodiceWPPPresente">
+      <LineId Id="8" Count="1" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="28" Count="2" />
+      <LineId Id="35" Count="2" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

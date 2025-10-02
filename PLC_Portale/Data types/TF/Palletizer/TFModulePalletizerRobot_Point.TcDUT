@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFModulePalletizerRobot_Point" Id="{e32fffe5-566a-411d-8da4-6233e9145345}">
+    <Declaration><![CDATA[TYPE TFModulePalletizerRobot_Point :
+STRUCT
+	
+	X				: REAL	:= 0.0;	(* X Position *)
+	Y				: REAL	:= 0.0;	(* Y Position *)
+	Z				: REAL	:= 0.0;	(* Z Position *)
+	J				: REAL	:= 0.0;	(* J Position *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TF_CambioProduzione" Id="{14d47ca6-4fba-4aa8-8592-2ce4daf63968}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL PERSISTENT
+	// Dati in scambio - EAP
+	DatiCambioProduzione_IN AT %I* : DATI_CAMBIO_PRODUZIONE_GENERAL;
+	StatoElementoPrecedente AT %I* : STATO_ELEMENTO_GENERAL;
+	DatiCambioProduzione_OUT AT %Q* : DATI_CAMBIO_PRODUZIONE_GENERAL;
+	StatoElementoASuccessivo AT %Q* : STATO_ELEMENTO_GENERAL;
+	
+	
+	// Dati da supervisione
+	RicettaCambioProd : DATI_RICETTA_CONDIVISA;
+	
+	CambioProd : TFCambioProduzioneLineaGENERAL;
+	
+	RichiestaCambiodaHMI : BOOL;
+	ResetAllarmiModulo : BOOL;
+	DatiCambioDaRete : BOOL;						// Stabilisce se le informazioni per eseguire il cambio prod vengono prelevate dalla rete o dal supervisore
+	
+	ConfigurazioneModulo : CONFIGURAZIONE_ELEMENTO;
+	ComandiModulo : COMANDI;
+	InputModulo : INPUT_GENERAL;
+	ComunicazioneModulo : COMUNICAZIONE_GENERAL;
+	
+	CambioEseguito_Macchina : BOOL;					// Segnalazione da macchina di cambio produzione eseguito
+	CambioRichiesto_Macchina : BOOL;				// Richiesta da modulo a macchina per effettura cambio produzione
+	
+	AbilitaCambioGlobale : BOOL;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

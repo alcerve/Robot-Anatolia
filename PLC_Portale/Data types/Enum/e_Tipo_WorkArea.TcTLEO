@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Tipo_WorkArea" Id="{58222ab8-16ab-4a2a-86d8-896c9107c267}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Tipologia di WorkArea
+TYPE e_Tipo_WorkArea :
+(
+	TYPOLOGY_NOT_DEFINED		:= -1,	(* Tipologia NON Definita *)			
+	TYPOLOGY_STACK				:= 1,	(* Tipologia Catasta Vuoti *)
+	TYPOLOGY_PALLET				:= 2,	(* Tipologia Postazione Di Lavoro in WorkArea *)
+	TYPOLOGY_LAYER				:= 3,	(* Tipologia Postazione Magazzino Falde in WorkArea *)
+	
+	TYPOLOGY_OVER_TRANSPORT		:= 5,   (* Tipologia Di Postazione di prelievo/deposito su trasporti (rulliere o catenaria) *)
+	TYPOLOGY_BUNDLE				:= 6,   (* Tipologia Di Postazione Di deposito = BUNDLE *)
+	TYPOLOGY_ALIGNER			:= 7,   (* Tipologia Di Postazione Di PAREGGIATURA *)
+	
+	TYPOLOGY_WASTE				:= 8,	(* Tipologia Di Postazione SCARTI *)
+
+	
+	TYPOLOGY_EXTERNAL_DEPPREL	:= 10(* Tipologia Postazione ESTERNA al perimetro del Pallettizzatore: Utilizzata per deposito o prelievo di Pallet/Casse/Cavalline lavorate o da lavorare *)
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"TYPOLOGY_NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_STACK"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_PALLET"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_LAYER"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_OVER_TRANSPORT"</v>
+              <v n="TextDefault">"5"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_BUNDLE"</v>
+              <v n="TextDefault">"6"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_ALIGNER"</v>
+              <v n="TextDefault">"7"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_WASTE"</v>
+              <v n="TextDefault">"8"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"TYPOLOGY_EXTERNAL_DEPPREL"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{c7e8325f-d94a-4386-acc7-c6495983d35b}</v>
+          <v n="GuidReInit">{c7718f48-afb8-4d14-8646-875d67321367}</v>
+          <v n="GuidExitX">{8749f376-b6ed-40e2-a9dd-349510f63822}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

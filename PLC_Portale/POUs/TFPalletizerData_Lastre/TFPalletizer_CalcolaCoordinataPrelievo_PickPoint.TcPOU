@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizer_CalcolaCoordinataPrelievo_PickPoint" Id="{916aecfa-a0c5-4a42-9262-1c9ca786d9ac}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizer_CalcolaCoordinataPrelievo_PickPoint : LREAL
+VAR_INPUT
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	WorkPickPointOffset : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointOffset;
+	NPickPoint : UINT;			//Numero PickPoint del quale si vuole la coordinata
+	AsseDaCalcolare : STRING;	//Nome dell'Asse del quale si vuole calcolare la coordinata 
+END_VAR
+VAR
+	wpp : INT;
+	Ncase : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := 0;
+IF AsseDaCalcolare = 'X' THEN
+	Ncase	:= 1;
+ELSIF AsseDaCalcolare = 'Y' THEN
+	Ncase	:= 2;
+ELSIF AsseDaCalcolare = 'Z' THEN
+	Ncase	:= 3;
+ELSIF AsseDaCalcolare = 'J' THEN
+	Ncase	:= 4;
+END_IF
+
+IF WorkPickPoint^[NPickPoint].Tipologia = WA_CON_PALLET  OR WorkPickPoint^[NPickPoint].Tipologia = WA_CON_CASSA OR WorkPickPoint^[NPickPoint].Tipologia = WA_CON_CAVALLINA THEN
+	CASE Ncase OF
+		1:
+			TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].X +							// Quota X centro Rulliera	
+																//WorkPickPointState^[NPickPoint].XPosBandella +	// Quota Relativa della posizione della bandella
+																//(WorkPickPointState^[NPickPoint].Element.XDim/2) +		// Metà Lunghezza Lastra
+																WorkPickPointOffset^[NPickPoint].X;						// Valore di Offset Di Prelievo in X	
+		
+		2:	
+			TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].Y -							// Quota Y centro Rulliera	
+																//WorkPickPointState^[NPickPoint].YPosBandella +	// Quota Relativa della posizione della bandella
+																(WorkPickPointState^[NPickPoint].Element.YDim/2) +		// Metà Larghezza Lastra
+																WorkPickPointOffset^[NPickPoint].Y;						// Valore di Offset Di Prelievo in Y
+		3:	
+			TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].Z +							// Quota Z, altezza della postazione
+																WorkPickPointState^[NPickPoint].Element.ZDim +			// Metà Larghezza Lastra
+																WorkPickPointOffset^[NPickPoint].Z;						// Valore di Offset Di Prelievo in Y
+		4:	
+			TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].J +							// Quota Y centro Rulliera	
+																WorkPickPointOffset^[NPickPoint].J;						// Valore di Offset Di Prelievo in Y	
+	END_CASE
+ELSE
+	CASE Ncase OF
+		1:
+			//TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].X +							// Quota X centro Rulliera	
+			//													//WorkPickPointState^[NPickPoint].XPosBandella +	// Quota Relativa della posizione della bandella
+			//													//(WorkPickPointState^[NPickPoint].Element.XDim/2) +		// Metà Lunghezza Lastra
+			//													WorkPickPointOffset^[NPickPoint].X;						// Valore di Offset Di Prelievo in X	
+		
+			CASE TIPOLOGIA_RULLIERA_PRELIEVO OF
+					
+				RULLIERA_LONGITUDINALE:
+										TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].X -							// Quota X centro Rulliera	
+																//WorkPickPointState^[NPickPoint].XPosBandella +	// Quota Relativa della posizione della bandella
+																//(WorkPickPointState^[NPickPoint].Element.XDim/2) +		// Metà Lunghezza Lastra
+																MAX(Dimensioni_Pinza.Lunghezza/2,WorkPickPointState^[NPickPoint].Element.XDim/2) +
+																WorkPickPointOffset^[NPickPoint].X;						// Valore di Offset Di Prelievo in X	
+		
+					
+				RULLIERA_TRASVERSALE:
+										TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].X +							// Quota X centro Rulliera	
+																//WorkPickPointState^[NPickPoint].XPosBandella +	// Quota Relativa della posizione della bandella
+																//(WorkPickPointState^[NPickPoint].Element.XDim/2) +		// Metà Lunghezza Lastra
+																WorkPickPointOffset^[NPickPoint].X;						// Valore di Offset Di Prelievo in X	
+									
+			END_CASE
+													
+		2:	
+			//TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].Y -							// Quota Y centro Rulliera	
+			//												//	WorkPickPointState^[NPickPoint].YPosBandella +	// Quota Relativa della posizione della bandella
+			//													(WorkPickPointState^[NPickPoint].Element.YDim/2) +		// Metà Larghezza Lastra
+			//													WorkPickPointOffset^[NPickPoint].Y;						// Valore di Offset Di Prelievo in Y
+	
+			CASE TIPOLOGIA_RULLIERA_PRELIEVO OF
+					
+				RULLIERA_LONGITUDINALE:
+										TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].Y +							// Quota Y centro Rulliera	
+															//	WorkPickPointState^[NPickPoint].YPosBandella +	// Quota Relativa della posizione della bandella
+															//	(WorkPickPointState^[NPickPoint].Element.YDim/2) +		// Metà Larghezza Lastra
+																WorkPickPointOffset^[NPickPoint].Y;						// Valore di Offset Di Prelievo in Y
+				RULLIERA_TRASVERSALE:
+										TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].Y -							// Quota Y centro Rulliera	
+															//	WorkPickPointState^[NPickPoint].YPosBandella +	// Quota Relativa della posizione della bandella
+																(WorkPickPointState^[NPickPoint].Element.YDim/2) +		// Metà Larghezza Lastra
+																WorkPickPointOffset^[NPickPoint].Y;						// Valore di Offset Di Prelievo in Y
+				
+			END_CASE
+
+
+		3:	
+			TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].Z +							// Quota Y centro Rulliera	
+																WorkPickPointState^[NPickPoint].Element.ZDim +			// Metà Larghezza Lastra
+																WorkPickPointOffset^[NPickPoint].Z;						// Valore di Offset Di Prelievo in Y
+		4:	
+			TFPalletizer_CalcolaCoordinataPrelievo_PickPoint := WorkPickPoint^[NPickPoint].J +							// Quota Y centro Rulliera	
+																WorkPickPointOffset^[NPickPoint].J;						// Valore di Offset Di Prelievo in Y	
+	END_CASE
+END_IF
+
+
+
+ 	]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizer_CalcolaCoordinataPrelievo_PickPoint">
+      <LineId Id="117" Count="0" />
+      <LineId Id="134" Count="1" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="133" Count="0" />
+      <LineId Id="176" Count="18" />
+      <LineId Id="175" Count="0" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="197" Count="6" />
+      <LineId Id="233" Count="2" />
+      <LineId Id="251" Count="4" />
+      <LineId Id="239" Count="2" />
+      <LineId Id="247" Count="3" />
+      <LineId Id="245" Count="1" />
+      <LineId Id="228" Count="0" />
+      <LineId Id="204" Count="5" />
+      <LineId Id="260" Count="1" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="263" Count="3" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="273" Count="3" />
+      <LineId Id="267" Count="1" />
+      <LineId Id="258" Count="1" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="210" Count="5" />
+      <LineId Id="196" Count="0" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="119" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="100" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

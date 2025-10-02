@@ -1,0 +1,3385 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoliFuoriIngombri" Id="{523000da-81e6-470a-baf5-0103b3921a4a}" SpecialFunc="None">
+    <Declaration><![CDATA[(* FB x il calcolo dei Fuori ingombro a seconda dei cicli che la macchina deve effettuare *)
+FUNCTION_BLOCK TFCalcoliFuoriIngombri
+VAR_INPUT
+	Traiettoria : POINTER TO TFTraiettoria;
+	WorkSpace : POINTER TO TFMachinePalletizer_WorkSpace;
+	WorkFootprint : POINTER TO ARRAY [1..MAXFOOTPRINT] OF TFMachinePalletizer_WorkFootprint; //Ingombri
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointDimension 		: POINTER TO ARRAY [1..MAXPICKPOINT] OF Work_PickPoint_Dimension;
+	//WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+	WorkPickPointTransportState	: POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkAreaTransport_State;
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	WorkAreaOffset				: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaOffset;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	PickPlaceParameters	: POINTER TO TFMachinePalletizer_ParametersFromHMI;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	AbilitaCalcoloIngombroOttimizzato : BOOL := TRUE; //Abilitazione dell'utilizzo degli ingombri ottimizzati... calcoli in base all'angolo di rotazione della pinza
+	StatoWAM_precedente : e_Stato_WAManager;
+	PX_WorkArea 				: ARRAY [1..MAXAREA] OF BOOL;
+END_VAR
+VAR_OUTPUT
+	Errore : UINT;
+END_VAR
+VAR
+	f : INT;
+	a : INT;
+	P : INT;
+	wa : int;
+	waDXSX : INT;
+	AltezzaDiIngombroArea : REAL;
+	AltezzaDiIngombroOstacoli : REAL;
+	AltezzaDiIngombroPuntiPrelievo : REAL;
+	AssegnaQuote : BOOL;
+	
+	LunghezzaMAX 	: LREAL;//LunghezzaMAX Totale pinza
+	LarghezzaMAX 	: LREAL;//Larghezza Totale pinza
+	SpessoreMAX  	: LREAL;//Spessore Totale pinza
+
+	IngombroX_Pos : LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroY_Pos : LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y
+	IngombroZ_Pos : LREAL;//Ingombro della pinza lungo Z
+	
+	
+	IngombroX_Neg : LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroY_Neg : LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y
+	IngombroZ_Neg : LREAL;//Ingombro della pinza lungo Z
+	
+	IngombroZ : LREAL;//Ingombro della pinza lungo Z
+	
+	IngombroY_Tot : LREAL;//Ingombro in direzione Y
+	
+	IngombroVerticalePinzaMAX : REAL;
+	IngombroVerticaleMaxElementi : REAL;
+	//DirezioneXPositiva_Dep : BOOL;
+	//DirezioneXNegativa_Dep : BOOL;
+	//DirezioneXPositiva_Prel : BOOL;
+	//DirezioneXNegativa_Prel : BOOL;
+	DirezioneZPositiva : BOOL;
+	DirezioneZNegativa : BOOL;
+	DirezioneXNegativa : BOOL;
+	DirezioneXPositiva : BOOL;
+	
+	
+	WASX : UINT;
+	WADX : UINT;
+	WAPARTENZA : UINT;
+	WADESTINAZIONE : UINT;
+	LarghezzaPickPoint : REAL;
+	
+	
+	FuoriIngombroYNecessarioTMP : BOOL;
+	QuotaX_ConsensoRotazionePinza_RaggiuntaTMP : BOOL;
+	ConsensoTraslazioneY_TraColonneTMP : BOOL;
+	AsseXInFinestraDiPrelievoPaccoTMP : BOOL;
+	AsseJInFinestraDiPrelievoPaccoTMP : BOOL;
+	
+	OffsetSicurezza_Y : real := 80;
+	
+	
+	Pinza_InIngombroColonne_Partenza: BOOL; //Indica che la posizione della pinza è in ingombro colonne alla partenza del ciclo/ REAL TIME
+	IngombroOttimizzatoY_Destinazione: LREAL;
+	IngombroOttimizzatoX_Destinazione: LREAL;
+	IngombroOttimizzatoX_InPuntoDiPrelievo: LREAL;
+	IngombroOttimizzatoY_InPuntoDiPrelievo: LREAL;
+	IngombroOttimizzatoY_InPuntoDiDeposito: LREAL;
+	IngombroOttimizzatoX_InPuntoDiDeposito: LREAL;
+	//Pinza_InIngombroColonne_Attuale: BOOL;
+	//Pinza_InIngombroColonne_Destinazione: BOOL;
+	AsseJInFinestraDiPrelievoPallet: BOOL;
+	AsseXInFinestraDiPrelievoPallet: BOOL;
+	AsseYInFinestraDiPrelievoPallet: BOOL;
+	AsseXInFinestraDiRiposo: BOOL;
+	AsseYInFinestraDiRiposo: BOOL;
+	AsseJInFinestraDiRiposo: BOOL;
+	AsseXInFinestraDiDestinazione: BOOL;
+	AsseJInFinestraDiDestinazione: BOOL;
+	AsseYInFinestraDiDestinazione: BOOL;
+	IngombroOttimizzatoX_InTransito: LREAL;
+	IngombroOttimizzatoY_InTransito: LREAL;
+	Pinza_InIngombroColonne_Transito: BOOL;
+	Angolo: INT;
+	CalcolaIngombro: BOOL;
+	AsseXInFinestraDiPrelievo: BOOL;
+	AsseYInFinestraDiPrelievo: BOOL;
+	AsseJInFinestraDiPrelievo: BOOL;
+	
+	QuotaFuoriIngombro_Attuale_Y 		: LREAL;
+	QuotaFuoriIngombro_Prelievo_Y 		: LREAL;
+	QuotaFuoriIngombro_Deposito_Y		: LREAL;
+	
+	TFCalcolaQuotaIngombroColonne : TFCalcolaQuotaIngombroColonneLastre;
+	TFCalcoloIngombroOttimizzatoPinza : TFCalcoloIngombroOttimizzatoPinza;
+	QuotaFuoriIngombro_Destinazione_Y: LREAL;
+	WorkAreaManagerState_OLD: INT;
+
+	iwa : UINT;
+	TFCalcolaNumeroPostazioneDXSX 	: TFCalcolaNumeroPostazioneDXSX;
+	//TFCalcolaFuoriIngombroY 		: TFCalcolaFuoriIngombroY;
+
+	AltezzaDiIngombroArea_CCENTRALE : LREAL; //Altezza ingombro dell'Area nel corridoio CENTRALE
+	AltezzaDiIngombroArea_CESTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio ESTERNO
+	AltezzaDiIngombroArea_CINTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio INTERNO
+	
+	AltezzaDiIngombroIngombri_CCENTRALE : LREAL; //Altezza ingombro dell'Area nel corridoio CENTRALE
+	AltezzaDiIngombroIngombri_CESTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio ESTERNO
+	AltezzaDiIngombroIngombri_CINTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio INTERNO
+	
+	AbilitaValutazioneFISuSingolaWA 		: BOOL;
+	NumeroWAValutazioneFISingolaPostazione 	: UINT;
+
+	AngoloRotazioneDestinazionePinza : REAL;
+	QuotaFuoriIngombro_Y_Calcolata : REAL;
+	CalcoloFI_Y_DaPP : BOOL;//Si usa per selezionare la partenza dal PP in modo da evitare di considerare la pos attuale con la pos della postazio9ne di depostito
+	
+	PosAttualeRotazionePinza    : UINT;
+	PosAttualePinza				: e_PosizionePinza;
+	TipologiaElementoGenerica : UINT;
+	ErrCollisioneDebug : UINT; //x debug, indica dove avviene il l'errore di collisione
+	QuotaCentroPostazione : REAL; //Quota centro postazione considerando la quota effetiva + l'offset.. da utilizzare nei calcoli per considerare i vari ingombri dato che le postazioni sono dinamiche a seconda della tipologia di supporto
+	QuotaYColonnaSx : REAL;
+	QuotaYColonnaDx : REAL;
+	
+	
+	Centrocavallete: REAL;
+END_VAR	]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(**********************************************************************************************)
+(**********************************************************************************************)
+(* Setto la variabile per eseguire i calcoli al cambio del WAMANAGER *)
+IF WorkAreaManager^.State <> WorkAreaManagerState_OLD OR StatoWAM_precedente <> WorkAreaManager^.State THEN
+	WorkAreaManagerState_OLD := WorkAreaManager^.State;
+	CalcolaIngombro := TRUE; 
+END_IF
+//reset vari
+CalcoloFI_Y_DaPP := FALSE;
+
+(* Valorizzazione rotazione pinza *)
+IF ModuleAX_J^.Ax^.Status.ActPosition > 92 THEN
+	PosAttualeRotazionePinza := 180;
+ELSIF ModuleAX_J^.Ax^.Status.ActPosition < 88 THEN
+	PosAttualeRotazionePinza := 0;
+ELSE
+	PosAttualeRotazionePinza := 90;
+END_IF
+
+//Valorizzo l'elemento generico in modo da indicare se piano o ingombro verticale
+IF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO OR
+	WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = BUNDLE THEN
+		TipologiaElementoGenerica := TO_UINT(ELEMENTO_VERT_GENERICO);
+ELSE
+	TipologiaElementoGenerica := TO_UINT(ELEMENTO_PIANO_GENERICO);
+END_IF
+
+ 
+
+Errore:=0;
+
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP:
+		CalcolaIngombro := TRUE;
+{Region "LASTRA DA WA"} 
+	WAMANAGER_CICLO_RIPOSO_INIT:
+		CalcolaIngombro := TRUE;
+	WAMANAGER_CICLO_RIPOSO_RUN:
+		DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+		DirezioneXNegativa := NOT DirezioneXPositiva;
+		(* Valuto se con l'asse X sono fuori dall'area delle colonne *)
+		QuotaX_ConsensoRotazionePinza_Raggiunta := TFPinzaInFuoriIngombroColonne_DirezioneX(DirezioneXPositiva:=DirezioneXPositiva,
+																							AsseInMoto:=ModuleAX_X^.Ax^.AxRef^.Status.Moving,
+																							PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+																							PosizioneColonna_X:=WorkFootprint^[5].X,  
+																							IngombroColonna_X:=WorkFootprint^[5].XDim,
+																							IngombroX_Pos:=IngombroX_Pos,
+																							IngombroX_Neg:=IngombroX_Neg);
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+									
+			(**************************************************************************************************************************************************)
+			(* Valuto la direzione della X *)
+			(**************************************************************************************************************************************************)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+			(**************************************************************************************************************************************************)
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			(**************************************************************************************************************************************************)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=WorkPickPointDimension^[Mission^.PPick].Xdim);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(**************************************************************************************************************************************************)
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			(**************************************************************************************************************************************************)			
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=WorkPickPointDimension^[Mission^.PPick].Xdim);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+						
+			(* Valutazione colonne in base al verso del pallettizzatore: verso stabilito guardando il pallettizzatore con la linea alle spalle *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+																	
+				PALLETTIZZATORE_SX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+			END_CASE
+			
+			(* Setto la quota di fuori ingombro che la pinza dovrà assumere durante la traslazione per evitare la collisione con le colonne *)	
+			IF Pinza_InIngombroColonne_Attuale THEN
+				QuotaFuoriIngombroColonne_Y := QuotaFuoriIngombro_Attuale_Y;
+			ELSIF Pinza_InIngombroColonne_Destinazione THEN
+				QuotaFuoriIngombroColonne_Y := QuotaFuoriIngombro_Destinazione_Y;
+			ELSE
+				QuotaFuoriIngombroColonne_Y := QuotaFuoriIngombro_Attuale_Y;
+			END_IF		
+			
+			TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale 	:= ModuleAX_X^.Ax^.Status.ActPosition,
+											WorkArea		:=	WorkArea,
+											DirezioneAsseX_Positiva	:= TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick),
+											NPostazioneDX	=>	WADX,
+											NPostazioneSX	=>	WASX,
+											PostazionePartenza	=>	WAPARTENZA);
+
+			FuoriIngombroXNecessario := FALSE;
+			FuoriIngombroYNecessario := NOT AsseYInFinestraDiRiposo;
+			//Valuto le postazioni in base al loro ordinamento
+			CASE ORDINE_DISPOSIZIONE_POSTAZIONI OF
+				CRESCENTE:
+					//se dalla postazione in cui sono al punto di prelievo c'è un cavalletto, allora vado fuori ingombro con Y e J
+					FOR iwa := WAPARTENZA TO 1 BY -1 DO
+						IF TipologiaElementoGenerica = ELEMENTO_VERT_GENERICO AND NOT AsseXInFinestraDiDestinazione THEN
+							FuoriIngombroYNecessario := TRUE;
+							FuoriIngombroJNecessario := TRUE;	
+							IF ModuleAX_J^.Ax^.Status.ActPosition > 92 THEN // Se la pinza è verso i 180° la porto a 180°
+								QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+								QuotaFuoriIngombro_J_AVUOTO		:= 180; 
+							ELSIF ModuleAX_J^.Ax^.Status.ActPosition < 88 THEN // Se la pinza è verso gli 0° la porto a 0°
+								QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+								QuotaFuoriIngombro_J_AVUOTO		:= 0; 
+							ELSE
+								QuotaFuoriIngombro_J_ConCARICO 	:= ModuleAX_J^.Ax^.Status.ActPosition; 
+								QuotaFuoriIngombro_J_AVUOTO		:= ModuleAX_J^.Ax^.Status.ActPosition; 
+							END_IF
+							AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+							CalcolaFuoriIngombroY();
+							QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+							QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;												
+							EXIT;
+						ELSE
+							FuoriIngombroYNecessario 		:= FALSE;
+							FuoriIngombroJNecessario 		:= FALSE;	
+							QuotaFuoriIngombro_J_ConCARICO 	:= Mission^.JPick; 
+							QuotaFuoriIngombro_J_AVUOTO		:= Mission^.JPick; 
+							QuotaFuoriIngombro_Y_AVUOTO		:= WorkSpace^.Y/2 + OffSetPosYReposo;//Mission^.YPick;
+							QuotaFuoriIngombro_Y_ConCARICO  := QuotaFuoriIngombro_Y_AVUOTO;
+						END_IF
+					END_FOR 
+				DECRESCENTE:
+					//se dalla postazione in cui sono al punto di prelievo c'è un cavalletto, allora vado fuori ingombro con Y e J
+					FOR iwa := WAPARTENZA TO MAXAREAPRESENT BY 1 DO
+						IF TipologiaElementoGenerica = ELEMENTO_VERT_GENERICO AND NOT AsseXInFinestraDiDestinazione THEN
+							FuoriIngombroYNecessario := TRUE;
+							FuoriIngombroJNecessario := TRUE;	
+							IF ModuleAX_J^.Ax^.Status.ActPosition > 92 THEN // Se la pinza è verso i 180° la porto a 180°
+								QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+								QuotaFuoriIngombro_J_AVUOTO		:= 180; 
+							ELSIF ModuleAX_J^.Ax^.Status.ActPosition < 88 THEN // Se la pinza è verso gli 0° la porto a 0°
+								QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+								QuotaFuoriIngombro_J_AVUOTO		:= 0; 
+							ELSE
+								QuotaFuoriIngombro_J_ConCARICO 	:= ModuleAX_J^.Ax^.Status.ActPosition; 
+								QuotaFuoriIngombro_J_AVUOTO		:= ModuleAX_J^.Ax^.Status.ActPosition; 
+							END_IF
+							AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+							CalcolaFuoriIngombroY();
+							QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+							QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;												
+							EXIT;
+						ELSE
+							FuoriIngombroYNecessario 		:= FALSE;
+							FuoriIngombroJNecessario 		:= FALSE;	
+							QuotaFuoriIngombro_J_ConCARICO 	:= Mission^.JPick; 
+							QuotaFuoriIngombro_J_AVUOTO		:= Mission^.JPick; 
+							QuotaFuoriIngombro_Y_AVUOTO		:= Mission^.YPick;
+						END_IF
+					END_FOR 
+			END_CASE
+	
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+
+			IF NOT FuoriIngombroYNecessario THEN
+				QuotaFuoriIngombro_Y_AVUOTO := ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos;
+			END_IF	
+			IF NOT FuoriIngombroJNecessario THEN
+				QuotaFuoriIngombro_J_AVUOTO := ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos;
+			END_IF	
+
+			AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+			//Calcolo FI Verticale
+			
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO 			:= 0;
+			
+			CalcoloFuriIngombroVerticale();
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= MAX(AltezzaDiIngombroArea_CCENTRALE,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= MAX(AltezzaDiIngombroArea_CESTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= MAX(AltezzaDiIngombroArea_CINTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) +IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO 			:= MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO,Mission^.ZPick);//+OffsetSicurezza.Z.Avuoto;
+			
+			//IF Pinza_InIngombroColonne_Attuale THEN
+			//	Errore := ErrPOSIZIONE_PINZA_ANOMALA;//Err Posizione Pinza Non Definita//QuotaFuoriIngombro_Y_Calcolata := QuotaFuoriIngombro_Attuale_Y; 	
+			//END_IF	
+
+		END_IF //riferito all'IF dello stato della missione	
+		
+		QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)(*+OffsetSicurezza.Z.Avuoto*);
+		 IF WorkAreaState^[PosRobot].Supporto.Tipologia = BUNDLE OR WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO THEN
+			 QuotaFuoriIngombro_Z_ConPEZZO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+ 10;
+			 ELSE
+			QuotaFuoriIngombro_Z_ConPEZZO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Carico;	 
+		 END_IF
+		
+		
+
+								
+	WAMANAGER_CICLO_RIPOSO_END: 
+		CalcolaIngombro := TRUE;
+{endregion}
+{Region "FALDA"}
+	WAMANAGER_CICLO_FALDA_INIT:
+		CalcolaIngombro := TRUE;	
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:
+		DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+		DirezioneXNegativa := NOT DirezioneXPositiva;
+		(* Valuto se con l'asse X sono fuori dall'area delle colonne *)
+		QuotaX_ConsensoRotazionePinza_Raggiunta := TFPinzaInFuoriIngombroColonne_DirezioneX(DirezioneXPositiva:=DirezioneXPositiva,
+																							AsseInMoto:=ModuleAX_X^.Ax^.AxRef^.Status.Moving,
+																							PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+																							PosizioneColonna_X:=WorkFootprint^[5].X,  
+																							IngombroColonna_X:=WorkFootprint^[5].XDim,
+																							IngombroX_Pos:=IngombroX_Pos,
+																							IngombroX_Neg:=IngombroX_Neg);
+																							
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := FALSE; 
+			
+			IF (WorkArea^[Mission^.PPick].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)) AND 				//se la piazzola di prelievo è nella campata POSITIVA
+				(ModuleAX_X^.Ax^.Status.ActPosition >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)) THEN // Se la posizione attuale è nella campata POSITIVA
+					AreaInLavoroPositiva := TRUE;
+			ELSIF (WorkArea^[Mission^.PPick].X <= WorkFootprint^[5].X) AND 			//se la piazzola di prelievo è nella campata NEGATIVA
+				(ModuleAX_X^.Ax^.Status.ActPosition <= WorkFootprint^[5].X) THEN 		// Se la posizione attuale è nella campata NEGATIVA
+					AreaInLavoroNegativa := TRUE;
+			ELSE
+				AreaInLavoroPositivaNegativa := TRUE;
+			END_IF
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+		(*	IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			*)			
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+							
+			(* Valutazione colonne in base al verso del pallettizzatore: verso stabilito guardando il pallettizzatore con la linea alle spalle *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+																	
+				PALLETTIZZATORE_SX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+			END_CASE
+			
+			(* Setto la quota di fuori ingombro che la pinza dovrà assumere durante la traslazione per evitare la collisione con le colonne *)	
+			QuotaFuoriIngombroColonne_Y := QuotaFuoriIngombro_Attuale_Y;
+					
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF	
+																
+	WAMANAGER_CICLO_PRELIEVO_FALDA_END:
+		CalcolaIngombro := TRUE;	
+			
+	WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:
+		DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace);
+		DirezioneXNegativa := NOT DirezioneXPositiva;
+		(* Valuto se con l'asse X sono fuori dall'area delle colonne *)
+		QuotaX_ConsensoRotazionePinza_Raggiunta := TFPinzaInFuoriIngombroColonne_DirezioneX(DirezioneXPositiva:=DirezioneXPositiva,
+																							AsseInMoto:=ModuleAX_X^.Ax^.AxRef^.Status.Moving,
+																							PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+																							PosizioneColonna_X:=WorkFootprint^[5].X,  
+																							IngombroColonna_X:=WorkFootprint^[5].XDim,
+																							IngombroX_Pos:=IngombroX_Pos,
+																							IngombroX_Neg:=IngombroX_Neg);
+																							
+		IF (WorkArea^[Mission^.PPlace].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)) AND 				//se la piazzola di prelievo è nella campata POSITIVA
+			(ModuleAX_X^.Ax^.Status.ActPosition >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)) THEN // Se la posizione attuale è nella campata POSITIVA
+				AreaInLavoroPositiva := TRUE;
+		ELSIF (WorkArea^[Mission^.PPlace].X <= WorkFootprint^[5].X) AND 			//se la piazzola di prelievo è nella campata NEGATIVA
+			(ModuleAX_X^.Ax^.Status.ActPosition <= WorkFootprint^[5].X) THEN 		// Se la posizione attuale è nella campata NEGATIVA
+				AreaInLavoroNegativa := TRUE;
+		ELSE
+			AreaInLavoroPositivaNegativa := TRUE;
+		END_IF
+		
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			(*IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			*)			
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+							
+			(* Valutazione colonne in base al verso del pallettizzatore: verso stabilito guardando il pallettizzatore con la linea alle spalle *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	QuotaDestinazioneAsse					:= Mission^.YPlace,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+																	
+				PALLETTIZZATORE_SX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	QuotaDestinazioneAsse					:= Mission^.YPlace,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+			END_CASE
+			
+			(* Setto la quota di fuori ingombro che la pinza dovrà assumere durante la traslazione per evitare la collisione con le colonne *)	
+			QuotaFuoriIngombroColonne_Y := QuotaFuoriIngombro_Attuale_Y;
+					
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+			
+	WAMANAGER_CICLO_DEPOSITO_FALDA_END:
+		CalcolaIngombro := TRUE;	
+{endregion}
+{Region "LASTRA DA WA"}
+	WAMANAGER_CICLO_LASTRA_WA_INIT:
+		CalcolaIngombro := TRUE;	
+		
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_RUN:;
+		DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+		DirezioneXNegativa := NOT DirezioneXPositiva;
+		(* Valuto se con l'asse X sono fuori dall'area delle colonne *)
+		QuotaX_ConsensoRotazionePinza_Raggiunta := TFPinzaInFuoriIngombroColonne_DirezioneX(DirezioneXPositiva:=DirezioneXPositiva,
+																							AsseInMoto:=ModuleAX_X^.Ax^.AxRef^.Status.Moving,
+																							PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+																							IngombroX_Pos:= IngombroX_Pos,
+																							IngombroX_Neg:= IngombroX_Neg,
+																							PosizioneColonna_X:=WorkFootprint^[5].X,  
+																							IngombroColonna_X:=WorkFootprint^[5].XDim);																				
+			
+		AsseXInFinestraDiPrelievo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:= 200);//WorkPickPointDimension^[Mission^.PPick].Xdim);
+		AsseYInFinestraDiPrelievo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+		AsseJInFinestraDiPrelievo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+		//	IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+		//	IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+		//	IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+		//	IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+							
+			(* Valutazione colonne in base al verso del pallettizzatore: verso stabilito guardando il pallettizzatore con la linea alle spalle *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+																	
+				PALLETTIZZATORE_SX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+			END_CASE
+			
+			(* Setto la quota di fuori ingombro che la pinza dovrà assumere durante la traslazione per evitare la collisione con le colonne *)	
+			QuotaFuoriIngombroColonne_Y := QuotaFuoriIngombro_Attuale_Y;
+
+			TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale 	:= ModuleAX_X^.Ax^.Status.ActPosition,
+											WorkArea		:=	WorkArea,
+											DirezioneAsseX_Positiva	:= TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick),
+											NPostazioneDX	=>	WADX,
+											NPostazioneSX	=>	WASX,
+											PostazionePartenza	=>	WAPARTENZA);
+
+			//
+			IF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = BUNDLE OR WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO THEN
+				TipologiaElementoGenerica := ELEMENTO_VERT_GENERICO;
+			ELSE
+				TipologiaElementoGenerica := ELEMENTO_PIANO_GENERICO;
+			END_IF
+			FuoriIngombroXNecessario := NOT AsseXInFinestraDiPrelievo;
+			FuoriIngombroYNecessario := NOT AsseYInFinestraDiPrelievo;
+			QuotaFuoriIngombro_Y_Calcolata := 0;
+			//Valuto le postazioni in base al loro ordinamento
+			CASE ORDINE_DISPOSIZIONE_POSTAZIONI OF
+				
+				CRESCENTE:
+							IF WAPARTENZA < Mission^.PPick THEN
+								IF TipologiaElementoGenerica <> ELEMENTO_VERT_GENERICO THEN
+									//se dalla postazione in cui sono al punto di deposito c'è un cavalletto, allora vado fuori ingombro con Y e J
+									FOR iwa := WAPARTENZA TO Mission^.PPick DO
+											IF iwa = NumPostazioneDiPareggiatura THEN
+												CONTINUE;
+											END_IF
+											FuoriIngombroYNecessario := TRUE;
+											FuoriIngombroJNecessario := TRUE;	
+											
+											(* Valorizzazione posizione pinza *)
+											IF ModuleAX_Y^.Ax^.Status.ActPosition >= WorkArea^[IWA].Y - 100 AND ModuleAX_Y^.Ax^.Status.ActPosition <= WorkArea^[IWA].Y + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CENTRALE; 
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition < WorkArea^[IWA].Y + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_DX;
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition > WorkArea^[IWA].Y - 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_SX;
+											END_IF
+											
+											IF PosAttualeRotazionePinza = 180 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_DX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+												AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											ELSIF PosAttualeRotazionePinza = 90 THEN
+												IF WorkAreaState^[iwa].Supporto.Tipologia = ELEMENTO_VERT_GENERICO THEN
+													QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													EXIT;
+												ELSE
+													QuotaFuoriIngombro_J_ConCARICO 		:= 90; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 90; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												END_IF
+											ELSIF PosAttualeRotazionePinza = 0 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_SX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 0; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 0; 
+												AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											END_IF 		
+									END_FOR 
+								ELSE
+									FuoriIngombroYNecessario 		:= FALSE;
+									FuoriIngombroJNecessario 		:= FALSE;	
+									IF Mission^.JPick > 90 THEN
+										QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+										QuotaFuoriIngombro_J_AVUOTO		:= 180; 
+									ELSE
+										QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+										QuotaFuoriIngombro_J_AVUOTO		:= 0; 
+									END_IF
+									CalcoloFI_Y_DaPP := FALSE;
+									AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_ConCARICO;
+									iwa := Mission^.PPick;
+									CalcolaFuoriIngombroY();
+									QuotaFuoriIngombro_J_AVUOTO		:= QuotaFuoriIngombro_J_ConCARICO; 
+									QuotaFuoriIngombro_Y_AVUOTO		:= QuotaFuoriIngombro_Y_Calcolata;
+									QuotaFuoriIngombro_Y_ConCARICO	:= QuotaFuoriIngombro_Y_Calcolata;
+								END_IF
+							ELSIF WAPARTENZA >= Mission^.PPick THEN
+								IF TipologiaElementoGenerica <> ELEMENTO_VERT_GENERICO THEN
+									//se dalla postazione in cui sono al punto di deposito c'è un cavalletto, allora vado fuori ingombro con Y e J
+									FOR iwa := WAPARTENZA TO Mission^.PPick BY -1 DO
+											IF iwa = NumPostazioneDiPareggiatura THEN
+												CONTINUE;
+											END_IF
+											iwa := MAX(iwa,1);
+											FuoriIngombroYNecessario := TRUE;
+											FuoriIngombroJNecessario := TRUE;	
+											
+											(* Valorizzazione posizione pinza *)
+											IF ModuleAX_Y^.Ax^.Status.ActPosition >= WorkArea^[IWA].Y - 100 AND ModuleAX_Y^.Ax^.Status.ActPosition <= WorkArea^[IWA].Y + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CENTRALE; 
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition < WorkArea^[IWA].Y + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_DX;
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition > WorkArea^[IWA].Y - 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_SX;
+											END_IF
+											
+												IF WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  THEN
+													IF ModuleAX_Y^.Ax^.Status.ActPosition < 
+															(WorkArea^[PosRobot].Y   + WorkAreaOffset^[PosRobot].Y + 
+																		WorkAreaState^[PosRobot].Supporto.YDim / 2) - 100 THEN
+														PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_DX;
+													ELSIF ModuleAX_Y^.Ax^.Status.ActPosition > 
+															( WorkArea^[PosRobot].Y  + WorkAreaOffset^[PosRobot].Y + 
+																		WorkAreaState^[PosRobot].Supporto.YDim / 2 )+100 THEN
+													PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_SX;
+													END_IF
+											
+												END_IF
+											
+											IF PosAttualeRotazionePinza = 180 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_SX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+												AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											ELSIF PosAttualeRotazionePinza = 90 THEN
+												IF WorkAreaState^[iwa].Supporto.Tipologia = ELEMENTO_VERT_GENERICO THEN
+													QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													EXIT;
+												ELSE
+													QuotaFuoriIngombro_J_ConCARICO 		:= 90; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 90; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												END_IF
+											ELSIF PosAttualeRotazionePinza = 0 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_DX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 0; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 0; 
+												AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											ELSE
+												Errore := ErrPOSIZIONE_PINZA_ANOMALA;//Err Posizione 
+											END_IF 		
+									END_FOR 
+								ELSE
+									FuoriIngombroYNecessario 		:= FALSE;
+									FuoriIngombroJNecessario 		:= FALSE;	
+									IF Mission^.JPick > 90 THEN
+										QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+										QuotaFuoriIngombro_J_AVUOTO		:= 180; 
+									ELSE
+										QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+										QuotaFuoriIngombro_J_AVUOTO		:= 0; 
+									END_IF
+									CalcoloFI_Y_DaPP := FALSE;
+									AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_ConCARICO;
+									iwa := Mission^.PPick;
+									CalcolaFuoriIngombroY();
+									QuotaFuoriIngombro_J_AVUOTO		:= QuotaFuoriIngombro_J_ConCARICO; 
+									QuotaFuoriIngombro_Y_AVUOTO		:= QuotaFuoriIngombro_Y_Calcolata;
+									QuotaFuoriIngombro_Y_ConCARICO	:= QuotaFuoriIngombro_Y_Calcolata;
+								END_IF	
+							END_IF
+							
+							//
+							//IF Pinza_InIngombroColonne_Attuale THEN
+							//	Errore := ErrPOSIZIONE_PINZA_ANOMALA;//Err Posizione Pinza Non Definita//QuotaFuoriIngombro_Y_Calcolata := QuotaFuoriIngombro_Attuale_Y; 	
+							//END_IF	
+							
+							DECRESCENTE:;
+							
+			END_CASE
+			
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+
+			AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+			//Calcolo FI Verticale
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO 			:= 0;
+
+			CalcoloFuriIngombroVerticale();
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO := MAX(AltezzaDiIngombroArea_CESTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO := MAX(AltezzaDiIngombroArea_CINTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) +IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO , Mission^.ZPick);//+OffsetSicurezza.Z.Avuoto;
+			
+			FuoriIngombroYNecessario := NOT AsseXInFinestraDiPrelievo;//se sono sulla rulliera non vado fi con y
+			FuoriIngombroJNecessario := NOT AsseXInFinestraDiPrelievo;//se sono sulla rulliera non vado fi con y
+
+		END_IF
+
+		(*IF Mission^.JPick > 90 THEN			
+			QuotaFuoriIngombro_Y_AVUOTO := Traiettoria^.PuntoDiApproccioStartPoint.Y + OffsetSicurezza_Y;
+			QuotaFuoriIngombro_Y_ConCARICO :=  Traiettoria^.PuntoDiApproccioStartPoint.Y + OffsetSicurezza_Y;;		
+		ELSIF Mission^.JPick < 90 THEN
+			QuotaFuoriIngombro_Y_AVUOTO := Traiettoria^.PuntoDiApproccioStartPoint.Y - OffsetSicurezza_Y;
+			QuotaFuoriIngombro_Y_ConCARICO :=  Traiettoria^.PuntoDiApproccioStartPoint.Y - OffsetSicurezza_Y;;	
+		ELSIF Mission^.JPick = 90 THEN
+			QuotaFuoriIngombro_Y_AVUOTO := Traiettoria^.PuntoDiApproccioStartPoint.Y;
+			QuotaFuoriIngombro_Y_ConCARICO :=  Traiettoria^.PuntoDiApproccioStartPoint.Y;
+		END_IF*)
+		
+		IF ModuleAX_Z^.Ax^.Status.ActPosition =  WorkSpace^.Z THEN 
+			CoordenadaZInicial := WorkSpace^.Z -100 ;
+		ELSE
+			CoordenadaZInicial :=	ModuleAX_Z^.Ax^.Status.ActPosition -10 ;
+		END_IF
+		
+		QuotaFuoriIngombro_Z_AVUOTO 	:= MAX(100,MAX(ModuleAX_Z^.Ax^.Status.ActPosition,(MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)(*+OffsetSicurezza.Z.Avuoto*)))); //MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+		
+		
+		IF WorkAreaState^[PosRobot].Supporto.Tipologia = BUNDLE OR WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO THEN
+			 QuotaFuoriIngombro_Z_ConPEZZO 	:= MAX(100,MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO) +10);
+			 ELSE
+			QuotaFuoriIngombro_Z_ConPEZZO 	:= MAX(100,MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO) +OffsetSicurezza.Z.Carico);
+		 END_IF
+		
+		
+
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_END:
+		CalcolaIngombro := TRUE;
+	
+	(* Ciclo lastra deposito su rulliera *)
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN:
+		DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace);
+		DirezioneXNegativa := NOT DirezioneXPositiva;
+		(* Valuto se con l'asse X sono fuori dall'area delle colonne *)
+		QuotaX_ConsensoRotazionePinza_Raggiunta := TFPinzaInFuoriIngombroColonne_DirezioneX(DirezioneXPositiva:=DirezioneXPositiva,
+																							AsseInMoto:=ModuleAX_X^.Ax^.AxRef^.Status.Moving,
+																							PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+																							IngombroX_Pos:= IngombroX_Pos,
+																							IngombroX_Neg:= IngombroX_Neg,
+																							PosizioneColonna_X:=WorkFootprint^[5].X,  
+																							IngombroColonna_X:=WorkFootprint^[5].XDim);																				
+			
+		AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=200);// WorkPickPointDimension^[Mission^.PPick].Xdim);
+		AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+		AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+		//
+		IF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = BUNDLE OR WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO THEN
+			TipologiaElementoGenerica := ELEMENTO_VERT_GENERICO;
+		ELSE
+			TipologiaElementoGenerica := ELEMENTO_PIANO_GENERICO;
+		END_IF
+		
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+		//	IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+		//	IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+		//	IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+		//	IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+							
+			(* Valutazione colonne in base al verso del pallettizzatore: verso stabilito guardando il pallettizzatore con la linea alle spalle *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+																	
+				PALLETTIZZATORE_SX :
+									TFCalcolaQuotaIngombroColonne(	QuotaY_ColonnaDX						:= WorkFootprint^[6].Y, //DX
+																	QuotaY_ColonnaSX						:= WorkFootprint^[5].Y, //SX
+																	QuotaAttualeAsse						:= ModuleAX_Y^.Ax^.AxRef^.NcToPlc.ActPos,
+																	OffsetSicurezza_Y						:= OffsetSicurezza_Y,
+																	IngombroOttimizzatoY_InTransito_Pos     := IngombroY_Pos,
+																	IngombroOttimizzatoY_InTransito_Neg     := IngombroY_Neg,
+																	QuotaDestinazioneAsse					:= Mission^.YPick,
+																	Pinza_InIngombroColonne_Attuale 		=> Pinza_InIngombroColonne_Attuale,
+																	Pinza_InIngombroColonne_Destinazione 	=> Pinza_InIngombroColonne_Destinazione,
+																	QuotaFuoriIngombro_Attuale_Y 			=> QuotaFuoriIngombro_Attuale_Y,
+																	QuotaFuoriIngombro_Destinazione_Y 		=> QuotaFuoriIngombro_Destinazione_Y);
+			END_CASE
+			
+			(* Setto la quota di fuori ingombro che la pinza dovrà assumere durante la traslazione per evitare la collisione con le colonne *)	
+			QuotaFuoriIngombroColonne_Y := QuotaFuoriIngombro_Attuale_Y;
+
+			TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale 	:= ModuleAX_X^.Ax^.Status.ActPosition,
+											WorkArea		:=	WorkArea,
+											DirezioneAsseX_Positiva	:= TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPlace),
+											NPostazioneDX	=>	WADX,
+											NPostazioneSX	=>	WASX,
+											PostazionePartenza	=>	WAPARTENZA);
+
+			FuoriIngombroXNecessario := NOT AsseXInFinestraDiPrelievo;
+			FuoriIngombroYNecessario := NOT AsseYInFinestraDiPrelievo;
+			QuotaFuoriIngombro_Y_Calcolata := 0;
+			//Valuto le postazioni in base al loro ordinamento
+			CASE ORDINE_DISPOSIZIONE_POSTAZIONI OF
+			
+			CRESCENTE:
+							IF WAPARTENZA < Mission^.PPlace THEN
+								IF TipologiaElementoGenerica <> ELEMENTO_VERT_GENERICO THEN
+									//se dalla postazione in cui sono al punto di deposito c'è un cavalletto, allora vado fuori ingombro con Y e J
+									FOR iwa := WAPARTENZA TO Mission^.PPlace DO
+											IF iwa = NumPostazioneDiPareggiatura THEN
+												CONTINUE;
+											END_IF
+											FuoriIngombroYNecessario := TRUE;
+											FuoriIngombroJNecessario := TRUE;	
+											
+											(* Valorizzazione posizione pinza *)
+											IF ModuleAX_Y^.Ax^.Status.ActPosition >= WorkArea^[IWA].Y - 100 AND ModuleAX_Y^.Ax^.Status.ActPosition <= WorkArea^[IWA].Y + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CENTRALE; 
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition < WorkArea^[IWA].Y + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_DX;
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition > WorkArea^[IWA].Y - 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_SX;
+											END_IF
+											
+											IF PosAttualeRotazionePinza = 180 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_DX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+												AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											ELSIF PosAttualeRotazionePinza = 90 THEN
+												IF WorkAreaState^[iwa].Supporto.Tipologia = ELEMENTO_VERT_GENERICO THEN
+													QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													EXIT;
+												ELSE
+													QuotaFuoriIngombro_J_ConCARICO 		:= 90; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 90; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												END_IF
+											ELSIF PosAttualeRotazionePinza = 0 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_SX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 0; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 0; 
+												AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											END_IF 		
+									END_FOR 
+								ELSE
+									FuoriIngombroYNecessario 		:= FALSE;
+									FuoriIngombroJNecessario 		:= FALSE;	
+									IF Mission^.JPlace > 90 THEN
+										QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+									ELSE
+										QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+									END_IF
+									CalcoloFI_Y_DaPP := FALSE;
+									AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_ConCARICO;
+									iwa := Mission^.PPlace;
+									CalcolaFuoriIngombroY();
+									QuotaFuoriIngombro_J_AVUOTO		:= QuotaFuoriIngombro_J_ConCARICO; 
+									QuotaFuoriIngombro_Y_AVUOTO		:= QuotaFuoriIngombro_Y_Calcolata;
+									QuotaFuoriIngombro_Y_ConCARICO	:= QuotaFuoriIngombro_Y_Calcolata;
+								END_IF
+							ELSIF WAPARTENZA >= Mission^.PPlace THEN
+								IF TipologiaElementoGenerica <> ELEMENTO_VERT_GENERICO THEN
+									//se dalla postazione in cui sono al punto di deposito c'è un cavalletto, allora vado fuori ingombro con Y e J
+									FOR iwa := WAPARTENZA TO Mission^.PPlace BY -1 DO
+											IF iwa = NumPostazioneDiPareggiatura THEN
+												CONTINUE;
+											END_IF
+											iwa := MAX(iwa,1);
+											FuoriIngombroYNecessario := TRUE;
+											FuoriIngombroJNecessario := TRUE;	
+											
+											(* Valorizzazione posizione pinza *)
+											IF ModuleAX_Y^.Ax^.Status.ActPosition >= (WorkSpace^.Y / 2) - 100 AND ModuleAX_Y^.Ax^.Status.ActPosition <= (WorkSpace^.Y / 2) + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CENTRALE; 
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition < WorkArea^[IWA].Y + WorkAreaOffset^[IWA].Y - 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_DX;
+											ELSIF ModuleAX_Y^.Ax^.Status.ActPosition > WorkArea^[IWA].Y + WorkAreaOffset^[IWA].Y + 100 THEN
+												PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_SX;
+											END_IF
+											
+											(*IF WorkAreaState^[IWA].Supporto.Tipologia = BUNDLE AND WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO   THEN
+												Centrocavallete := (WorkAreaState^[PosRobot].Supporto.YDim / 2)+ WorkAreaOffset^[PosRobot].Y + WorkArea^[PosRobot].Y -Dimensioni_Pinza.Spessore ;
+												IF ModuleAX_Y^.Ax^.Status.ActPosition >= ( Centrocavallete) +200 THEN
+													PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_SX;
+												END_IF
+												IF ModuleAX_Y^.Ax^.Status.ActPosition <= (Centrocavallete) - 200 THEN
+													PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_DX;
+												END_IF
+											END_IF*)
+											IF (WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO 
+													OR WorkAreaState^[PosRobot].Supporto.Tipologia = BUNDLE )AND Mission^.PPick = PosRobot   THEN
+												Centrocavallete := (WorkAreaState^[PosRobot].Supporto.YDim / 2)+ WorkAreaOffset^[PosRobot].Y + WorkArea^[PosRobot].Y -Dimensioni_Pinza.Spessore ;
+												IF ModuleAX_Y^.Ax^.Status.ActPosition >= (Centrocavallete) +200 THEN
+													PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_SX;
+												END_IF
+												IF ModuleAX_Y^.Ax^.Status.ActPosition <= (Centrocavallete) - 200 THEN
+													PosAttualePinza := e_PosizionePinza.POS_CORRIDOIO_DX;
+												END_IF
+											END_IF
+											
+											
+											IF PosAttualeRotazionePinza = 180 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_SX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+												AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											ELSIF PosAttualeRotazionePinza = 90 THEN
+												IF WorkAreaState^[iwa].Supporto.Tipologia = ELEMENTO_VERT_GENERICO THEN
+													QuotaFuoriIngombro_J_ConCARICO 		:= 180; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 180; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													EXIT;
+												ELSE
+													QuotaFuoriIngombro_J_ConCARICO 		:= 90; 
+													QuotaFuoriIngombro_J_AVUOTO			:= 90; 
+													AngoloRotazioneDestinazionePinza 	:= QuotaFuoriIngombro_J_AVUOTO;
+													CalcolaFuoriIngombroY();
+													QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+													QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												END_IF
+											ELSIF PosAttualeRotazionePinza = 0 AND PosAttualePinza = e_PosizionePinza.POS_CORRIDOIO_DX THEN
+												QuotaFuoriIngombro_J_ConCARICO 		:= 0; 
+												QuotaFuoriIngombro_J_AVUOTO			:= 0; 
+												AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+												CalcolaFuoriIngombroY();
+												QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+												QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											ELSE
+												Errore := ErrPOSIZIONE_PINZA_ANOMALA;//Err Posizione Pinza Non Definita
+											END_IF 		
+									END_FOR 
+								ELSE
+									FuoriIngombroYNecessario 		:= FALSE;
+									FuoriIngombroJNecessario 		:= FALSE;	
+									IF Mission^.JPlace > 90 THEN
+										QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+									ELSE
+										QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+									END_IF
+									CalcoloFI_Y_DaPP := TRUE;
+									AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_ConCARICO;
+									iwa := Mission^.PPlace;
+									CalcolaFuoriIngombroY();
+									QuotaFuoriIngombro_J_AVUOTO		:= QuotaFuoriIngombro_J_ConCARICO; 
+									QuotaFuoriIngombro_Y_AVUOTO		:= QuotaFuoriIngombro_Y_Calcolata;
+									QuotaFuoriIngombro_Y_ConCARICO	:= QuotaFuoriIngombro_Y_Calcolata;
+								END_IF	
+							END_IF
+			
+							DECRESCENTE:
+								(*IF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia <> CAVALLETTO THEN
+									//se dalla postazione in cui sono al punto di prelievo c'è un cavalletto, allora vado fuori ingombro con Y e J
+									FOR iwa := MAXAREAPRESENT TO Mission^.PPlace BY -1 DO
+										IF (WorkAreaState^[iwa].Supporto.Tipologia = CAVALLETTO OR 
+										   WorkAreaState^[iwa].Supporto.Tipologia <> CASSA_STANDARD AND PX_WorkArea[iwa]) THEN
+											FuoriIngombroYNecessario := TRUE;
+											FuoriIngombroJNecessario := TRUE;	
+											IF Mission^.JPlace >= 85 AND Mission^.JPlace <= 95 THEN //se devo depositare nell'intorno dei 90°, calcolo il FI standard 
+												IF ModuleAX_Y^.Ax^.Status.ActPosition >= WorkArea^[iwa].Y THEN // Se la pinza è verso i 180° la porto a 180°
+													QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+													QuotaFuoriIngombro_J_AVUOTO		:= 180; 
+												ELSIF ModuleAX_Y^.Ax^.Status.ActPosition < WorkArea^[iwa].Y THEN // Se la pinza è verso gli 0° la porto a 0°
+													QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+													QuotaFuoriIngombro_J_AVUOTO		:= 0; 
+												ELSE ;
+												END_IF
+											ELSE
+												IF Mission^.JPlace > 90 THEN
+													QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+												ELSE
+													QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+												END_IF
+											END_IF
+											CalcoloFI_Y_DaPP := TRUE;
+											AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_ConCARICO;
+											CalcolaFuoriIngombroY();
+											QuotaFuoriIngombro_Y_AVUOTO 	:= QuotaFuoriIngombro_Y_Calcolata;
+											QuotaFuoriIngombro_Y_ConCARICO 	:= QuotaFuoriIngombro_Y_Calcolata;	
+											//EXIT;
+										ELSE
+											FuoriIngombroYNecessario 		:= FALSE;
+											FuoriIngombroJNecessario 		:= FALSE;	
+											QuotaFuoriIngombro_J_ConCARICO 	:= Mission^.JPlace; 
+											QuotaFuoriIngombro_J_AVUOTO		:= Mission^.JPlace; 
+											QuotaFuoriIngombro_Y_AVUOTO		:= Mission^.YPlace;
+											QuotaFuoriIngombro_Y_ConCARICO	:= QuotaFuoriIngombro_Attuale_Y;
+										END_IF
+									END_FOR 
+								ELSE
+									FuoriIngombroYNecessario 		:= FALSE;
+									FuoriIngombroJNecessario 		:= FALSE;	
+									IF Mission^.JPlace > 90 THEN
+										QuotaFuoriIngombro_J_ConCARICO 	:= 180; 
+									ELSE
+										QuotaFuoriIngombro_J_ConCARICO 	:= 0; 
+									END_IF
+									CalcoloFI_Y_DaPP := TRUE;
+									AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_ConCARICO;
+									iwa := Mission^.PPlace;
+									CalcolaFuoriIngombroY();
+									QuotaFuoriIngombro_J_AVUOTO		:= QuotaFuoriIngombro_J_ConCARICO; 
+									QuotaFuoriIngombro_Y_AVUOTO		:= QuotaFuoriIngombro_Y_Calcolata;
+									QuotaFuoriIngombro_Y_ConCARICO	:= QuotaFuoriIngombro_Y_Calcolata;
+								END_IF*)
+						END_CASE
+						
+						(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+						IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione) THEN 
+							IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+								FuoriIngombroYNecessarioTMP := FALSE;
+							ELSE
+								FuoriIngombroYNecessarioTMP := TRUE;
+							END_IF
+						ELSE
+							FuoriIngombroYNecessarioTMP := FALSE;
+						END_IF
+			
+						AngoloRotazioneDestinazionePinza := QuotaFuoriIngombro_J_AVUOTO;
+						//Calcolo FI Verticale
+						QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= 0;
+						QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= 0;
+						QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= 0;
+						QuotaFuoriIngombro_Z_AVUOTO 			:= 0;
+			
+						CalcoloFuriIngombroVerticale();
+						QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+						QuotaFuoriIngombro_Z_AVUOTO_CESTERNO := MAX(AltezzaDiIngombroArea_CESTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+						QuotaFuoriIngombro_Z_AVUOTO_CINTERNO := MAX(AltezzaDiIngombroArea_CINTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) +IngombroMaxZ_Neg;
+						QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO,Mission^.ZPick );//+OffsetSicurezza.Z.Avuoto;
+						
+						FuoriIngombroYNecessario := NOT AsseXInFinestraDiDestinazione;//se sono sulla rulliera non vado fi con y
+						FuoriIngombroJNecessario := NOT AsseXInFinestraDiDestinazione;//se sono sulla rulliera non vado fi con y
+			
+						//IF Pinza_InIngombroColonne_Attuale THEN
+						//	Errore := ErrPOSIZIONE_PINZA_ANOMALA;//Err Posizione Pinza Non Definita//QuotaFuoriIngombro_Y_Calcolata := QuotaFuoriIngombro_Attuale_Y; 	
+						//END_IF	
+						
+					END_IF
+					IF ModuleAX_Z^.Ax^.Status.ActPosition =  WorkSpace^.Z THEN 
+						CoordenadaZInicial := WorkSpace^.Z -100 ;
+					ELSE
+						CoordenadaZInicial :=	ModuleAX_Z^.Ax^.Status.ActPosition -10 ;
+					END_IF
+						
+					
+					QuotaFuoriIngombro_Z_AVUOTO 	:= MAX(100,MAX(ModuleAX_Z^.Ax^.Status.ActPosition,(MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)(*+OffsetSicurezza.Z.Avuoto*)))); //MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+					 IF WorkAreaState^[PosRobot].Supporto.Tipologia = BUNDLE OR WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO THEN
+						
+						IF WorkSpace^.Z - MAX(100,MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)) < OffsetSicurezza.Z.Carico 
+							AND WorkSpace^.Z > MAX(100,MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)	) THEN
+							QuotaFuoriIngombro_Z_ConPEZZO 	:= MAX(100,MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO) + 10 (*+ 300*));
+						ELSE 
+							QuotaFuoriIngombro_Z_ConPEZZO 	:= MAX(100,MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO) +OffsetSicurezza.Z.Carico (*+ 300*));
+ 						END_IF
+									
+					 
+						
+					ELSE
+						QuotaFuoriIngombro_Z_ConPEZZO 	:= MAX(100,MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO) +OffsetSicurezza.Z.Carico (*+ 300*));
+					END_IF
+					
+			
+				WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_END:
+					CalcolaIngombro := TRUE;
+{endregion}
+	
+END_CASE
+
+QuotaFuoriIngombro_Z_AVUOTO 	:= MAX(QuotaFuoriIngombro_Z_AVUOTO,ModuleAX_Z^.Ax^.Status.ActPosition);
+QuotaFuoriIngombro_Z_ConPEZZO 	:= MAX(QuotaFuoriIngombro_Z_ConPEZZO,ModuleAX_Z^.Ax^.Status.ActPosition);
+
+]]></ST>
+    </Implementation>
+    <Action Name="CalcolaFuoriIngombroY" Id="{83b1a47c-29ad-4912-a91c-826f2b0f952b}">
+      <Implementation>
+        <ST><![CDATA[
+//QuotaFuoriIngombro_Y_Calcolata := 0;
+(* Calcolo gli ingombri della pinza nelle varie direzioni *)
+TFCalcoliIngombroPinza(Mission := Mission,
+							WorkAreaManager := WorkAreaManager,
+							WorkAreaState := ADR(WorkAreaState),
+							ModuleAX_J := ModuleAX_J,
+							AngoloRotazioneDestinazionePinza:= AngoloRotazioneDestinazionePinza,
+							IngombroX_Pos := ADR(IngombroX_Pos),
+							IngombroY_Pos := ADR(IngombroY_Pos),
+							IngombroX_Neg := ADR(IngombroX_Neg),
+							IngombroY_Neg := ADR(IngombroY_Neg),
+							IngombroZ_Pos := ADR(IngombroZ_Pos),
+							IngombroZ_Neg := ADR(IngombroZ_Neg),
+							IngombroY_Tot := ADR(IngombroY_Tot),
+							IngombroDestinazioneX_Pos := ADR(IngombroDestinazioneX_Pos),
+							IngombroDestinazioneY_Pos := ADR(IngombroDestinazioneY_Pos),
+							IngombroDestinazioneX_Neg := ADR(IngombroDestinazioneX_Neg),
+							IngombroDestinazioneY_Neg := ADR(IngombroDestinazioneY_Neg),
+							IngombroDestinazioneZ_Pos := ADR(IngombroDestinazioneZ_Pos),
+							IngombroDestinazioneZ_Neg := ADR(IngombroDestinazioneZ_Neg),
+							IngombroMaxX_Pos := ADR(IngombroMaxX_Pos),
+							IngombroMaxY_Pos := ADR(IngombroMaxY_Pos),
+							IngombroMaxX_Neg := ADR(IngombroMaxX_Neg),
+							IngombroMaxY_Neg := ADR(IngombroMaxY_Neg),
+							IngombroMaxZ_Pos := ADR(IngombroMaxZ_Pos),
+							IngombroMaxZ_Neg := ADR(IngombroMaxZ_Neg),
+							IngombroY_Pos_0  	:= ADR(IngombroY_Pos_0),		 		
+                            IngombroY_Neg_180 	:= ADR(IngombroY_Neg_180),
+                            IngombroY_Neg_0 	:= ADR(IngombroY_Neg_0),	
+                            IngombroY_Pos_180 	:= ADR(IngombroY_Pos_180),
+							ScostamentoVerticalePuntoCentrale := ADR(ScostamentoVerticalePuntoCentrale));
+
+//
+QuotaCentroPostazione 			:= WorkArea^[iwa].Y + WorkAreaOffset^[iwa].Y;	
+QuotaCentroPostazioneIni 		:= WorkArea^[PosRobot].Y + WorkAreaOffset^[PosRobot].Y;	
+QuotaCentroPostazionePiking		:= WorkArea^[Mission^.PPlace].Y + WorkAreaOffset^[Mission^.PPlace].Y;					
+//
+QuotaYColonnaSx := WorkFootprint^[5].Y;
+QuotaYColonnaDx := WorkFootprint^[6].Y;
+							
+CASE VERSO_PALLETTIZZATORE OF
+	{region " Pallettizzatore DX "}					
+	PALLETTIZZATORE_DX: /////////////sistemare pal DX
+		
+
+		CASE RIFERIMENTO_POSTAZIONE_WA OF
+			{Region "CENTRALE" }				
+			CENTRALE :
+				{Region "ROTAZIONE VERSO 180°" }					  
+				IF AngoloRotazioneDestinazionePinza > 95 THEN	
+					IF WorkAreaState^[iwa].Supporto.Tipologia = CAVALLETTO THEN 				
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) >= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2) AND
+							((ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= QuotaCentroPostazione) OR
+							((ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) <= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2)) THEN //Se la pinza è in ingombro con il cavalletto verso SX  
+								QuotaFuoriIngombro_Y_Calcolata := MIN(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos -
+																	OffsetSicurezza.Y.Avuoto);
+																			  
+								IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 110;			 
+									RETURN; 
+								END_IF
+								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 111;			 
+									RETURN; 
+								END_IF			   
+						ELSIF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) >= QuotaCentroPostazione THEN //Se la pinza è in ingombro con il cavalletto  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +
+																OffsetSicurezza.Y.Avuoto);
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 112;
+								RETURN;										  
+							END_IF											  
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 113;			 
+								RETURN; 
+							END_IF
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,                                                
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)				                         																					
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +                                                        
+																OffsetSicurezza.Y.Avuoto);                                                         
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 114;
+								RETURN;										  
+							END_IF 		
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 115;			 
+								RETURN; 
+							END_IF																  
+						END_IF
+					ELSIF WorkAreaState^[iwa].Supporto.Tipologia = BUNDLE THEN //se NELLA postazione c'è un bundle
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE) THEN //Se la pinza è dentro all'ingombro del bundle  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+						END_IF	
+					ELSE//se non c'è nulla o c'è una cassa-pianale
+						QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2 + OffSetPosYReposo);
+						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 116;			 
+							RETURN; 
+						END_IF	
+						IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 117;			 
+							RETURN; 
+						END_IF	  
+					END_IF
+				{endregion}								   
+				{Region "ROTAZIONE VERSO 0°" }
+				ELSIF AngoloRotazioneDestinazionePinza < 85 THEN
+					IF WorkAreaState^[iwa].Supporto.Tipologia = CAVALLETTO THEN 				
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (QuotaCentroPostazione + WorkAreaState^[iwa].Supporto.YDim/2) AND
+						 (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg >= QuotaCentroPostazione) OR
+						 (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) >= (QuotaCentroPostazione + WorkAreaState^[iwa].Supporto.YDim/2) THEN //Se la pinza è in ingombro con il cavalletto nella zona a SX della sua metà
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +
+																OffsetSicurezza.Y.Avuoto);
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 118;			 
+								RETURN; 
+							END_IF 
+						ELSIF ((ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) >= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2) AND 
+							(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) <= (QuotaCentroPostazione)) OR
+							(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) <= (QuotaCentroPostazione)THEN //Se la pinza è in ingombro con il cavalletto con pinza dentro all'ingombro nella parte SX 
+								QuotaFuoriIngombro_Y_Calcolata := MIN(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos -
+																	OffsetSicurezza.Y.Avuoto);
+								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 119;
+									RETURN;										  
+								END_IF 							
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +				(* Ingombro positivo pinza *)
+																OffsetSicurezza.Y.Avuoto);				(* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 120;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 121;			 
+								RETURN; 
+							END_IF
+						END_IF
+					ELSIF WorkAreaState^[iwa].Supporto.Tipologia = BUNDLE THEN //se NELLA postazione c'è un bundle
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE) THEN //Se la pinza è dentro all'ingombro del bundle  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 122;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 123;			 
+								RETURN; 
+							END_IF												  
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 124;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 125;			 
+								RETURN; 
+							END_IF												  
+						END_IF	
+					ELSE//se non c'è nulla o c'è una cassa-pianale
+						QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2 +OffSetPosYReposo);
+						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 126;			 
+							RETURN; 
+						END_IF	
+						IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 127;			 
+							RETURN; 
+						END_IF	  
+					END_IF 	
+				{endregion}								   
+				{Region "ROTAZIONE 90°" }
+				ELSE	
+					IF WorkAreaState^[iwa].Supporto.Tipologia = CAVALLETTO THEN 				
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (QuotaCentroPostazione + WorkAreaState^[iwa].Supporto.YDim/2) AND
+							(ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg >= QuotaCentroPostazione) THEN //Se la pinza è in ingombro con il cavalletto nella zona a DX della sua metà
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +
+																OffsetSicurezza.Y.Avuoto);
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 128;			 
+								RETURN; 
+							END_IF 
+						ELSIF (ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) >= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2) AND 
+							(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) <= (QuotaCentroPostazione) THEN //Se la pinza è in ingombro con il cavalletto con pinza dentro all'ingombro nella parte SX 
+								QuotaFuoriIngombro_Y_Calcolata := MIN(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos -
+																	OffsetSicurezza.Y.Avuoto);
+								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 129;
+									RETURN;										  
+								END_IF 							
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +				(* Ingombro positivo pinza *)
+																OffsetSicurezza.Y.Avuoto);				(* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 130;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 131;			 
+								RETURN; 
+							END_IF
+						END_IF
+					ELSIF WorkAreaState^[iwa].Supporto.Tipologia = BUNDLE THEN //se NELLA postazione c'è un bundle
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE) THEN //Se la pinza è dentro all'ingombro del bundle  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 132;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 133;			 
+								RETURN; 
+							END_IF												  
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 134;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 135;			 
+								RETURN; 
+							END_IF												  
+						END_IF	
+					ELSE//se non c'è nulla o c'è una cassa-pianale
+						QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2+ OffSetPosYReposo);
+						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 136;			 
+							RETURN; 
+						END_IF	
+						IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 137;			 
+							RETURN; 
+						END_IF	  
+					END_IF
+				END_IF
+				{endregion}				   
+			{endregion}
+		
+		ELSE
+			;//Errore.Code := ErrWAM_FTC_PostazioneNONDefinita;
+		END_CASE
+	{endregion}	
+	{region " Pallettizzatore SX "}	
+	PALLETTIZZATORE_SX:
+		CASE RIFERIMENTO_POSTAZIONE_WA OF
+		{Region "CENTRALE" }				
+			CENTRALE :
+				{Region "ROTAZIONE VERSO 180°" }					  
+				IF AngoloRotazioneDestinazionePinza > 95 THEN
+					//Modificacar aqui para salir <cavaleta	
+					IF WorkAreaState^[iwa].Supporto.Tipologia = CAVALLETTO  (*Añadido*)OR WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO 
+							OR (WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO	AND WorkAreaManager^.State = 	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN)	THEN 				
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) >= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2) AND
+							((ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= QuotaCentroPostazione) OR
+							((ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) <= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2)) OR
+							 	( (WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO OR WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO ) AND ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos < WorkFootprint^[6].Y )THEN //Se la pinza è in ingombro con il cavalletto verso SX  
+							 	IF WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO OR  
+											WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO THEN
+									IF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO AND WorkAreaManager^.State = 	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN  THEN
+											QuotaFuoriIngombro_Y_Calcolata := 
+													   //%%%%%%%%%%%%%%%%modificado 18-7-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazionePiking + 						(* Quota Y Postazione *)																									
+																			WorkAreaState^[Mission^.PPlace].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			IngombroDestinazioneY_Pos - *) 
+																			+ OffsetSicurezza.Y.Avuoto )  ;
+									ELSE
+										IF Mission^.PPick = PosRobot AND( Mission^.JPick <> Mission^.JPlace OR ModuleAX_J^.Ax^.Status.ActPosition < 85) THEN
+														   
+											IF 	Mission^.JPick < 85 THEN
+											QuotaFuoriIngombro_Y_Calcolata := 
+											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazioneIni - 						(* Quota Y Postazione *)																									
+																			WorkAreaState^[Mission^.PPick].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			IngombroDestinazioneY_Pos - *) 
+																			- OffsetSicurezza.Y.Avuoto )  ;		   
+	   										ELSE
+											QuotaFuoriIngombro_Y_Calcolata := 
+											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazioneIni + 						(* Quota Y Postazione *)																									
+																			WorkAreaState^[Mission^.PPick].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			IngombroDestinazioneY_Pos - *) 
+																			+ OffsetSicurezza.Y.Avuoto )  ;		   				   
+											END_IF	
+										// Añadido 	29 -7-2025__________________________________________			   
+										ELSIF   PosRobot <> 0 AND   WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  AND ModuleAX_J^.Ax^.Status.ActPosition > 95      THEN 
+											QuotaFuoriIngombro_Y_Calcolata := 
+											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazioneIni  + 						(* Quota Y Postazione *)	
+																			//	WorkAreaState^[Mission^.PPick].Supporto.YDim/2				
+																			WorkAreaState^[PosRobot].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			
+																			IngombroDestinazioneY_Pos - *) 
+																			+ OffsetSicurezza.Y.Avuoto )  ;		   			   
+		   								// Añadido 	29 -7-2025_________________________________________________
+										ELSIF PosRobot <> 0 AND  WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  AND ModuleAX_J^.Ax^.Status.ActPosition < 95    THEN 
+											QuotaFuoriIngombro_Y_Calcolata := 
+											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazione  + 						(* Quota Y Postazione *)	
+																			//	WorkAreaState^[Mission^.PPick].Supporto.YDim/2				
+																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			
+																			IngombroDestinazioneY_Pos - *) 
+																			+ OffsetSicurezza.Y.Avuoto )  ;		   			   
+		   								// Añadido 	2 -9-2025_________________________________________________
+										ELSIF (( WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO  AND NuPosGuiroPiking = PosRobot) OR ( PosRobot <> 0 AND WorkAreaState^[PosRobot].Supporto.Tipologia <> CAVALLETTO))  AND PosicionJActual = 90     THEN 
+											QuotaFuoriIngombro_Y_Calcolata := 
+											 //%%%%%%%%%%%%%%%%modificado 2-9-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazione  + 						(* Quota Y Postazione *)	
+																			//	WorkAreaState^[Mission^.PPick].Supporto.YDim/2				
+																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			
+																			IngombroDestinazioneY_Pos - *) 
+																			+ OffsetSicurezza.Y.Avuoto )  ;		
+										// Añadido 	4 -9-2025_________________________________________________
+										ELSIF  WorkAreaState^[Mission^.PPick].Supporto.Tipologia = BUNDLE  AND  PosRobot = 0    THEN 
+											QuotaFuoriIngombro_Y_Calcolata := 
+											 //%%%%%%%%%%%%%%%%modificado 2-9-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazione  + 						(* Quota Y Postazione *)	
+																			//	WorkAreaState^[Mission^.PPick].Supporto.YDim/2				
+																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			
+																			IngombroDestinazioneY_Pos - *) 
+																			+ OffsetSicurezza.Y.Avuoto )  ;		   		   			
+										END_IF
+										(*	QuotaFuoriIngombro_Y_Calcolata := 
+											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
+																			MAX(QuotaFuoriIngombro_Y_Calcolata,
+																			QuotaCentroPostazioneIni + 						(* Quota Y Postazione *)																									
+																			WorkAreaState^[Mission^.PPlace].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			IngombroDestinazioneY_Pos - *) 
+																			+ OffsetSicurezza.Y.Avuoto )  ;		*)   
+									END_IF
+								ELSE
+										IF 	WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO	 THEN
+  											QuotaFuoriIngombro_Y_Calcolata := 
+											   //%%%%%%%%%%%%%%%%modificado 18-7-2025
+											   						MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos - *) 
+																	+ OffsetSicurezza.Y.Avuoto )  ;
+										ELSIF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = BUNDLE    THEN  	
+											QuotaFuoriIngombro_Y_Calcolata := 
+											   //%%%%%%%%%%%%%%%%modificado 18-7-2025
+											   						MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim /2  (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos - *) 
+																	+ OffsetSicurezza.Y.Avuoto )  ;
+											ELSIF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO    THEN  	
+											QuotaFuoriIngombro_Y_Calcolata := 
+											   //%%%%%%%%%%%%%%%%modificado 18-7-2025
+											   						MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos - *) 
+																	+ OffsetSicurezza.Y.Avuoto )  ;								
+										END_IF 
+					  
+			   						
+								END_IF 		   
+										(*	QuotaFuoriIngombro_Y_Calcolata := 
+											   //%%%%%%%%%%%%%%%%modificado 18-7-2025
+											   						MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos - *) 
+																	+ OffsetSicurezza.Y.Avuoto )  ;
+																(*	MIN(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos -
+																	OffsetSicurezza.Y.Avuoto);*)
+																			  *)
+								IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 10;			 
+									RETURN; 
+								END_IF
+								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 11;			 
+									RETURN; 
+								END_IF			   
+						ELSIF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) >= QuotaCentroPostazione THEN //Se la pinza è in ingombro con il cavalletto  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg (*+
+																OffsetSicurezza.Y.Avuoto*));
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 12;
+								RETURN;										  
+							END_IF											  
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 13;			 
+								RETURN; 
+							END_IF
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,                                                
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)				                         																					
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																(*IngombroDestinazioneY_Neg + *) //+++++++++                                                      
+																OffsetSicurezza.Y.Avuoto);                                                         
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 14;
+								RETURN;										  
+							END_IF 		
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 15;			 
+								RETURN; 
+							END_IF																  
+						END_IF
+					ELSIF WorkAreaState^[iwa].Supporto.Tipologia = BUNDLE THEN //se NELLA postazione c'è un bundle
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE) THEN //Se la pinza è dentro all'ingombro del bundle  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	MAX (IngombroDestinazioneY_Neg ,			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto));           (* Offset sicurezza *)
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	MAX (IngombroDestinazioneY_Pos ,			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto));           (* Offset sicurezza *)
+						END_IF	
+					ELSE//se non c'è nulla o c'è una cassa-pianale
+						QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2 + OffSetPosYReposo);
+						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 16;			 
+							RETURN; 
+						END_IF	
+						IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 17;			 
+							RETURN; 
+						END_IF	  
+					END_IF
+				{endregion}								   
+				{Region "ROTAZIONE VERSO 0°" }
+				ELSIF AngoloRotazioneDestinazionePinza < 85 THEN
+					IF WorkAreaState^[iwa].Supporto.Tipologia = CAVALLETTO THEN 				
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (QuotaCentroPostazione + WorkAreaState^[iwa].Supporto.YDim/2) AND
+							(ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg >= QuotaCentroPostazione) THEN //Se la pinza è in ingombro con il cavalletto nella zona a DX della sua metà
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg  -
+																OffsetSicurezza.Y.Avuoto );
+							(*												   
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +
+																OffsetSicurezza.Y.Avuoto);												   
+								*)
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 18;			 
+								RETURN; 
+							END_IF 
+						ELSIF (ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) >= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2) AND 
+							(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos <= QuotaCentroPostazione) THEN //Se la pinza è in ingombro con il cavalletto con pinza dentro all'ingombro nella parte SX 
+								QuotaFuoriIngombro_Y_Calcolata := //MIN(QuotaFuoriIngombro_Y_Calcolata,
+												   				   MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	MAX( IngombroDestinazioneY_Pos ,
+																	OffsetSicurezza.Y.Avuoto));
+								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 19;
+									RETURN;										  
+								END_IF 							
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg -				(* Ingombro positivo pinza *)
+																MAX( IngombroDestinazioneY_Pos ,
+																	OffsetSicurezza.Y.Avuoto));				(* Offset sicurezza *)
+															(*	
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +				(* Ingombro positivo pinza *)
+																OffsetSicurezza.Y.Avuoto);				(* Offset sicurezza *)
+																			   *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 20;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 21;			 
+								RETURN; 
+							END_IF
+						END_IF
+					ELSIF WorkAreaState^[iwa].Supporto.Tipologia = BUNDLE THEN //se NELLA postazione c'è un bundle
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE) THEN //Se la pinza è dentro all'ingombro del bundle  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 22;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 23;			 
+								RETURN; 
+							END_IF												  
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 24;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 25;			 
+								RETURN; 
+							END_IF												  
+						END_IF	
+					ELSE//se non c'è nulla o c'è una cassa-pianale
+						QuotaFuoriIngombro_Y_Calcolata :=  
+															(*MAX(QuotaFuoriIngombro_Y_Calcolata,
+										   						WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE,//comunque devo sempre considerarlo perchè il riscontro è sempre presente!!!!
+																//ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2+ OffSetPosYReposo);		   
+																ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2(*+ OffSetPosYReposo*)); *)
+															MIN(QuotaFuoriIngombro_Y_Calcolata,
+										   						MAX(WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE,//comunque devo sempre considerarlo perchè il riscontro è sempre presente!!!!
+																//ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2+ OffSetPosYReposo);		   
+																ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2(*+ OffSetPosYReposo*)));				   
+																							  
+						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 26;			 
+							RETURN; 
+						END_IF	
+						IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 27;			 
+							RETURN; 
+						END_IF	  
+					END_IF 	
+				{endregion}								   
+				{Region "ROTAZIONE 90°" }
+				ELSE	
+					IF WorkAreaState^[iwa].Supporto.Tipologia = CAVALLETTO THEN 				
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (QuotaCentroPostazione + WorkAreaState^[iwa].Supporto.YDim/2) THEN //Se la pinza è in ingombro con il cavalletto nella zona a DX della sua metà
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione - 						(* Quota Y Postazione *)	
+																// si Va con el eje a 0 grados no deve contemplar la pieza 16/7/2025																								
+																//WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg 
+																// si Va con el eje a 0 grados no deve contemplar la pieza 16/7/2025				   
+																// + OffsetSicurezza.Y.Avuoto
+																	);
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 28;			 
+								RETURN; 
+							END_IF 
+						ELSIF (ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) >= (QuotaCentroPostazione - WorkAreaState^[iwa].Supporto.YDim/2) AND 
+							(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroDestinazioneY_Pos) <= (QuotaCentroPostazione) THEN //Se la pinza è in ingombro con il cavalletto con pinza dentro all'ingombro nella parte SX 
+								QuotaFuoriIngombro_Y_Calcolata := MIN(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione - 						(* Quota Y Postazione *)																									
+																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																	IngombroDestinazioneY_Pos -
+																	OffsetSicurezza.Y.Avuoto);
+								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+									Errore := ErrCOLLISIONE_PINZA;
+									ErrCollisioneDebug := 29;
+									RETURN;										  
+								END_IF 							
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
+																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																IngombroDestinazioneY_Neg +				(* Ingombro positivo pinza *)
+																OffsetSicurezza.Y.Avuoto);				(* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 30;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 31;			 
+								RETURN; 
+							END_IF
+						END_IF
+					ELSIF WorkAreaState^[iwa].Supporto.Tipologia = BUNDLE THEN //se NELLA postazione c'è un bundle
+						IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroDestinazioneY_Neg) <= (QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE) THEN //Se la pinza è dentro all'ingombro del bundle  
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 32;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 33;			 
+								RETURN; 
+							END_IF												  
+						ELSE
+							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
+																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
+									//4_9_2025							(*	IngombroDestinazioneY_Pos *) +			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 34;
+								RETURN;										  
+							END_IF 
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								Errore := ErrCOLLISIONE_PINZA;
+								ErrCollisioneDebug := 35;			 
+								RETURN; 
+							END_IF												  
+						END_IF	
+					ELSE//se non c'è nulla o c'è una cassa-pianale
+						QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
+										   						WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE,//comunque devo sempre considerarlo perchè il riscontro è sempre presente!!!!
+																MIN(ModuleAX_Y^.Ax^.Status.ActPosition,WorkFootprint^[6].Y - IngombroDestinazioneY_Pos - OffsetSicurezza.Y.Avuoto),
+																WorkSpace^.Y/2 + OffSetPosYReposo+100);
+						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 36;			 
+							RETURN; 
+						END_IF	
+						IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
+							Errore := ErrCOLLISIONE_PINZA;
+							ErrCollisioneDebug := 37;			 
+							RETURN; 
+						END_IF	  
+					END_IF
+				END_IF
+				{endregion}				   
+		{endregion}
+		ELSE
+			;//Errore.Code := ErrWAM_FTC_PostazioneNONDefinita;
+		END_CASE
+	{endregion}	
+	ELSE
+		;	
+END_CASE
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcolaIngombroWALungoX" Id="{0ea9cce5-7545-450e-bccb-bb095898fd98}">
+      <Implementation>
+        <ST><![CDATA[/////////////////////////////////////////////////////////////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//////////////////////////////
+(*TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+								WorkArea:=WorkArea,
+								DirezioneAsseX_Positiva:= TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick),
+								NPostazioneDX=>WADX,
+								NPostazioneSX=>WASX,
+								PostazionePartenza=>WAPARTENZA);*)
+								
+AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE															
+END_FOR	
+		
+(*ELSE
+	(*TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+									WorkArea		:= WorkArea,
+									DirezioneAsseX_Positiva:=FALSE,
+									NPostazioneDX	=> WADX,
+									NPostazioneSX	=> WASX,
+									PostazionePartenza=>WAPARTENZA);*)
+			
+	FOR wa := MAXAREA TO 1 BY -1 DO
+		AltezzaDiIngombroArea_CCENTRALE := 0;
+		IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+			AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].H;
+		ELSE
+			AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].HPL;
+		END_IF
+		IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto  THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+		END_IF
+	END_FOR			
+		(* Valuto I Pick-Point *)
+		(*FOR P:=1 TO MAXPICKPOINT DO
+			AltezzaDiIngombroPuntiPrelievo := 0;
+			IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+				AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+			END_IF
+			IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+				AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+			END_IF
+			IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+				AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+			END_IF
+			IF WAPARTENZA = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN //Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+				IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+					QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			ELSE		//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+				IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+					QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+				END_IF
+			END_IF
+		END_FOR*)
+	//END_IF
+	IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoRiposo THEN
+		QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+	ELSE
+		QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+	END_IF
+
+
+
+END_IF*)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcolaIngombroWALungoX_Pal" Id="{3e7275d9-c06a-48d0-94ef-f8d489bbf384}">
+      <Implementation>
+        <ST><![CDATA[								
+AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE															
+END_FOR	
+		]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcolaIngombroWALungoY" Id="{119efec4-0fcd-42c8-a469-679864ececee}">
+      <Implementation>
+        <ST><![CDATA[AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	IF AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		wa := NumeroWAValutazioneFISingolaPostazione; 	
+	END_IF
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+				
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;				
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;	
+					
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;	
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE	
+	IF 	AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		RETURN; 	
+	END_IF														
+END_FOR	
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcolaIngombroWALungoY_Pal" Id="{c5edd654-8af0-44ad-8d22-d5d47e6d3ec1}">
+      <Implementation>
+        <ST><![CDATA[AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	IF AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		wa := NumeroWAValutazioneFISingolaPostazione; 	
+	END_IF
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+				
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;				
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;	
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE	
+	IF 	AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		RETURN; 	
+	END_IF														
+END_FOR	
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcoloFuriIngombroVerticale" Id="{cec19e2a-cad4-4f96-aced-c8cb1fe988ae}">
+      <Implementation>
+        <ST><![CDATA[(* Calcolo gli ingombri della pinza nelle varie direzioni *)
+TFCalcoliIngombroPinza(Mission := Mission,
+					WorkAreaManager := WorkAreaManager,
+					WorkAreaState := ADR(WorkAreaState),
+					ModuleAX_J := ModuleAX_J,
+					AngoloRotazioneDestinazionePinza:= AngoloRotazioneDestinazionePinza,
+					IngombroX_Pos := ADR(IngombroX_Pos),
+					IngombroY_Pos := ADR(IngombroY_Pos),
+					IngombroX_Neg := ADR(IngombroX_Neg),
+					IngombroY_Neg := ADR(IngombroY_Neg),
+					IngombroZ_Pos := ADR(IngombroZ_Pos),
+					IngombroZ_Neg := ADR(IngombroZ_Neg),
+					IngombroY_Tot := ADR(IngombroY_Tot),
+					IngombroDestinazioneX_Pos := ADR(IngombroDestinazioneX_Pos),
+					IngombroDestinazioneY_Pos := ADR(IngombroDestinazioneY_Pos),
+					IngombroDestinazioneX_Neg := ADR(IngombroDestinazioneX_Neg),
+					IngombroDestinazioneY_Neg := ADR(IngombroDestinazioneY_Neg),
+					IngombroDestinazioneZ_Pos := ADR(IngombroDestinazioneZ_Pos),
+					IngombroDestinazioneZ_Neg := ADR(IngombroDestinazioneZ_Neg),
+					IngombroMaxX_Pos := ADR(IngombroMaxX_Pos),
+					IngombroMaxY_Pos := ADR(IngombroMaxY_Pos),
+					IngombroMaxX_Neg := ADR(IngombroMaxX_Neg),
+					IngombroMaxY_Neg := ADR(IngombroMaxY_Neg),
+					IngombroMaxZ_Pos := ADR(IngombroMaxZ_Pos),
+					IngombroMaxZ_Neg := ADR(IngombroMaxZ_Neg),
+					IngombroY_Pos_0  	:= ADR(IngombroY_Pos_0),		 		
+					IngombroY_Neg_180 	:= ADR(IngombroY_Neg_180),
+					IngombroY_Neg_0 	:= ADR(IngombroY_Neg_0),	
+					IngombroY_Pos_180 	:= ADR(IngombroY_Pos_180),
+					ScostamentoVerticalePuntoCentrale := ADR(ScostamentoVerticalePuntoCentrale));
+
+
+	
+////////////FI Asse Z
+QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= 0;
+QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= 0;
+QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= 0;
+AltezzaDiIngombroPuntiPrelievo := 0;
+AltezzaDiIngombroIngombri_CCENTRALE := 0;
+(* Valuto gli ostacoli *)	
+FOR f:=1 TO MAXFOOTPRINT DO
+	AltezzaDiIngombroIngombri_CCENTRALE := MAX(AltezzaDiIngombroIngombri_CCENTRALE,WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim);// + IngombroMaxZ_Neg);
+END_FOR
+
+(* Valuto I Pick-Point *)
+FOR P:=1 TO MAXPICKPOINT DO	
+	AltezzaDiIngombroPuntiPrelievo := MAX(AltezzaDiIngombroPuntiPrelievo,WorkPickPointDimension^[P].Zdim,WorkPickPoint^[P].ZRaise,WorkPickPoint^[P].Z);
+END_FOR
+
+(* Valuto le wa *)			
+CASE ASSE_DISPOSIZIONE_POSTAZIONI OF
+	
+	LUNGO_X:
+			CalcolaIngombroWALungoX_Pal();
+	
+	LUNGO_Y:
+			CalcolaIngombroWALungoY_Pal();
+
+END_CASE
+
+(*
+(* Valuto se gli assi sono in finestra di prelievo, in questo modo valuto nel ciclo se devo andare fuori ingombro oppure posso partire da dove sono *)
+AsseXInFinestraDiPrelievo := FALSE;
+IF (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.XPick - 50) AND (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <=  Mission^.XPick + 50) THEN
+	AsseXInFinestraDiPrelievo := TRUE;
+END_IF
+AsseYInFinestraDiPrelievo := FALSE;
+IF (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos  >=  Mission^.YPick - 50) AND (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.SetPos <= Mission^.YPick + 50) THEN
+	AsseYInFinestraDiPrelievo := TRUE;
+END_IF
+(* Valuto la rotazione della pinza *)
+AsseJInFinestraDiPrelievo := FALSE;
+IF ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.JPick - 5 AND ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos <= Mission^.JPick + 5 THEN
+	AsseJInFinestraDiPrelievo := TRUE;
+END_IF*)]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="TFCalcoliFuoriIngombri">
+      <LineId Id="20143" Count="8" />
+      <LineId Id="22748" Count="7" />
+      <LineId Id="22747" Count="0" />
+      <LineId Id="23200" Count="0" />
+      <LineId Id="23189" Count="1" />
+      <LineId Id="23204" Count="0" />
+      <LineId Id="23194" Count="0" />
+      <LineId Id="23196" Count="0" />
+      <LineId Id="23198" Count="0" />
+      <LineId Id="23195" Count="0" />
+      <LineId Id="24464" Count="1" />
+      <LineId Id="23045" Count="0" />
+      <LineId Id="23044" Count="0" />
+      <LineId Id="20152" Count="3" />
+      <LineId Id="24141" Count="0" />
+      <LineId Id="20157" Count="1" />
+      <LineId Id="20160" Count="0" />
+      <LineId Id="20162" Count="78" />
+      <LineId Id="24136" Count="0" />
+      <LineId Id="20246" Count="30" />
+      <LineId Id="23678" Count="0" />
+      <LineId Id="20277" Count="1" />
+      <LineId Id="20280" Count="29" />
+      <LineId Id="20318" Count="20" />
+      <LineId Id="23825" Count="4" />
+      <LineId Id="23831" Count="0" />
+      <LineId Id="20339" Count="5" />
+      <LineId Id="23526" Count="1" />
+      <LineId Id="23525" Count="0" />
+      <LineId Id="20345" Count="3" />
+      <LineId Id="24783" Count="0" />
+      <LineId Id="24788" Count="0" />
+      <LineId Id="24785" Count="0" />
+      <LineId Id="24787" Count="0" />
+      <LineId Id="24786" Count="0" />
+      <LineId Id="24784" Count="0" />
+      <LineId Id="20349" Count="4" />
+      <LineId Id="24139" Count="0" />
+      <LineId Id="20354" Count="188" />
+      <LineId Id="21315" Count="4" />
+      <LineId Id="22139" Count="77" />
+      <LineId Id="23214" Count="4" />
+      <LineId Id="22217" Count="0" />
+      <LineId Id="22222" Count="4" />
+      <LineId Id="23043" Count="0" />
+      <LineId Id="22846" Count="57" />
+      <LineId Id="23366" Count="0" />
+      <LineId Id="22904" Count="1" />
+      <LineId Id="23365" Count="0" />
+      <LineId Id="22906" Count="27" />
+      <LineId Id="25290" Count="1" />
+      <LineId Id="25306" Count="1" />
+      <LineId Id="25313" Count="0" />
+      <LineId Id="25309" Count="0" />
+      <LineId Id="25315" Count="2" />
+      <LineId Id="25314" Count="0" />
+      <LineId Id="25301" Count="0" />
+      <LineId Id="25292" Count="1" />
+      <LineId Id="22934" Count="40" />
+      <LineId Id="23368" Count="0" />
+      <LineId Id="22975" Count="1" />
+      <LineId Id="23367" Count="0" />
+      <LineId Id="22977" Count="10" />
+      <LineId Id="23524" Count="0" />
+      <LineId Id="23520" Count="1" />
+      <LineId Id="23515" Count="1" />
+      <LineId Id="23989" Count="0" />
+      <LineId Id="22415" Count="0" />
+      <LineId Id="22838" Count="0" />
+      <LineId Id="22416" Count="0" />
+      <LineId Id="22423" Count="12" />
+      <LineId Id="23833" Count="3" />
+      <LineId Id="23832" Count="0" />
+      <LineId Id="22436" Count="20" />
+      <LineId Id="24300" Count="0" />
+      <LineId Id="24303" Count="3" />
+      <LineId Id="24301" Count="1" />
+      <LineId Id="22457" Count="0" />
+      <LineId Id="24789" Count="1" />
+      <LineId Id="24792" Count="3" />
+      <LineId Id="24791" Count="0" />
+      <LineId Id="22458" Count="0" />
+      <LineId Id="21513" Count="6" />
+      <LineId Id="21885" Count="13" />
+      <LineId Id="23205" Count="0" />
+      <LineId Id="23208" Count="1" />
+      <LineId Id="23211" Count="2" />
+      <LineId Id="23206" Count="0" />
+      <LineId Id="21900" Count="61" />
+      <LineId Id="24137" Count="0" />
+      <LineId Id="21968" Count="4" />
+      <LineId Id="22740" Count="0" />
+      <LineId Id="22599" Count="0" />
+      <LineId Id="22757" Count="0" />
+      <LineId Id="22615" Count="2" />
+      <LineId Id="22744" Count="2" />
+      <LineId Id="22620" Count="60" />
+      <LineId Id="22758" Count="0" />
+      <LineId Id="22766" Count="5" />
+      <LineId Id="22832" Count="0" />
+      <LineId Id="22772" Count="1" />
+      <LineId Id="24619" Count="0" />
+      <LineId Id="22775" Count="8" />
+      <LineId Id="24624" Count="0" />
+      <LineId Id="24967" Count="0" />
+      <LineId Id="24955" Count="0" />
+      <LineId Id="24626" Count="1" />
+      <LineId Id="24629" Count="1" />
+      <LineId Id="24628" Count="0" />
+      <LineId Id="24622" Count="0" />
+      <LineId Id="24959" Count="0" />
+      <LineId Id="25122" Count="0" />
+      <LineId Id="24960" Count="6" />
+      <LineId Id="24957" Count="1" />
+      <LineId Id="24623" Count="0" />
+      <LineId Id="22784" Count="30" />
+      <LineId Id="22833" Count="1" />
+      <LineId Id="22815" Count="16" />
+      <LineId Id="22759" Count="0" />
+      <LineId Id="22756" Count="0" />
+      <LineId Id="22681" Count="55" />
+      <LineId Id="22601" Count="0" />
+      <LineId Id="22096" Count="0" />
+      <LineId Id="22103" Count="12" />
+      <LineId Id="23839" Count="3" />
+      <LineId Id="23838" Count="0" />
+      <LineId Id="22116" Count="7" />
+      <LineId Id="23529" Count="2" />
+      <LineId Id="23528" Count="0" />
+      <LineId Id="22124" Count="1" />
+      <LineId Id="24293" Count="1" />
+      <LineId Id="24298" Count="1" />
+      <LineId Id="24297" Count="0" />
+      <LineId Id="24295" Count="0" />
+      <LineId Id="22136" Count="1" />
+      <LineId Id="24798" Count="0" />
+      <LineId Id="25280" Count="0" />
+      <LineId Id="25285" Count="4" />
+      <LineId Id="25281" Count="0" />
+      <LineId Id="25279" Count="0" />
+      <LineId Id="25277" Count="0" />
+      <LineId Id="24799" Count="2" />
+      <LineId Id="24797" Count="0" />
+      <LineId Id="22138" Count="0" />
+      <LineId Id="21746" Count="2" />
+      <LineId Id="21312" Count="0" />
+      <LineId Id="21167" Count="1" />
+      <LineId Id="21170" Count="3" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoliFuoriIngombri.CalcolaFuoriIngombroY">
+      <LineId Id="2" Count="4" />
+      <LineId Id="1698" Count="0" />
+      <LineId Id="7" Count="20" />
+      <LineId Id="713" Count="2" />
+      <LineId Id="712" Count="0" />
+      <LineId Id="409" Count="0" />
+      <LineId Id="1692" Count="0" />
+      <LineId Id="1216" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="1728" Count="0" />
+      <LineId Id="1754" Count="0" />
+      <LineId Id="1688" Count="0" />
+      <LineId Id="1690" Count="1" />
+      <LineId Id="1217" Count="0" />
+      <LineId Id="29" Count="2" />
+      <LineId Id="1684" Count="0" />
+      <LineId Id="1687" Count="0" />
+      <LineId Id="1685" Count="0" />
+      <LineId Id="1341" Count="4" />
+      <LineId Id="1628" Count="50" />
+      <LineId Id="1397" Count="32" />
+      <LineId Id="1679" Count="1" />
+      <LineId Id="1430" Count="11" />
+      <LineId Id="1681" Count="0" />
+      <LineId Id="1442" Count="78" />
+      <LineId Id="1682" Count="0" />
+      <LineId Id="1521" Count="88" />
+      <LineId Id="315" Count="0" />
+      <LineId Id="354" Count="1" />
+      <LineId Id="111" Count="3" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="149" Count="1" />
+      <LineId Id="1218" Count="0" />
+      <LineId Id="1725" Count="0" />
+      <LineId Id="1727" Count="0" />
+      <LineId Id="949" Count="0" />
+      <LineId Id="1755" Count="0" />
+      <LineId Id="1313" Count="0" />
+      <LineId Id="1325" Count="0" />
+      <LineId Id="1331" Count="0" />
+      <LineId Id="1731" Count="0" />
+      <LineId Id="1314" Count="0" />
+      <LineId Id="1756" Count="0" />
+      <LineId Id="1733" Count="0" />
+      <LineId Id="1748" Count="5" />
+      <LineId Id="1747" Count="0" />
+      <LineId Id="1758" Count="0" />
+      <LineId Id="1768" Count="0" />
+      <LineId Id="1788" Count="0" />
+      <LineId Id="1772" Count="0" />
+      <LineId Id="1782" Count="5" />
+      <LineId Id="1781" Count="0" />
+      <LineId Id="1773" Count="0" />
+      <LineId Id="1775" Count="5" />
+      <LineId Id="1774" Count="0" />
+      <LineId Id="1770" Count="0" />
+      <LineId Id="1792" Count="0" />
+      <LineId Id="1790" Count="0" />
+      <LineId Id="1797" Count="3" />
+      <LineId Id="1804" Count="0" />
+      <LineId Id="1801" Count="0" />
+      <LineId Id="1803" Count="0" />
+      <LineId Id="1802" Count="0" />
+      <LineId Id="1791" Count="0" />
+      <LineId Id="1789" Count="0" />
+      <LineId Id="1806" Count="9" />
+      <LineId Id="1805" Count="0" />
+      <LineId Id="1817" Count="8" />
+      <LineId Id="1816" Count="0" />
+      <LineId Id="1827" Count="9" />
+      <LineId Id="1826" Count="0" />
+      <LineId Id="1771" Count="0" />
+      <LineId Id="1765" Count="0" />
+      <LineId Id="1760" Count="4" />
+      <LineId Id="1759" Count="0" />
+      <LineId Id="1757" Count="0" />
+      <LineId Id="1735" Count="0" />
+      <LineId Id="1837" Count="0" />
+      <LineId Id="1842" Count="5" />
+      <LineId Id="1839" Count="0" />
+      <LineId Id="1838" Count="0" />
+      <LineId Id="1849" Count="5" />
+      <LineId Id="1848" Count="0" />
+      <LineId Id="1863" Count="6" />
+      <LineId Id="1862" Count="0" />
+      <LineId Id="1841" Count="0" />
+      <LineId Id="1840" Count="0" />
+      <LineId Id="1736" Count="0" />
+      <LineId Id="1734" Count="0" />
+      <LineId Id="1730" Count="0" />
+      <LineId Id="1723" Count="0" />
+      <LineId Id="1719" Count="3" />
+      <LineId Id="1718" Count="0" />
+      <LineId Id="1717" Count="0" />
+      <LineId Id="1315" Count="9" />
+      <LineId Id="1327" Count="3" />
+      <LineId Id="1326" Count="0" />
+      <LineId Id="507" Count="1" />
+      <LineId Id="981" Count="0" />
+      <LineId Id="509" Count="2" />
+      <LineId Id="1337" Count="3" />
+      <LineId Id="974" Count="0" />
+      <LineId Id="969" Count="1" />
+      <LineId Id="972" Count="0" />
+      <LineId Id="975" Count="0" />
+      <LineId Id="971" Count="0" />
+      <LineId Id="512" Count="1" />
+      <LineId Id="982" Count="0" />
+      <LineId Id="514" Count="2" />
+      <LineId Id="964" Count="0" />
+      <LineId Id="966" Count="0" />
+      <LineId Id="973" Count="0" />
+      <LineId Id="976" Count="0" />
+      <LineId Id="965" Count="0" />
+      <LineId Id="1333" Count="3" />
+      <LineId Id="1332" Count="0" />
+      <LineId Id="517" Count="0" />
+      <LineId Id="951" Count="0" />
+      <LineId Id="954" Count="1" />
+      <LineId Id="983" Count="0" />
+      <LineId Id="956" Count="4" />
+      <LineId Id="984" Count="0" />
+      <LineId Id="961" Count="2" />
+      <LineId Id="952" Count="0" />
+      <LineId Id="979" Count="1" />
+      <LineId Id="986" Count="3" />
+      <LineId Id="985" Count="0" />
+      <LineId Id="992" Count="3" />
+      <LineId Id="991" Count="0" />
+      <LineId Id="953" Count="0" />
+      <LineId Id="1220" Count="0" />
+      <LineId Id="1219" Count="0" />
+      <LineId Id="519" Count="0" />
+      <LineId Id="996" Count="0" />
+      <LineId Id="1166" Count="0" />
+      <LineId Id="1683" Count="0" />
+      <LineId Id="1167" Count="4" />
+      <LineId Id="1861" Count="0" />
+      <LineId Id="1857" Count="3" />
+      <LineId Id="1855" Count="1" />
+      <LineId Id="1176" Count="3" />
+      <LineId Id="1156" Count="0" />
+      <LineId Id="1181" Count="0" />
+      <LineId Id="1192" Count="0" />
+      <LineId Id="1182" Count="0" />
+      <LineId Id="1710" Count="0" />
+      <LineId Id="1183" Count="8" />
+      <LineId Id="1009" Count="5" />
+      <LineId Id="1870" Count="0" />
+      <LineId Id="1699" Count="0" />
+      <LineId Id="1701" Count="2" />
+      <LineId Id="1700" Count="0" />
+      <LineId Id="1704" Count="0" />
+      <LineId Id="1015" Count="4" />
+      <LineId Id="1161" Count="3" />
+      <LineId Id="1159" Count="0" />
+      <LineId Id="1020" Count="7" />
+      <LineId Id="1195" Count="8" />
+      <LineId Id="1193" Count="0" />
+      <LineId Id="1028" Count="5" />
+      <LineId Id="1205" Count="9" />
+      <LineId Id="1034" Count="2" />
+      <LineId Id="1711" Count="0" />
+      <LineId Id="1696" Count="0" />
+      <LineId Id="1709" Count="0" />
+      <LineId Id="1695" Count="0" />
+      <LineId Id="1714" Count="2" />
+      <LineId Id="1712" Count="1" />
+      <LineId Id="1037" Count="9" />
+      <LineId Id="941" Count="0" />
+      <LineId Id="1223" Count="1" />
+      <LineId Id="540" Count="0" />
+      <LineId Id="1226" Count="3" />
+      <LineId Id="1706" Count="0" />
+      <LineId Id="1230" Count="1" />
+      <LineId Id="1707" Count="0" />
+      <LineId Id="1232" Count="0" />
+      <LineId Id="1708" Count="0" />
+      <LineId Id="1233" Count="69" />
+      <LineId Id="1694" Count="0" />
+      <LineId Id="1693" Count="0" />
+      <LineId Id="1697" Count="0" />
+      <LineId Id="1303" Count="9" />
+      <LineId Id="551" Count="0" />
+      <LineId Id="498" Count="0" />
+      <LineId Id="1225" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="198" Count="6" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoliFuoriIngombri.CalcolaIngombroWALungoX">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="6" />
+      <LineId Id="245" Count="2" />
+      <LineId Id="12" Count="3" />
+      <LineId Id="203" Count="3" />
+      <LineId Id="266" Count="5" />
+      <LineId Id="211" Count="2" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="280" Count="10" />
+      <LineId Id="279" Count="0" />
+      <LineId Id="214" Count="3" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="219" Count="19" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="305" Count="10" />
+      <LineId Id="304" Count="0" />
+      <LineId Id="47" Count="5" />
+      <LineId Id="239" Count="5" />
+      <LineId Id="60" Count="4" />
+      <LineId Id="129" Count="3" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="272" Count="5" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="302" Count="0" />
+      <LineId Id="291" Count="9" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="260" Count="5" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="170" Count="1" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="151" Count="1" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="182" Count="1" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="199" Count="0" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="318" Count="10" />
+      <LineId Id="317" Count="0" />
+      <LineId Id="161" Count="2" />
+      <LineId Id="126" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="73" Count="51" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoliFuoriIngombri.CalcolaIngombroWALungoX_Pal">
+      <LineId Id="10" Count="0" />
+      <LineId Id="245" Count="2" />
+      <LineId Id="12" Count="3" />
+      <LineId Id="203" Count="3" />
+      <LineId Id="266" Count="5" />
+      <LineId Id="211" Count="2" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="280" Count="10" />
+      <LineId Id="279" Count="0" />
+      <LineId Id="214" Count="3" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="219" Count="19" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="305" Count="10" />
+      <LineId Id="304" Count="0" />
+      <LineId Id="47" Count="5" />
+      <LineId Id="239" Count="5" />
+      <LineId Id="60" Count="4" />
+      <LineId Id="129" Count="3" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="272" Count="5" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="302" Count="0" />
+      <LineId Id="291" Count="9" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="260" Count="5" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="170" Count="1" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="151" Count="1" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="182" Count="1" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="199" Count="0" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="318" Count="10" />
+      <LineId Id="317" Count="0" />
+      <LineId Id="161" Count="2" />
+      <LineId Id="126" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="73" Count="1" />
+    </LineIds>
+    <LineIds Name="TFCalcoliFuoriIngombri.CalcolaIngombroWALungoY">
+      <LineId Id="380" Count="3" />
+      <LineId Id="540" Count="1" />
+      <LineId Id="384" Count="6" />
+      <LineId Id="504" Count="5" />
+      <LineId Id="395" Count="3" />
+      <LineId Id="518" Count="9" />
+      <LineId Id="517" Count="0" />
+      <LineId Id="516" Count="0" />
+      <LineId Id="399" Count="1" />
+      <LineId Id="484" Count="5" />
+      <LineId Id="407" Count="17" />
+      <LineId Id="547" Count="10" />
+      <LineId Id="545" Count="1" />
+      <LineId Id="425" Count="20" />
+      <LineId Id="510" Count="5" />
+      <LineId Id="450" Count="2" />
+      <LineId Id="528" Count="0" />
+      <LineId Id="530" Count="9" />
+      <LineId Id="529" Count="0" />
+      <LineId Id="453" Count="2" />
+      <LineId Id="490" Count="5" />
+      <LineId Id="462" Count="16" />
+      <LineId Id="558" Count="0" />
+      <LineId Id="560" Count="10" />
+      <LineId Id="559" Count="0" />
+      <LineId Id="479" Count="4" />
+      <LineId Id="543" Count="1" />
+      <LineId Id="542" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoliFuoriIngombri.CalcolaIngombroWALungoY_Pal">
+      <LineId Id="380" Count="3" />
+      <LineId Id="540" Count="1" />
+      <LineId Id="384" Count="6" />
+      <LineId Id="504" Count="5" />
+      <LineId Id="395" Count="3" />
+      <LineId Id="518" Count="9" />
+      <LineId Id="517" Count="0" />
+      <LineId Id="516" Count="0" />
+      <LineId Id="399" Count="1" />
+      <LineId Id="484" Count="5" />
+      <LineId Id="407" Count="16" />
+      <LineId Id="545" Count="0" />
+      <LineId Id="547" Count="10" />
+      <LineId Id="546" Count="0" />
+      <LineId Id="424" Count="21" />
+      <LineId Id="510" Count="5" />
+      <LineId Id="450" Count="2" />
+      <LineId Id="528" Count="0" />
+      <LineId Id="530" Count="9" />
+      <LineId Id="529" Count="0" />
+      <LineId Id="453" Count="2" />
+      <LineId Id="490" Count="5" />
+      <LineId Id="462" Count="16" />
+      <LineId Id="558" Count="0" />
+      <LineId Id="560" Count="10" />
+      <LineId Id="559" Count="0" />
+      <LineId Id="479" Count="4" />
+      <LineId Id="543" Count="1" />
+      <LineId Id="542" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoliFuoriIngombri.CalcoloFuriIngombroVerticale">
+      <LineId Id="2" Count="2" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="5" Count="19" />
+      <LineId Id="73" Count="3" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="77" Count="1" />
+      <LineId Id="26" Count="27" />
+      <LineId Id="58" Count="13" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

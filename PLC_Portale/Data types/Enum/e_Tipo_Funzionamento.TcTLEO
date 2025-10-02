@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Tipo_Funzionamento" Id="{dd3e8eb6-a3fe-4587-8a83-3f44a9fbe315}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Tipologia Funzionamento Macchina
+TYPE e_Tipo_Funzionamento :
+(
+	NOT_DEFINED							:= -1, 	(* Tipologia Indefinita *)
+	FUNZIONAMENTO_PALLETTIZZATORE	 	:= 0,	(* Tipologia di Funzionamento di Tipo Pallettizzatore: Prelievo Da Linea Classico *)
+	FUNZIONAMENTO_PICKING				:= 1,	(* Tipologia di Funzionamento di Tipo Pallettizzatore: Prelievo e Deposito in Postazione *)
+	FUNZIONAMENTO_MISTO					:= 2, 	(* Tipologia di Funzionamento di Tipo Pallettizzatore: Prelievo Da Linea Classico + Prelievo e Deposito in Postazione *)
+	FUNZIONAMENTO_DEPAL					:= 3, 	(* Tipologia di Funzionamento di Tipo Depallettizzatore: Prelevo da una postazione con cavallina, cassa o pallet e appoggio sulla linea *)
+	FUNZIONAMENTO_SLAVE					:= 4	(* Tipologia di Funzionamento di Tipo SLAVE: la macchina esegue le missioni che gli vengono dettate da un ente esterno (WMS)*)
+
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FUNZIONAMENTO_PALLETTIZZATORE"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FUNZIONAMENTO_PICKING"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FUNZIONAMENTO_MISTO"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FUNZIONAMENTO_DEPAL"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FUNZIONAMENTO_SLAVE"</v>
+              <v n="TextDefault">"4"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{c7e8325f-d94a-4386-acc7-c6495983d35b}</v>
+          <v n="GuidReInit">{c7718f48-afb8-4d14-8646-875d67321367}</v>
+          <v n="GuidExitX">{8749f376-b6ed-40e2-a9dd-349510f63822}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFTraiettoria" Id="{e5b0717c-fc10-4bf0-9fc3-810dc1116502}">
+    <Declaration><![CDATA[TYPE TFTraiettoria :
+STRUCT
+	PuntoDiApproccioStartPoint 			: TFModulePalletizerRobot_Point_TF;			// Punto Precedente al punto iniziale, utilizzato per la lenta in fase di prelievo falda e pallet lastra
+	StartPoint 							: TFModulePalletizerRobot_Point_TF;			// Punto iniziale
+	PuntoDiPostPosizionamentoStartPoint : TFModulePalletizerRobot_Point_TF;			// Punto Successivo al punto iniziale, utilizzato per la lenta in fase di distacco dopo il prelievo elemento
+
+	PuntoIntermedio 	: ARRAY[1..MAXTPOINTS] OF TFModulePalletizerRobot_Point_TF;	// Punti Intermedi
+	PassModePoint_X		: ARRAY[1..MAXTPOINTS] OF REAL;								// Quota di anticipo asse X per innescare movimento successivo	
+	PassModePoint_Y		: ARRAY[1..MAXTPOINTS] OF REAL;								// Quota di anticipo asse Y per innescare movimento successivo	
+	PassModePoint_Z		: ARRAY[1..MAXTPOINTS] OF REAL;								// Quota di anticipo asse Z per innescare movimento successivo	
+	PassModePoint_J		: ARRAY[1..MAXTPOINTS] OF REAL;								// Quota di anticipo asse J per innescare movimento successivo	
+	PassModePoint_K		: ARRAY[1..MAXTPOINTS] OF REAL;								// Quota di anticipo asse K per innescare movimento successivo	
+	PassModePoint_X_Enable	 : ARRAY[1..MAXTPOINTS] OF BOOL;				// Abilitazione del singolo pass mode(relativo al punto i-esimo)
+	PassModePoint_Y_Enable	 : ARRAY[1..MAXTPOINTS] OF BOOL;				// Abilitazione del singolo pass mode(relativo al punto i-esimo)
+	PassModePoint_Z_Enable	 : ARRAY[1..MAXTPOINTS] OF BOOL;				// Abilitazione del singolo pass mode(relativo al punto i-esimo)
+	PassModePoint_J_Enable	 : ARRAY[1..MAXTPOINTS] OF BOOL;				// Abilitazione del singolo pass mode(relativo al punto i-esimo)
+	PassModePoint_K_Enable	 : ARRAY[1..MAXTPOINTS] OF BOOL;				// Abilitazione del singolo pass mode(relativo al punto i-esimo)
+	PuntoDiApproccioEndPoint : TFModulePalletizerRobot_Point_TF;			// Punto di approccio in fase di deposito
+	EndPoint				 : TFModulePalletizerRobot_Point_TF;			// Punto finale
+	
+	PuntoDiApproccioSecondarioEndPoint	: TFModulePalletizerRobot_Point_TF;			// Punto di approccio in fase di deposito SECONDARIO, SE è PREVISTO IL DEPOSITO FALDA
+	EndPointSecondario					: TFModulePalletizerRobot_Point_TF;			// Punto finale deposito SECONDARIO, SE è PREVISTO IL DEPOSITO LASTRA
+	
+	PassModeGlobalEnable 	 : BOOL;										// Abilitazione globale del pass mode
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

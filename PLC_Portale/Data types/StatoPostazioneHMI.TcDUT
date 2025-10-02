@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="StatoPostazioneHMI" Id="{6084f475-0829-4167-9c62-ecade57118c8}">
+    <Declaration><![CDATA[TYPE StatoPostazioneHMI :
+STRUCT
+
+	Abilitata			: INT; 	 // Abilitazione: 0=Postazione DISABILITATA, 1=Postazione ABILITATA
+	TipologiaPostazione	: INT; 	 // Tipologia: 1=Catasta Vuoti, 2=Pallet Singolo, 3=Falda,
+	ProgressiveNr 		: UDINT; //Ad ogni deposito PALLET viene incrementato il suo valore ("ID univoco del pallet depositato")
+	
+	LGV_Req 			: INT; 	 //Chiamata Navetta: 0=Nessuna Chiamata, 1=Chiamata LGV
+	TipologiaSupporto   : INT;
+	CodiceLavorazione 	: INT;	 //Codice identificativo di lavorazione 
+	
+	Stato 				: INT; 	//Stato della Postazione
+	CodiceFormatura 	: INT; 	//Codice di Formatura Associata alla postazione
+	NPezzi			 	: INT;	//Numero dei pezzi presenti
+	
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

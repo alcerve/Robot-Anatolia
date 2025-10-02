@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Tipo_Pallet" Id="{99c47fc9-51a1-4b62-8af3-0306c28f18ae}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Tipologia di "Pallet/Cassa/Cavalletto" 
+TYPE e_Tipo_Pallet :
+(
+	NOT_DEFINED			:= 0,
+	PALLET_STANDARD 	:= 1, (* Indica la tipologia di Pallet standard *)
+	CASSA_STANDARD		:= 2,(* Indica la tipologia di cassa in legno standard *)
+	CAVALLETTO			:= 3,(* Indica la tipologia cavalletto GENERICA *)
+	PALLET_ACCOPPIATI 	:= 4, (* Indica la tipologia di Pallet standard ACCOPPIATI A 2 *)
+	BUNDLE				:= 5,  (* Indica la tipologia di Cavallina ad un solo lato *)
+	PIANALE_GENERICO	:= 6, (* Indica un pianale generico *)
+	ELEMENTO_PIANO_GENERICO := 10, (* Indica un elemento piano generico, ovvero palleto, cassa, pianale,ecc*)
+	ELEMENTO_VERT_GENERICO := 11 (* Indica un elemento verticale generico, ovvero A-Frame-Bundle *)
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NOT_DEFINED"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PALLET_STANDARD"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CASSA_STANDARD"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CAVALLETTO"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PALLET_ACCOPPIATI"</v>
+              <v n="TextDefault">"4"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"BUNDLE"</v>
+              <v n="TextDefault">"5"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"PIANALE_GENERICO"</v>
+              <v n="TextDefault">"6"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"ELEMENTO_PIANO_GENERICO"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"ELEMENTO_VERT_GENERICO"</v>
+              <v n="TextDefault">"11"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{c7e8325f-d94a-4386-acc7-c6495983d35b}</v>
+          <v n="GuidReInit">{c7718f48-afb8-4d14-8646-875d67321367}</v>
+          <v n="GuidExitX">{8749f376-b6ed-40e2-a9dd-349510f63822}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

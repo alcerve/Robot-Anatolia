@@ -1,0 +1,1028 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFModulePalletizer_Pinza_Semplice" Id="{a9db22eb-46e2-45b5-9d49-fc18cd0d13d1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFModulePalletizer_Pinza_Semplice
+VAR_INPUT
+	Cmd : CommandBuffer;
+	Cfg : Config;
+	IN : TFMchinePalletizer_PinzaVentose_IN;
+		
+	IN_Ax : Module_Palletizer_Ax_IN;
+	
+	AspirazioneDX : POINTER TO TF_VacumOVEM;
+	AspirazioneSX : POINTER TO TF_VacumOVEM;
+
+	ModuleJ : POINTER TO TFModulePalletizer_Ax;
+
+	ManCmd 				: POINTER TO TFMachinePalletizer_PinzaVentoseManCmd;
+	ElementoInPrelievo 	: TFMachinePalletizer_PlaceElement;
+	DataElement			: TFMachinePalletizer_DataElement; (* Struttura dati che la macchina acquisisce/trasferisce in fase di pallettizzazione/depallettizazione *)
+	PrelievoSuCavallina : BOOL;//indica che il prelievo è su cavallina
+	AbilitazioneCilindriTastatori : bool;
+
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	AbilitazioneSbloccoRotazione 	: BOOL;//Abilitazione sblocco pinza
+	AbilitaAperturaAutomaticaPinza : BOOL;//Abilitazione apertura automatica pinza
+	PrelivoDaPalletSingoloConFalde : BOOL;
+	AbilitaPrioritaPrelPiasterllaPianiSfalsati : bool;
+END_VAR
+VAR_OUTPUT
+	CmdExe : CommandExe;
+	CmdExd : CommandExe;
+	CmdNext : Command;
+	CmdLog : CommandLog;
+	ProgramLog : ProgrammaLog; 
+	State : State;
+	StateLog : StateLog;
+	Error : Error;
+	ErrorLog : ErrorLog;
+	Warning : Warning;
+	WarningLog : WarningLog;
+	OUT : TFMachinePalletizer_PinzaVentose_OUT;
+	StatoPinza : TFMachinePalletizer_PinzaState;
+
+END_VAR
+VAR
+	Power : UINT;
+	Init : BOOL;
+	Timer : REAL;
+	Timeout : REAL;
+	TimerAspirazione : REAL;
+	ParametersArray : ParametersArray;
+	MAN_Actuator : UINT;
+	MAN_Cmd : UINT;
+
+	DistanzaFTC0 : REAL;
+	DistanzaFTC180 : REAL;
+
+	TimerPresaPiastrella : REAL;		
+	DisattivazioneTotaleAspirazioni : bool;
+	FiltroFTCFaldaSX : Signal_Filter;
+	FiltroFTCFaldaDX : Signal_Filter;
+	
+	FTC_FaldaSXFiltrata : BOOL;
+	FTC_FaldaDXFiltrata : bool;
+	
+	PostazionePrelievo : int;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT Init THEN
+	TFCommandBufferClear(ADR(Cmd));
+	TFCommandClear(ADR(CmdNext));
+	TFCommandExeClear(ADR(CmdExe));
+	TFStateUpdate(ADR(State),StateNOP);
+	TFErrorClear(ADR(Error));
+	TFWarningClear(ADR(Warning));
+	Init := TRUE;
+	CmdExe.Code := 1;
+END_IF
+
+(* Generic Timer - Add here all your Timers *)
+TFTimerCall(ADR(Timer),Cfg.TimeBase);
+TFTimerCall(ADR(Timeout),Cfg.TimeBase);
+TFTimerCall(ADR(TimerPresaPiastrella),Cfg.TimeBase);
+TFTimerCall(ADR(TimerAspirazione),Cfg.TimeBase);
+(* External To Buffered Command *)
+TFCommandToNext(ADR(Cmd),ADR(CmdNext),ADR(CmdExe),ADR(Cfg),ADR(Error),ADR(ErrorLog),ADR(State));
+
+(* Buffered To Exe Command *)
+TFCommandToExecution(ADR(CmdNext),ADR(CmdExe),ADR(Error),ADR(ErrorLog),ADR(State),ADR(CmdLog));
+
+(* Chiamata FB *)
+AspirazioneDX^();
+AspirazioneSX^();
+
+CASE Mission^.PPick OF
+	
+	1: PostazionePrelievo := RullP1;
+	
+	2: PostazionePrelievo := RullP2;
+
+END_CASE
+
+
+(* Exe Command *)
+CASE CmdExe.Code OF
+
+	(* ******************************************************************************************************** *)
+	(* Nop  *)
+	(* ******************************************************************************************************** *)
+	CmdNOP:	;			
+	(* ******************************************************************************************************** *)
+	(* Stop *)
+	(* ******************************************************************************************************** *)
+	CmdSTOP:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateSTOP_RUN);
+				TFTimerSet(ADR(Timeout),500,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+
+			(* Case 1 - Clear All Commands*)
+			1:	
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateSTOP_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+	
+	(* ******************************************************************************************************** *)
+	(* Error Reset *)
+	(* ******************************************************************************************************** *)
+	CmdRESET:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateRESET_RUN);
+				TFTimerSet(ADR(Timeout),2000+100,TRUE);
+				TFTimerSet(ADR(Timer),2000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 1 - RESET COMANDI*)
+			1: 
+				TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 2 - Invio comando di reset *)
+			2:
+				AspirazioneDX^.Command^.ErrorReset 				:= TRUE;	
+				AspirazioneSX^.Command^.ErrorReset 				:= TRUE;	
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 3 - Invio comando di reset *)
+			3:
+				IF AspirazioneDX^.Status.ErrorResetDone AND
+					AspirazioneSX^.Status.ErrorResetDone THEN					
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFCommandCase(ADR(CmdExe),99,CommandCase_JMP);
+				ELSIF TFTimerDone(ADR(Timer)) THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrTORESET,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 99 *)
+			99:	TFErrorClear(ADR(Error));
+				TFWarningClear(ADR(Warning));
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateRESET_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+
+		(*IF AspirazioneDX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneSX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF CilindroApertura^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,CilindroApertura^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneFaldaDX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneFaldaDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneFaldaSX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneFaldaSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		*)
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+	
+	(* ******************************************************************************************************** *)
+	(* Power *)
+	(* ******************************************************************************************************** *)
+	CmdPOWER:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StatePOWER_RUN);
+				TFTimerSet(ADR(Timeout),500,TRUE);
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+
+			1: TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StatePOWER_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+	
+	(* ******************************************************************************************************** *)
+	(* Home *)
+	(* ******************************************************************************************************** *)
+	CmdHOME:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateHOME_RUN);
+				TFTimerSet(ADR(Timeout),3000+200,TRUE);
+				TFTimerSet(ADR(Timer),3000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+
+			(* Case 1 - *)
+			1: 
+				TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+
+			(* Case 10 - Set automatico Soglie *)
+			10:
+				AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				IF AspirazioneDX^.Status.CommandDone AND AspirazioneSX^.Status.CommandDone THEN
+					AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF TFTimerDone(ADR(Timer)) THEN
+					AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+	
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateHOME_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+		
+		IF AspirazioneDX^.Status.ErrorID <> ErrNULL THEN
+			AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+			AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+			TFError(ErrCYLINDER,AspirazioneDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneSX^.Status.ErrorID <> ErrNULL THEN
+			AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+			AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+			TFError(ErrCYLINDER,AspirazioneSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF TFTimerDone(ADR(Timeout)) THEN
+			AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+			AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+
+	(* ******************************************************************************************************** *)
+	(* Manual *)
+	(* ******************************************************************************************************** *)
+	CmdMAN:
+		CASE CmdExe.CmdCase OF
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateMAN_RUN);
+				TFTimerSet(ADR(Timeout),3000,TRUE);
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),2) THEN
+					MAN_Actuator	:= STRING_TO_UINT(ParametersArray.Parameters[0]);
+					MAN_Cmd		:= STRING_TO_UINT(ParametersArray.Parameters[1]);
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF;
+
+				CASE MAN_Actuator OF
+					(* Case 0..99 for Actuators *)
+					(* Case 100..199  for Axis *)
+
+					(* Case Nop *)
+					0:	;
+
+					(* Case 1: *)
+					1:	CASE MAN_Cmd OF
+							0:	;
+							
+							(* Case 10: Apertura Pinza *)
+							10:	
+								TFTimerSet(ADR(Timeout),30000,TRUE);
+								TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+								
+							(* Case 11: Chiusura Pinza *)
+							11:	
+								TFTimerSet(ADR(Timeout),30000,TRUE);
+								TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+
+							(* Case 20: Sgancio Sblocco Rotazione *)
+							20:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);
+								
+							(* Case 21: Aggancio Sblocco Rotazione *)
+							21:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);
+
+							(* Case 30: Ativazione Aspirazione Falda DX *)
+							30:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),30,CommandCase_JMP);
+								
+							(* Case 31: Disattivazione Aspirazione Falda DX *)
+							31:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),30,CommandCase_JMP);
+								
+							(* Case 40: Ativazione Aspirazione Falda SX *)
+							40:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+								
+							(* Case 41: Disattivazione Aspirazione Falda SX *)
+							41:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+
+							(* Case 50: Ativazione Aspirazione SX *)
+							50:	
+								AspirazioneSX^.Command^.Aspirazione_ON 	:= TRUE;
+								AspirazioneSX^.Command^.Aspirazione_OFF := FALSE;
+
+								AspirazioneDX^.Command^.Aspirazione_ON 	:= TRUE;
+								AspirazioneDX^.Command^.Aspirazione_OFF := FALSE;
+
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),50,CommandCase_JMP);
+								
+							(* Case 51: Disattivazione Aspirazione SX *)
+							51:	
+								AspirazioneSX^.Command^.Aspirazione_ON 	:= FALSE;
+								AspirazioneSX^.Command^.Aspirazione_OFF := TRUE;
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),50,CommandCase_JMP);
+
+							(* Case 60: Ativazione Aspirazione DX *)
+							60:	
+								AspirazioneDX^.Command^.Aspirazione_ON 	:= TRUE;
+								AspirazioneDX^.Command^.Aspirazione_OFF := FALSE;
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),60,CommandCase_JMP);
+								
+							(* Case 61: Disattivazione Aspirazione SX *)
+							61:	
+								AspirazioneDX^.Command^.Aspirazione_ON 	:= FALSE;
+								AspirazioneDX^.Command^.Aspirazione_OFF := TRUE;
+								AspirazioneSX^.Command^.Aspirazione_ON 	:= FALSE;
+								AspirazioneSX^.Command^.Aspirazione_OFF := TRUE;
+								StatoPinza.ElementoPrelevato := FALSE;
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),60,CommandCase_JMP);
+				
+							(* Case 70: Ativazione Tastatori *)
+							70:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),70,CommandCase_JMP);
+								
+							(* Case 71: Disattivazione Aspirazione SX *)
+							71:	
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),70,CommandCase_JMP);
+
+							ELSE
+								TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					100:CASE MAN_Cmd OF
+							0:	;
+							ELSE
+								TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					ELSE
+						TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_CASE;
+
+				//IF CmdExe.CmdCase = 0 THEN
+					//TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				//END_IF
+
+			(* Case 1 - *)
+			1: 	IF (MAN_Cmd = 0) OR TFTimerDone(ADR(Timeout)) THEN
+					(* Clear All Output Here *)
+					;
+					TFStateUpdate(ADR(State),StateMAN_END);
+					TFCommandExeClear(ADR(CmdExe));
+				END_IF;
+
+			
+			(* Case 10 - CilindroApertura *)
+			10: ;
+
+			(* Case 20 - CilindroSbloccoRotazione *)
+			20: 
+				;
+
+			(* Case 30 - AspirazioneFaldaDX *)
+			30: 
+				;
+
+			(* Case 40 - AspirazioneFaldaSX *)
+			40: 
+				;
+
+			(* Case 50 - AspirazioneSX *)
+			50: 
+				IF AspirazioneSX^.Status.CommandDone AND AspirazioneDX^.Status.CommandDone THEN
+					AspirazioneDX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneDX^.Command^.Aspirazione_OFF	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_OFF	:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF AspirazioneSX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 60 - AspirazioneDX *)
+			60: 
+				IF AspirazioneSX^.Status.CommandDone AND AspirazioneDX^.Status.CommandDone THEN
+					AspirazioneDX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneDX^.Command^.Aspirazione_OFF	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_OFF	:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF AspirazioneSX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 70 - CilindroTasteggio *)
+			70: 
+				;
+				
+			(* Case 100 - End *)
+			100:(* Clear All Output Here *)
+				TFStateUpdate(ADR(State),StateMAN_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+	
+
+	(* ******************************************************************************************************** *)
+	(* PRELOAD - Presa del pezzo *)
+	(* ******************************************************************************************************** *)
+	CmdPRELOAD:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StatePRELOAD_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				PrelievoSuCavallina := FALSE;
+				StatoPinza.ElementoPrelevato := FALSE;
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),1) THEN
+					PrelievoSuCavallina	:= STRING_TO_BOOL(ParametersArray.Parameters[0]);
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF;
+				
+			(* Case 10 - CilindroApertura *)
+			10: 
+				TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+	
+			(* Case 40 - AspirazioneDX + AspirazioneSX *)
+			40: 
+				AspirazioneDX^.Command^.Aspirazione_ON 	:= TRUE;
+				AspirazioneDX^.Command^.Aspirazione_OFF := FALSE;
+			
+				AspirazioneSX^.Command^.Aspirazione_ON 	:= TRUE;
+				AspirazioneSX^.Command^.Aspirazione_OFF := FALSE;
+	
+				IF AspirazioneDX^.Status.CommandDone AND AspirazioneSX^.Status.CommandDone THEN
+					AspirazioneDX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneDX^.Command^.Aspirazione_OFF	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_OFF	:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF AspirazioneSX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StatePRELOAD_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+	
+
+
+	(* ******************************************************************************************************** *)
+	(* LOAD - Presa del pezzo *)
+	(* ******************************************************************************************************** *)
+	CmdCHECKPRESENCE:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateCHECKPRESENCE_RUN);
+				TFTimerSet(ADR(Timeout),60000.0+100+HMI_TempoControlloPresaPiastrella,TRUE);
+				TFTimerSet(ADR(Timer),2000.0+HMI_TempoControlloPresaPiastrella,TRUE);
+				TFTimerSet(ADR(TimerPresaPiastrella),HMI_TempoControlloPresaPiastrella,TRUE);
+				StatoPinza.ElementoPrelevato := FALSE;
+
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				
+			(* Case 1 - *)					
+			1:
+				IF IN.ByPassSensoreVuoto THEN
+					StatoPinza.ElementoPrelevato := TRUE;
+				ELSE
+					StatoPinza.ElementoPrelevato := FALSE;
+				END_IF
+
+				IF IN.ByPassSensoreVuoto OR TFTimerDone(ADR(TimerPresaPiastrella)) THEN 
+					//Tutte piastrelle o tutte falde
+					IF (AspirazioneDX^.Status.DepressioneSoglia1_OK AND AspirazioneSX^.Status.DepressioneSoglia1_OK) OR IN.ByPassSensoreVuoto THEN
+						StatoPinza.ElementoPrelevato := TRUE;
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);					
+					ELSIF TFTimerDone(ADR(TimerPresaPiastrella)) THEN
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+						StatoPinza.ElementoPrelevato := FALSE;	
+					END_IF			
+				ELSIF TFTimerDone(ADR(TimerPresaPiastrella)) THEN
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					StatoPinza.ElementoPrelevato := FALSE;
+				END_IF			
+				IF TFTimerDone(ADR(Timer)) THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrMalfunzionamentoSensoriPresenzaPinza,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+							
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateCHECKPRESENCE_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+		
+	
+	(* ******************************************************************************************************** *)
+	(* UNLOAD - Attivazione aspirazione + discesa ventose *)
+	(* ******************************************************************************************************** *)
+	CmdUNLOAD:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateUNLOAD_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				StatoPinza.ElementoPrelevato := FALSE;
+				TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);				
+				
+				
+		
+			(* Case 20 - Disattivazione aspirazione piastrella *)		
+			20: 
+				AspirazioneDX^.Command^.Aspirazione_ON 	:= FALSE;
+				AspirazioneDX^.Command^.Aspirazione_OFF := TRUE;
+			
+				AspirazioneSX^.Command^.Aspirazione_ON 	:= FALSE;
+				AspirazioneSX^.Command^.Aspirazione_OFF := TRUE;
+		
+				IF AspirazioneDX^.Status.CommandDone AND AspirazioneSX^.Status.CommandDone THEN
+					AspirazioneDX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneDX^.Command^.Aspirazione_OFF	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON 	:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_OFF	:= FALSE;
+					TFTimerSet(ADR(TimerAspirazione),HMI_TempoRilascioInDeposito,TRUE);
+					TFCommandCase(ADR(CmdExe),30,CommandCase_JMP);
+				ELSIF AspirazioneSX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+					TFError(ErrCYLINDER,AspirazioneDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			(* Case 30 - Attesa tempo distacco *)		
+			30:
+				IF TFTimerDone(ADR(TimerAspirazione)) THEN
+					IF IN.RichiestaRicalibrazioneOvemEsterna THEN
+						IN.RichiestaRicalibrazioneOvemEsterna := FALSE;
+						TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+					ELSE
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					END_IF		
+				END_IF
+				
+			(* Case 40 - Attesa tempo distacco *)		
+			40:	
+				AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				IF AspirazioneDX^.Status.CommandDone AND AspirazioneSX^.Status.CommandDone THEN
+					AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF TFTimerDone(ADR(Timer)) THEN
+					AspirazioneDX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					AspirazioneSX^.Command^.Aspirazione_ON_ScritturaSoglia		:= FALSE;
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+		
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateUNLOAD_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+
+
+	ELSE
+		TFError(ErrNOCMD,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+
+END_CASE;
+
+
+(* ******************************************************************************************************** *)
+(* State Input/Output *)
+(* ******************************************************************************************************** *)
+(* Fill Input/Output bit with sensor, electrovalve, etc. status *)
+
+StatoPinza.LatoDxPiastrellaInPresa	:= (AspirazioneDX^.Status.DepressioneSoglia1_OK  OR (IN.ByPassSensoreVuoto AND StatoPinza.ElementoPrelevato));
+StatoPinza.LatoSxPiastrellaInPresa	:=(AspirazioneSX^.Status.DepressioneSoglia1_OK  OR (IN.ByPassSensoreVuoto AND StatoPinza.ElementoPrelevato));
+
+(* ******************************************************************************************************** *)
+(* Input *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Alarm *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Error Check - Clear All Output!!! *)
+(* ******************************************************************************************************** *)
+IF Error.Code > ErrNULL THEN
+	IF CmdExe.Code <> CmdNOP THEN
+		IF CmdExe.Code <> CmdSTOP AND
+			CmdExe.Code <> CmdPOWER AND
+			CmdExe.Code <> CmdRESET AND
+			CmdExe.Code <> CmdMAN AND
+			CmdExe.Code <> CmdLOAD AND
+			CmdExe.Code <> CmdUNLOAD THEN
+			TFCommandClear(ADR(CmdNext));
+			TFCommandExeClear(ADR(CmdExe));
+
+			(* Clear All Output Here *)
+
+		END_IF;
+	END_IF;
+END_IF;
+
+
+(* ******************************************************************************************************** *)
+(* Common Outputs *)
+(* ******************************************************************************************************** *)
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFModulePalletizer_Pinza_Semplice">
+      <LineId Id="60" Count="6" />
+      <LineId Id="1058" Count="0" />
+      <LineId Id="67" Count="4" />
+      <LineId Id="756" Count="0" />
+      <LineId Id="2676" Count="0" />
+      <LineId Id="801" Count="0" />
+      <LineId Id="79" Count="4" />
+      <LineId Id="1408" Count="0" />
+      <LineId Id="1396" Count="0" />
+      <LineId Id="1400" Count="1" />
+      <LineId Id="3752" Count="2" />
+      <LineId Id="3757" Count="2" />
+      <LineId Id="3756" Count="0" />
+      <LineId Id="3755" Count="0" />
+      <LineId Id="3230" Count="0" />
+      <LineId Id="84" Count="6" />
+      <LineId Id="1056" Count="0" />
+      <LineId Id="93" Count="11" />
+      <LineId Id="921" Count="0" />
+      <LineId Id="119" Count="17" />
+      <LineId Id="1340" Count="0" />
+      <LineId Id="137" Count="2" />
+      <LineId Id="909" Count="0" />
+      <LineId Id="1786" Count="0" />
+      <LineId Id="1297" Count="0" />
+      <LineId Id="1299" Count="0" />
+      <LineId Id="1312" Count="0" />
+      <LineId Id="1300" Count="0" />
+      <LineId Id="1306" Count="0" />
+      <LineId Id="1308" Count="0" />
+      <LineId Id="1304" Count="0" />
+      <LineId Id="1296" Count="0" />
+      <LineId Id="1314" Count="0" />
+      <LineId Id="1276" Count="0" />
+      <LineId Id="1281" Count="0" />
+      <LineId Id="1295" Count="0" />
+      <LineId Id="1854" Count="0" />
+      <LineId Id="1282" Count="0" />
+      <LineId Id="1284" Count="0" />
+      <LineId Id="1855" Count="0" />
+      <LineId Id="1289" Count="0" />
+      <LineId Id="1279" Count="0" />
+      <LineId Id="1145" Count="0" />
+      <LineId Id="153" Count="11" />
+      <LineId Id="1341" Count="1" />
+      <LineId Id="1856" Count="0" />
+      <LineId Id="1368" Count="0" />
+      <LineId Id="1349" Count="0" />
+      <LineId Id="1857" Count="0" />
+      <LineId Id="1366" Count="0" />
+      <LineId Id="1356" Count="0" />
+      <LineId Id="1858" Count="0" />
+      <LineId Id="1369" Count="1" />
+      <LineId Id="1859" Count="0" />
+      <LineId Id="1377" Count="1" />
+      <LineId Id="1860" Count="0" />
+      <LineId Id="1385" Count="1" />
+      <LineId Id="1861" Count="0" />
+      <LineId Id="1393" Count="0" />
+      <LineId Id="1331" Count="0" />
+      <LineId Id="1863" Count="0" />
+      <LineId Id="1862" Count="0" />
+      <LineId Id="1338" Count="1" />
+      <LineId Id="165" Count="9" />
+      <LineId Id="2104" Count="0" />
+      <LineId Id="175" Count="0" />
+      <LineId Id="212" Count="17" />
+      <LineId Id="1586" Count="0" />
+      <LineId Id="230" Count="2" />
+      <LineId Id="913" Count="0" />
+      <LineId Id="907" Count="0" />
+      <LineId Id="1494" Count="0" />
+      <LineId Id="1483" Count="1" />
+      <LineId Id="1486" Count="0" />
+      <LineId Id="1491" Count="0" />
+      <LineId Id="1487" Count="2" />
+      <LineId Id="1492" Count="0" />
+      <LineId Id="1577" Count="0" />
+      <LineId Id="1587" Count="1" />
+      <LineId Id="1585" Count="0" />
+      <LineId Id="1485" Count="0" />
+      <LineId Id="1482" Count="0" />
+      <LineId Id="273" Count="7" />
+      <LineId Id="1496" Count="0" />
+      <LineId Id="1500" Count="0" />
+      <LineId Id="1563" Count="1" />
+      <LineId Id="1508" Count="1" />
+      <LineId Id="1565" Count="1" />
+      <LineId Id="1517" Count="0" />
+      <LineId Id="1554" Count="0" />
+      <LineId Id="1575" Count="1" />
+      <LineId Id="1562" Count="0" />
+      <LineId Id="1499" Count="0" />
+      <LineId Id="1497" Count="0" />
+      <LineId Id="282" Count="24" />
+      <LineId Id="906" Count="0" />
+      <LineId Id="892" Count="2" />
+      <LineId Id="1864" Count="0" />
+      <LineId Id="1263" Count="0" />
+      <LineId Id="1205" Count="0" />
+      <LineId Id="897" Count="1" />
+      <LineId Id="1877" Count="0" />
+      <LineId Id="1265" Count="0" />
+      <LineId Id="1206" Count="0" />
+      <LineId Id="900" Count="0" />
+      <LineId Id="1209" Count="0" />
+      <LineId Id="1876" Count="0" />
+      <LineId Id="1266" Count="0" />
+      <LineId Id="903" Count="1" />
+      <LineId Id="308" Count="0" />
+      <LineId Id="1875" Count="0" />
+      <LineId Id="1267" Count="0" />
+      <LineId Id="2043" Count="0" />
+      <LineId Id="1223" Count="1" />
+      <LineId Id="1874" Count="0" />
+      <LineId Id="1268" Count="0" />
+      <LineId Id="1227" Count="2" />
+      <LineId Id="1873" Count="0" />
+      <LineId Id="1269" Count="0" />
+      <LineId Id="1212" Count="0" />
+      <LineId Id="1236" Count="1" />
+      <LineId Id="1872" Count="0" />
+      <LineId Id="1270" Count="0" />
+      <LineId Id="1240" Count="2" />
+      <LineId Id="1871" Count="0" />
+      <LineId Id="1271" Count="0" />
+      <LineId Id="1232" Count="0" />
+      <LineId Id="1245" Count="3" />
+      <LineId Id="2379" Count="0" />
+      <LineId Id="2378" Count="0" />
+      <LineId Id="2380" Count="1" />
+      <LineId Id="1870" Count="0" />
+      <LineId Id="1272" Count="0" />
+      <LineId Id="1249" Count="4" />
+      <LineId Id="1869" Count="0" />
+      <LineId Id="1273" Count="0" />
+      <LineId Id="1254" Count="4" />
+      <LineId Id="1868" Count="0" />
+      <LineId Id="1274" Count="0" />
+      <LineId Id="1259" Count="3" />
+      <LineId Id="1234" Count="0" />
+      <LineId Id="2382" Count="1" />
+      <LineId Id="3074" Count="0" />
+      <LineId Id="1867" Count="0" />
+      <LineId Id="1275" Count="0" />
+      <LineId Id="1652" Count="0" />
+      <LineId Id="1655" Count="1" />
+      <LineId Id="1866" Count="0" />
+      <LineId Id="1659" Count="3" />
+      <LineId Id="1865" Count="0" />
+      <LineId Id="1653" Count="0" />
+      <LineId Id="1231" Count="0" />
+      <LineId Id="309" Count="4" />
+      <LineId Id="770" Count="0" />
+      <LineId Id="342" Count="12" />
+      <LineId Id="847" Count="1" />
+      <LineId Id="852" Count="1" />
+      <LineId Id="855" Count="1" />
+      <LineId Id="1673" Count="0" />
+      <LineId Id="1671" Count="0" />
+      <LineId Id="1729" Count="0" />
+      <LineId Id="385" Count="0" />
+      <LineId Id="1686" Count="0" />
+      <LineId Id="1674" Count="1" />
+      <LineId Id="1679" Count="0" />
+      <LineId Id="1687" Count="0" />
+      <LineId Id="1680" Count="1" />
+      <LineId Id="1685" Count="0" />
+      <LineId Id="1694" Count="0" />
+      <LineId Id="1688" Count="1" />
+      <LineId Id="1693" Count="0" />
+      <LineId Id="1695" Count="2" />
+      <LineId Id="2364" Count="1" />
+      <LineId Id="1698" Count="2" />
+      <LineId Id="1907" Count="0" />
+      <LineId Id="1974" Count="2" />
+      <LineId Id="2361" Count="2" />
+      <LineId Id="2356" Count="0" />
+      <LineId Id="2354" Count="0" />
+      <LineId Id="1703" Count="1" />
+      <LineId Id="2366" Count="6" />
+      <LineId Id="3975" Count="0" />
+      <LineId Id="2374" Count="1" />
+      <LineId Id="3976" Count="0" />
+      <LineId Id="2377" Count="0" />
+      <LineId Id="1973" Count="0" />
+      <LineId Id="1717" Count="0" />
+      <LineId Id="1721" Count="1" />
+      <LineId Id="1665" Count="0" />
+      <LineId Id="3977" Count="0" />
+      <LineId Id="386" Count="1" />
+      <LineId Id="392" Count="1" />
+      <LineId Id="395" Count="3" />
+      <LineId Id="1879" Count="0" />
+      <LineId Id="1899" Count="0" />
+      <LineId Id="1901" Count="1" />
+      <LineId Id="1880" Count="0" />
+      <LineId Id="1878" Count="0" />
+      <LineId Id="2157" Count="9" />
+      <LineId Id="2476" Count="0" />
+      <LineId Id="2199" Count="0" />
+      <LineId Id="2762" Count="0" />
+      <LineId Id="2192" Count="1" />
+      <LineId Id="2201" Count="0" />
+      <LineId Id="2195" Count="2" />
+      <LineId Id="2190" Count="0" />
+      <LineId Id="2168" Count="0" />
+      <LineId Id="2216" Count="1" />
+      <LineId Id="2913" Count="0" />
+      <LineId Id="2905" Count="0" />
+      <LineId Id="2260" Count="1" />
+      <LineId Id="2307" Count="1" />
+      <LineId Id="2310" Count="0" />
+      <LineId Id="2312" Count="1" />
+      <LineId Id="2309" Count="0" />
+      <LineId Id="2305" Count="0" />
+      <LineId Id="2314" Count="1" />
+      <LineId Id="2263" Count="5" />
+      <LineId Id="2336" Count="2" />
+      <LineId Id="2269" Count="0" />
+      <LineId Id="2180" Count="6" />
+      <LineId Id="399" Count="0" />
+      <LineId Id="2469" Count="0" />
+      <LineId Id="2471" Count="0" />
+      <LineId Id="2475" Count="0" />
+      <LineId Id="2474" Count="0" />
+      <LineId Id="2470" Count="0" />
+      <LineId Id="2468" Count="0" />
+      <LineId Id="2188" Count="0" />
+      <LineId Id="2187" Count="0" />
+      <LineId Id="400" Count="2" />
+      <LineId Id="683" Count="5" />
+      <LineId Id="2477" Count="0" />
+      <LineId Id="2826" Count="0" />
+      <LineId Id="2761" Count="0" />
+      <LineId Id="2899" Count="0" />
+      <LineId Id="749" Count="0" />
+      <LineId Id="698" Count="0" />
+      <LineId Id="702" Count="0" />
+      <LineId Id="803" Count="0" />
+      <LineId Id="2828" Count="0" />
+      <LineId Id="4041" Count="1" />
+      <LineId Id="4044" Count="0" />
+      <LineId Id="4043" Count="0" />
+      <LineId Id="2925" Count="0" />
+      <LineId Id="2928" Count="0" />
+      <LineId Id="3416" Count="0" />
+      <LineId Id="3831" Count="0" />
+      <LineId Id="3570" Count="1" />
+      <LineId Id="3681" Count="1" />
+      <LineId Id="3566" Count="1" />
+      <LineId Id="2933" Count="1" />
+      <LineId Id="2936" Count="0" />
+      <LineId Id="2926" Count="0" />
+      <LineId Id="3669" Count="5" />
+      <LineId Id="2927" Count="0" />
+      <LineId Id="3675" Count="0" />
+      <LineId Id="727" Count="5" />
+      <LineId Id="861" Count="0" />
+      <LineId Id="2750" Count="0" />
+      <LineId Id="862" Count="8" />
+      <LineId Id="2610" Count="1" />
+      <LineId Id="4046" Count="0" />
+      <LineId Id="3010" Count="0" />
+      <LineId Id="2623" Count="0" />
+      <LineId Id="2620" Count="0" />
+      <LineId Id="876" Count="0" />
+      <LineId Id="888" Count="1" />
+      <LineId Id="2631" Count="4" />
+      <LineId Id="3005" Count="0" />
+      <LineId Id="2637" Count="4" />
+      <LineId Id="2746" Count="0" />
+      <LineId Id="2642" Count="6" />
+      <LineId Id="2629" Count="0" />
+      <LineId Id="2743" Count="0" />
+      <LineId Id="2745" Count="0" />
+      <LineId Id="2744" Count="0" />
+      <LineId Id="2740" Count="0" />
+      <LineId Id="3144" Count="0" />
+      <LineId Id="3163" Count="0" />
+      <LineId Id="2742" Count="0" />
+      <LineId Id="3145" Count="0" />
+      <LineId Id="3148" Count="0" />
+      <LineId Id="3147" Count="0" />
+      <LineId Id="2737" Count="0" />
+      <LineId Id="3162" Count="0" />
+      <LineId Id="3150" Count="11" />
+      <LineId Id="3142" Count="1" />
+      <LineId Id="877" Count="6" />
+      <LineId Id="515" Count="0" />
+      <LineId Id="2752" Count="0" />
+      <LineId Id="2755" Count="2" />
+      <LineId Id="2753" Count="1" />
+      <LineId Id="2751" Count="0" />
+      <LineId Id="580" Count="9" />
+      <LineId Id="2540" Count="0" />
+      <LineId Id="2543" Count="0" />
+      <LineId Id="2547" Count="0" />
+      <LineId Id="591" Count="16" />
+      <LineId Id="884" Count="0" />
+      <LineId Id="676" Count="0" />
+      <LineId Id="609" Count="13" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

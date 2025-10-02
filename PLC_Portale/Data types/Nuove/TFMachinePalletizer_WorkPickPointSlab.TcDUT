@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPickPointSlab" Id="{a538a22d-fc20-42f0-a2d2-5aa943fd8bb2}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPickPointSlab :
+STRUCT
+	
+	Tipologia			: e_Tipo_PickPoint 	:= -1;		(* Tipologia del punto di prelievo 
+														Per lastre 	= RULLIERA;
+														Per Falde	= MAGAZZIONO_FALDE *)
+														
+	ID					: INT 	:= -1;		(* Identifica il numero del PickPoint *)
+	Enable				: INT	:= -1;		(* PickPoint Abilitata 0=no, 1=si, -1 dato non valido *)	
+(***********************************************************************************************************************************************)
+	X					: LREAL	:= 0.0;		(* (mm) Quota assoluta di impianto DA ORIGINE *)
+	Y					: LREAL	:= 0.0;		(* (mm) Quota assoluta di impianto DA ORIGINE *)
+	Z					: LREAL	:= 0.0;		(* (mm) Quota assoluta di impianto DA ORIGINE Caso di magazzino falde: è la quota della base di appoggio*)
+	J					: LREAL	:= 0.0;		(* (mm) Quota assoluta di impianto DA ORIGINE *)
+	ZRaise				: REAL  := 0.0; 	(* (mm) Quota di salita per uscire dall'ingombro *)
+	
+	///Lunghezza			: REAL := 0.0;		(* (mm) Ingombro in Lunghezza "X" rispetto il suo centro *)
+	//Larghezza			: REAL := 0.0;		(* (mm) Ingombro in Larghezza "Y" rispetto il suo centro *)
+	//Altezza				: REAL := 0.0;		(* (mm) Ingombro in Altezza "Z" rispetto il suo centro *)
+	
+	DoLearn_Z			: e_Stato_Apprendimento	:= -1;	(* Stato apprendimento Direzione Z 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+	Learn_Z				: REAL	:= 0.0;	(* (mm) Quota inizio Apprendimento Direzione Z *)
+	Learned_Z			: LREAL	:= 0.0; (* (mm) Quota rilevata durante apprendimento Direzione Z *)
+			
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

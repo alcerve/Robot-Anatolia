@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Stato_PickPoint" Id="{92f19b3d-bdf3-4428-a075-f8e1cba6c143}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+// Stato del Punto di Prelievo 
+TYPE e_Stato_PickPoint :
+(
+	WORKPICKPOINT_STATE_MAN			:= 0,	(* PickPoint in Stato Manuale *)
+	WORKPICKPOINT_STATE_AUTO		:= 1,	(* PickPoint in Stato Automatico *)	
+	WORKPICKPOINT_STATE_ERROR		:= 99 (* PickPoint in Stato di Errore *)
+);
+END_TYPE 
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"WORKPICKPOINT_STATE_MAN"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKPICKPOINT_STATE_AUTO"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKPICKPOINT_STATE_ERROR"</v>
+              <v n="TextDefault">"99"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{cc030e08-d13f-4d95-b431-33bcdedd57a1}</v>
+          <v n="GuidReInit">{d25609d8-32f5-4741-a506-43982e88aa67}</v>
+          <v n="GuidExitX">{15bdc442-cf52-4e37-b79f-301c68dc6bdc}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

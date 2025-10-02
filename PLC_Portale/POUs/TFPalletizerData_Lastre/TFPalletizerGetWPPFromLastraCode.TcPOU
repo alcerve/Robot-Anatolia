@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerGetWPPFromLastraCode" Id="{353e37be-4711-4095-901a-9d35520f4573}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerGetWPPFromLastraCode : UINT (*Restituisce il numero della WorkArea sulla quale c'è la priorità maggiore per il prelievo, se stessa priorità si da in ordine crescente*)
+VAR_INPUT
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	PCode : INT;	(* Codice della postazione sulla quale si vorrebbe fare il deposito *)
+	Abilita_Priorita_Impostata_Da_Rulliere : BOOL;	(* Se TRUE la priorità del prelievo è gestita della rulliere *)
+	//Priorita_Avanzata_Abilitata	: BOOL;					(* Se TRUE la priorità del prelievo è gestita in modo ottimale, 
+	//												 	cerco di completare la postazione più completa *) 		
+END_VAR
+VAR
+	wpp : UINT;
+	pc : INT;
+	WPP_Ordinati_Per_Priorita : ARRAY[1..MAXPICKPOINT] OF UINT;
+	Indice_WPP_Ordinati : ARRAY[1..MAXPICKPOINT] OF UINT;
+	Indice_Tmp : UINT;
+	i	: UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Ordinamento in ordine decrescente di Priorità.. in questo modo si cerca la disponibilità sulla rulliera con priorià più alta *)
+(*IF Abilita_Priorita_Impostata_Da_Rulliere THEN
+	FOR i := 1 TO MAXPICKPOINT DO
+		WPP_Ordinati_Per_Priorita[i] := INT_TO_UINT(WorkPickPointState^[wpp].Priority);
+		Indice_WPP_Ordinati[i] := i;
+	END_FOR	
+	FOR wpp:= 1 TO MAXPICKPOINT DO 
+		IF WPP_Ordinati_Per_Priorita[wpp] <= WPP_Ordinati_Per_Priorita[wpp+1] THEN
+			Indice_Tmp := Indice_WPP_Ordinati[wpp];
+			Indice_WPP_Ordinati[wpp] := wpp + 1;
+ 			Indice_WPP_Ordinati[wpp+1] := Indice_Tmp;
+			wpp := 1;
+		END_IF
+	END_FOR
+END_IF*)
+(* Per tutte le WorkPickPoint Attive *)
+FOR wpp := 1 TO MAXPICKPOINT DO
+	IF WorkPickPoint^[wpp].Enable = 1 THEN
+		(* Verifico disponibilità Lastra *)
+		IF WorkPickPointState^[wpp].State = WORKPICKPOINT_STATE_AUTO THEN
+			IF WorkPickPointState^[wpp].ProdPresence = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+				(* Verifico se il codice è giusto *)
+				IF WorkPickPointState^[wpp].Code = PCode THEN
+					TFPalletizerGetWPPFromLastraCode := (wpp);
+					RETURN;
+				END_IF
+			END_IF
+		END_IF
+	END_IF
+END_FOR
+TFPalletizerGetWPPFromLastraCode := 0;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerGetWPPFromLastraCode">
+      <LineId Id="142" Count="29" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

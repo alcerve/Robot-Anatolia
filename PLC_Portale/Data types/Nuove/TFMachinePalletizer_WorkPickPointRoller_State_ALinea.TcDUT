@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPickPointRoller_State_ALinea" Id="{8de69e63-7d8e-4934-9906-35551dee1dc8}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPickPointRoller_State_ALinea :
+STRUCT
+	
+	Automatico			: BOOL 	:= FALSE;	(* Stato della rulliera (FALSE=Rulliera In Manuale, TRUE=Rulliera in Automatico *)
+	PowerOK				: BOOL 	:= FALSE; 	(* Presenza Marcia (FALSE=Marcia Assente, TRUE=Marcia Presente *)
+	Ingombro			: BOOL	:= FALSE;	(* Stato della rulliera (FALSE=Rulliera In Manuale, TRUE=Rulliera in Automatico *)
+	Prelievo_Effettuato	: BOOL	:= FALSE ;	(* Se TRUE il prelievo è stato effettuato *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

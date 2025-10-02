@@ -1,0 +1,311 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFAggiuntaSupportoManuale" Id="{4b97a81a-5c2e-4454-a72d-363c5ed22724}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFAggiuntaSupportoManuale
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	WorkAreaNumber : UINT; //Numero postazione
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	ProgressiveNrWA : POINTER TO UDINT;
+	CodicePostazione : INT;
+	IndiceFormaturaPostazione : INT;
+	AbilitaAssegnazioneCodicePiazzoleConPaccoSuRibaltino : BOOL;
+	InserisciNuovoPallet : BOOL;
+	PH_Presenza : bool;// ARRAY[1..MAXAREA] OF BOOL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	PHPostazioniUPTrig 			: ARRAY[1..MAXAREA] OF BOOL;
+	PHPostazioniDOWNTrig 		: ARRAY[1..MAXAREA] OF BOOL;
+	UltimaFormaturaAssegnata 	: INT;
+	UltimaPostazioneCancellata 	: UINT;
+	UltimaPostazioneCreata 		: UINT;
+	Zone : INT;
+	ar: INT;
+	cod : INT;
+	FormaturaZona : ARRAY[1..MAXFORMINGCODE] OF INT;
+	FormaturePresenti : ARRAY[1..MAXFORMING] OF INT;
+	DoppiaFormaturaAttiva :BOOL;
+	CodiceInFormaturaMem : INT;
+	NumCodiciInFormaturaAttiviPerZona : UINT;	
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[InserisciNuovoPallet:= FALSE;
+//Fronte salita
+IF PH_Presenza AND NOT PHPostazioniUPTrig[WorkAreaNumber] THEN
+	PHPostazioniUPTrig[WorkAreaNumber] := TRUE;
+	UltimaPostazioneCreata := WorkAreaNumber;
+ELSIF NOT PH_Presenza AND PHPostazioniUPTrig[WorkAreaNumber] THEN
+	PHPostazioniUPTrig[WorkAreaNumber] := FALSE;
+END_IF
+//Fronte discesa
+//Pulisco la postazione
+IF NOT PH_Presenza AND NOT PHPostazioniDOWNTrig[WorkAreaNumber] THEN
+	PHPostazioniDOWNTrig[WorkAreaNumber] := TRUE;
+	UltimaPostazioneCancellata := WorkAreaNumber;
+	IF WorkAreaState^[WorkAreaNumber].State >= WORKAREA_STATE_OCCUPIED_WORKING THEN
+		TFClearWorkAreaArray(WorkArea,WorkAreaState,WorkAreaNumber);
+	END_IF
+ELSIF PH_Presenza AND PHPostazioniDOWNTrig[WorkAreaNumber] THEN
+	PHPostazioniDOWNTrig[WorkAreaNumber] := FALSE;
+END_IF
+
+//Verifico se è stato inserito il nuovo codice del pallet
+IF (WorkAreaState^[WorkAreaNumber].Code > 0 OR PHPostazioniUPTrig[WorkAreaNumber]) AND (WorkArea^[WorkAreaNumber].Enable = 1 AND WorkAreaState^[WorkAreaNumber].State < WORKAREA_STATE_OCCUPIED_WORKING AND WorkAreaState^[WorkAreaNumber].State <> 1) THEN
+	InserisciNuovoPallet := TRUE;
+END_IF
+
+IF InserisciNuovoPallet AND WorkAreaState^[WorkAreaNumber].State < WORKAREA_STATE_OCCUPIED_WORKING THEN	
+	
+	WorkAreaState^[WorkAreaNumber].Taped := -1;
+	WorkAreaState^[WorkAreaNumber].LGV_ReqAbort := FALSE;
+	
+	WorkAreaState^[WorkAreaNumber].Supporto := Forming^[1].Pallet;
+	WorkAreaState^[WorkAreaNumber].F := 1;
+	WorkAreaState^[WorkAreaNumber].ID 	:= ProgressiveNrWA^;
+	ProgressiveNrWA^ := ProgressiveNrWA^ + 1;
+	WorkAreaState^[WorkAreaNumber].P 	:= 0;
+	WorkAreaState^[WorkAreaNumber].Slow := 1;
+	WorkAreaState^[WorkAreaNumber].LGVAttr := Forming^[WorkAreaState^[WorkAreaNumber].F].LGVAttr;
+	WorkAreaState^[WorkAreaNumber].State := WORKAREA_STATE_OCCUPIED_WORKING;
+	
+	InserisciNuovoPallet := FALSE;
+
+ELSIF InserisciNuovoPallet AND WorkAreaState^[WorkAreaNumber].State < WORKAREA_STATE_OCCUPIED_WORKING AND FALSE THEN
+	
+	//Se la postazione ha codice fisso, lo assegno!
+	IF CodicePostazione = 0 AND WorkAreaCodiciFissi[WorkAreaNumber] > 0 THEN
+		CodicePostazione := WorkAreaCodiciFissi[WorkAreaNumber];
+	END_IF
+
+	(* Cerco Formatura *)
+	IndiceFormaturaPostazione := 0;
+	IndiceFormaturaPostazione := TFPalletizerGetFormingFromCodeSlab(Forming,CodicePostazione);
+	//Assegno la formatura successivamanete nel WAManager
+	IF IndiceFormaturaPostazione < 1 THEN
+		IndiceFormaturaPostazione := 0;
+		//Valuto la zona della postazione e ricavo la formatura in base alla zona di appartenenza	
+	
+		FOR cod:=1 TO MAXFORMINGCODE DO
+			FormaturaZona[cod] := 0;
+		END_FOR
+		DoppiaFormaturaAttiva := FALSE;
+		CodiceInFormaturaMem := 0;
+		NumCodiciInFormaturaAttiviPerZona := 0;
+		FOR zone:=1 TO MAXZONE DO
+			FOR ar:=1 TO MAXAREA DO
+				(* Verifico se la WorkArea appartiena ad una Zona *)
+				IF WorkAreaZone.Zone[zone].WorkArea[ar] = WorkAreaNumber THEN
+					FOR cod:=1 TO MAXFORMINGCODE DO
+						IF FormaturaZona[cod] > 0 THEN
+							DoppiaFormaturaAttiva := TRUE;
+						END_IF
+						FormaturaZona[cod] := TFPalletizerGetFormingFromCodeSlab(Forming,WorkAreaZone.Zone[zone].Code[cod]);
+						IF WorkAreaZone.Zone[zone].Code[cod] <> CodiceInFormaturaMem  THEN//Memorizzo se ho un codice 
+							NumCodiciInFormaturaAttiviPerZona := NumCodiciInFormaturaAttiviPerZona+1;
+							CodiceInFormaturaMem := WorkAreaZone.Zone[zone].Code[cod];
+						END_IF
+					END_FOR
+					EXIT;//Esco e vado a valutare le formature
+				END_IF
+			END_FOR
+		END_FOR	
+		FOR ar:=1 TO 4 DO
+			FormaturePresenti[ar] := 0;
+		END_FOR
+		FOR ar:=1 TO MAXFORMINGCODE DO
+		
+			CASE FormaturaZona[ar] OF
+				1:
+					FormaturePresenti[1] := FormaturePresenti[1]+1; 	
+				2:
+					FormaturePresenti[2] := FormaturePresenti[2]+1;
+				3:
+					FormaturePresenti[3] := FormaturePresenti[3]+1;
+				4:
+					FormaturePresenti[4] := FormaturePresenti[4] +1;
+			ELSE
+				IndiceFormaturaPostazione := 0;			
+			END_CASE				
+		END_FOR
+		//Cerco se nella zona ci sono + formature presenti, se è così codice formatura = 0, in modo che la macchina lo assagne in base alle esigenze
+		//Altrimenti se solo una formatura è presente gli assegno quella!			
+		IF FormaturePresenti[1] >= 1 THEN
+			IF FormaturePresenti[2] >= 1 OR FormaturePresenti[3] >= 1 OR FormaturePresenti[4] >= 1 OR DoppiaFormaturaAttiva THEN
+				IndiceFormaturaPostazione := 0;
+			ELSE
+				IndiceFormaturaPostazione := 1;
+				IF NumCodiciInFormaturaAttiviPerZona = 1 THEN
+					 CodicePostazione := CodiceInFormaturaMem;
+				END_IF
+			END_IF		
+		ELSIF FormaturePresenti[2] >= 1 THEN
+			IF FormaturePresenti[1] >= 1 OR FormaturePresenti[3] >= 1 OR FormaturePresenti[4] >= 1 OR DoppiaFormaturaAttiva THEN
+				IndiceFormaturaPostazione := 0;
+			ELSE
+				IndiceFormaturaPostazione := 2;
+				IF NumCodiciInFormaturaAttiviPerZona = 1 THEN
+					 CodicePostazione := CodiceInFormaturaMem;
+				END_IF
+			END_IF		
+		ELSIF FormaturePresenti[3] >= 1 THEN
+			IF FormaturePresenti[2] >= 1 OR FormaturePresenti[1] >= 1 OR FormaturePresenti[4] >= 1 OR DoppiaFormaturaAttiva THEN
+				IndiceFormaturaPostazione := 0;
+			ELSE
+				IndiceFormaturaPostazione := 3;
+				IF NumCodiciInFormaturaAttiviPerZona = 1 THEN
+					 CodicePostazione := CodiceInFormaturaMem;
+				END_IF
+			END_IF		
+		ELSIF FormaturePresenti[4] >= 1 THEN
+			IF FormaturePresenti[2] >= 1 OR FormaturePresenti[3] >= 1 OR FormaturePresenti[1] >= 1 OR DoppiaFormaturaAttiva THEN
+				IndiceFormaturaPostazione := 0;
+			ELSE
+				IndiceFormaturaPostazione := 4;
+				IF NumCodiciInFormaturaAttiviPerZona = 1 THEN
+					 CodicePostazione := CodiceInFormaturaMem;
+				END_IF
+			END_IF		
+		END_IF
+	END_IF
+	
+	WorkAreaState^[WorkAreaNumber].Taped := -1;
+	WorkAreaState^[WorkAreaNumber].LGV_ReqAbort := FALSE;
+	IF AbilitaAssegnazioneCodicePiazzoleConPaccoSuRibaltino AND CodicePostazione = 0 THEN
+		WorkAreaState^[WorkAreaNumber].Code := 0;
+		WorkAreaState^[WorkAreaNumber].Initialize := TRUE;
+	ELSE
+		WorkAreaState^[WorkAreaNumber].Code := CodicePostazione;
+		WorkAreaState^[WorkAreaNumber].Initialize := FALSE;
+	END_IF
+	WorkAreaState^[WorkAreaNumber].Supporto := Forming^[IndiceFormaturaPostazione].Pallet;
+	WorkAreaState^[WorkAreaNumber].F := IndiceFormaturaPostazione;
+	
+	WorkAreaState^[WorkAreaNumber].ID := ProgressiveNrWA^;
+	ProgressiveNrWA^ := ProgressiveNrWA^ + 1;
+	WorkAreaState^[WorkAreaNumber].P := 0;
+	WorkAreaState^[WorkAreaNumber].Slow := 1;
+	WorkAreaState^[WorkAreaNumber].LGVAttr := Forming^[WorkAreaState^[WorkAreaNumber].F].LGVAttr;
+	WorkAreaState^[WorkAreaNumber].State := WORKAREA_STATE_OCCUPIED_WORKING;
+
+	InserisciNuovoPallet := FALSE;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFAggiuntaSupportoManuale">
+      <LineId Id="333" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="164" Count="1" />
+      <LineId Id="172" Count="0" />
+      <LineId Id="168" Count="1" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="154" Count="0" />
+      <LineId Id="173" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="170" Count="1" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="158" Count="0" />
+      <LineId Id="110" Count="3" />
+      <LineId Id="476" Count="0" />
+      <LineId Id="481" Count="0" />
+      <LineId Id="487" Count="0" />
+      <LineId Id="578" Count="1" />
+      <LineId Id="586" Count="2" />
+      <LineId Id="590" Count="5" />
+      <LineId Id="602" Count="0" />
+      <LineId Id="477" Count="0" />
+      <LineId Id="603" Count="0" />
+      <LineId Id="99" Count="0" />
+      <LineId Id="199" Count="0" />
+      <LineId Id="233" Count="0" />
+      <LineId Id="230" Count="2" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="202" Count="0" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="245" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="268" Count="0" />
+      <LineId Id="247" Count="0" />
+      <LineId Id="339" Count="0" />
+      <LineId Id="341" Count="1" />
+      <LineId Id="340" Count="0" />
+      <LineId Id="349" Count="0" />
+      <LineId Id="354" Count="0" />
+      <LineId Id="359" Count="0" />
+      <LineId Id="250" Count="1" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="253" Count="0" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="344" Count="2" />
+      <LineId Id="265" Count="0" />
+      <LineId Id="350" Count="0" />
+      <LineId Id="355" Count="0" />
+      <LineId Id="358" Count="0" />
+      <LineId Id="352" Count="0" />
+      <LineId Id="255" Count="0" />
+      <LineId Id="266" Count="0" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="336" Count="2" />
+      <LineId Id="270" Count="2" />
+      <LineId Id="283" Count="0" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="287" Count="0" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="289" Count="0" />
+      <LineId Id="295" Count="0" />
+      <LineId Id="291" Count="0" />
+      <LineId Id="293" Count="0" />
+      <LineId Id="280" Count="0" />
+      <LineId Id="292" Count="0" />
+      <LineId Id="276" Count="0" />
+      <LineId Id="273" Count="0" />
+      <LineId Id="269" Count="0" />
+      <LineId Id="331" Count="0" />
+      <LineId Id="298" Count="0" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="305" Count="0" />
+      <LineId Id="307" Count="1" />
+      <LineId Id="360" Count="2" />
+      <LineId Id="306" Count="0" />
+      <LineId Id="302" Count="0" />
+      <LineId Id="311" Count="3" />
+      <LineId Id="366" Count="2" />
+      <LineId Id="315" Count="0" />
+      <LineId Id="309" Count="0" />
+      <LineId Id="318" Count="3" />
+      <LineId Id="369" Count="2" />
+      <LineId Id="322" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="325" Count="3" />
+      <LineId Id="372" Count="2" />
+      <LineId Id="329" Count="0" />
+      <LineId Id="323" Count="0" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="330" Count="0" />
+      <LineId Id="81" Count="6" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="441" Count="0" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="442" Count="0" />
+      <LineId Id="26" Count="2" />
+      <LineId Id="30" Count="2" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="100" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="TFPalletizerPackValidationSlab" Id="{1e9bb176-3834-48e3-a0bc-d378bd54e9c1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerPackValidationSlab : UINT
+VAR_INPUT
+	WorkArea : TFMachinePalletizer_WorkArea;
+	WorkAreaState : TFMachinePalletizer_WorkAreaState;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	PickPoint : UINT;
+END_VAR
+VAR
+	wpp : UINT;
+	i : INT;
+	PackOffset : REAL;
+	CodeAssignedToWA : BOOL; // TRUE se i codice è assegnato ad almeno una WA
+	fcode : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerPackValidationSlab := 0; 
+PackOffset := 50.0;
+wpp:=PickPoint;
+//FOR wpp:=1 TO MAXPICKPOINT DO
+	(* Verifico disponibilità Pacco *)
+	IF WorkPickPointState^[wpp].ProdPresence = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+		fcode := TFPalletizerGetFormingFromCodeSlab(Forming,WorkPickPointState^[wpp].Code);
+		IF fcode = 0 THEN
+			TFPalletizerPackValidationSlab := ErrPACKCODENOTVALID; // Codice non associato a formatura
+			RETURN;			
+		ELSIF (WorkPickPointState^[wpp].Element.XDim < Forming^[fcode].PElement[WorkAreaState.P].XDim - PackOffset OR
+				WorkPickPointState^[wpp].Element.XDim > Forming^[fcode].PElement[WorkAreaState.P].XDim + PackOffset) OR
+				(WorkPickPointState^[wpp].Element.YDim < Forming^[fcode].PElement[WorkAreaState.P].YDim - PackOffset  OR
+				WorkPickPointState^[wpp].Element.YDim > Forming^[fcode].PElement[WorkAreaState.P].YDim + PackOffset) OR
+				(WorkPickPointState^[wpp].Element.ZDim < Forming^[fcode].PElement[WorkAreaState.P].ZDim - PackOffset OR
+				WorkPickPointState^[wpp].Element.ZDim > Forming^[fcode].PElement[WorkAreaState.P].ZDim+ PackOffset)THEN
+					TFPalletizerPackValidationSlab := ErrPACKDIMENSIONNOTVALID; // Grandezze pacco errate
+					RETURN;
+			END_IF	
+	END_IF
+//END_FOR	
+
+TFPalletizerPackValidationSlab := 0;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerPackValidationSlab">
+      <LineId Id="3" Count="1" />
+      <LineId Id="11" Count="4" />
+      <LineId Id="32" Count="11" />
+      <LineId Id="46" Count="1" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

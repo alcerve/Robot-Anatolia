@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="FROM_HMI_PAL" Id="{8bb90151-1058-4621-8fb6-b48931090796}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL PERSISTENT
+(* Parametri assi del ciclo di riposo *)	
+HMI_ParametriAsseX_CicloRiposo : Ax_Program_Parameters;	//Parametri dell'Asse X del ciclo di riposo
+HMI_ParametriAsseY_CicloRiposo : Ax_Program_Parameters;	//Parametri dell'Asse Y del ciclo di riposo
+HMI_ParametriAsseZ_CicloRiposo : Ax_Program_Parameters;	//Parametri dell'Asse Z del ciclo di riposo
+HMI_ParametriAsseJ_CicloRiposo : Ax_Program_Parameters;	//Parametri dell'Asse J del ciclo di riposo
+HMI_ParametriAsseK_CicloRiposo : Ax_Program_Parameters;	//Parametri dell'Asse K del ciclo di riposo
+(* Parametri assi del ciclo falda *)
+HMI_ParametriAsseX_CicloFalda : Ax_Program_Parameters;	//Parametri dell'Asse X del ciclo falda
+HMI_ParametriAsseY_CicloFalda : Ax_Program_Parameters;	//Parametri dell'Asse Y del ciclo falda
+HMI_ParametriAsseZ_CicloFalda : Ax_Program_Parameters;	//Parametri dell'Asse Z del ciclo falda
+HMI_ParametriAsseJ_CicloFalda : Ax_Program_Parameters;	//Parametri dell'Asse J del ciclo falda
+HMI_ParametriAsseK_CicloFalda : Ax_Program_Parameters;	//Parametri dell'Asse K del ciclo falda
+(* Parametri assi del ciclo pallet *)
+HMI_ParametriAsseX_CicloPallet : Ax_Program_Parameters;	//Parametri dell'Asse X del ciclo pallet
+HMI_ParametriAsseY_CicloPallet : Ax_Program_Parameters;	//Parametri dell'Asse Y del ciclo pallet
+HMI_ParametriAsseZ_CicloPallet : Ax_Program_Parameters;	//Parametri dell'Asse Z del ciclo pallet
+HMI_ParametriAsseJ_CicloPallet : Ax_Program_Parameters;	//Parametri dell'Asse J del ciclo pallet
+HMI_ParametriAsseK_CicloPallet : Ax_Program_Parameters;	//Parametri dell'Asse K del ciclo pallet
+(* Parametri assi del ciclo pacco *)
+HMI_ParametriAsseX_CicloPacco : Ax_Program_Parameters;	//Parametri dell'Asse X del ciclo pacco
+HMI_ParametriAsseY_CicloPacco : Ax_Program_Parameters;	//Parametri dell'Asse Y del ciclo pacco
+HMI_ParametriAsseZ_CicloPacco : Ax_Program_Parameters;	//Parametri dell'Asse Z del ciclo pacco
+HMI_ParametriAsseJ_CicloPacco : Ax_Program_Parameters;	//Parametri dell'Asse J del ciclo pacco
+HMI_ParametriAsseK_CicloPacco : Ax_Program_Parameters;	//Parametri dell'Asse K del ciclo pacco
+(* Override delle varie modalità di funzionamento *)
+HMI_AxisOverride : TFMachinePalletizer_VelocityOverride; //Override delle varie modalità di funzionamento
+HMI_AbilitaControloPXGripPresence : BOOL := TRUE; // Variabile che abilita il controllo della fotocellula di presenza 
+HMI_AbilitaControlloCoppia : BOOL := TRUE; // Variabile che abilita il controllo della fotocellula di presenza 
+HMI_OffsetScattoAllarmeControlloCoppia : REAL := 10;
+HMI_VelocitaDepositoPrimoPaccoInLenta : REAL := 50; // Velocità di deposito pacco, rispetto alla velocità standard, con la quale viene depositato il primo pacco dopo una modifica manuale del n° ei pacchi
+HMI_VelocitaDiUscitaDaTastatoriAxZ	: REAL := 5; // Velocità dell'asse Z per uscire dai tastatori
+HMI_AbilitaTasteggioDepositoPallet : Bool; // Abilitazione del tasteggio in fase di deposito pallet, in questo modo assegno la quota di altezza esatta alla piazzola
+HMI_AbilitaForzaturaStatoDaRiposoAPrelievo : BOOL := FALSE; //Abilitazione della forzatura di passaggio di stato del WAM da Stato "Vai a riposo" a Stato "Pacco Init"
+HMI_AbilitaDepositoPalletContinuo : BOOL := FALSE; //Abilitazione del deposito continuo dei pallet nel caso in cui il numero dei pacchi sia inferiore ad un certo valore
+HMI_NumeroPacchiMassimoDepositoPalletContinuo : UINT := 7; // Valore al di sotto del quale si innesca il deposito dei pallet in continuo
+HMI_OverideDinamico : Overide_Dinamico;	// Variabile per settare l'ovverride dinamico a soglie 
+HMI_AbilitaOverrideDinamico : BOOL := FALSE; // Abilitazione della gestione automatica e dinamica dell'override
+HMI_AbilitaAnticipoDinamicoMovimenti : BOOL := FALSE; // Abilitazione della gestione automatica delle quote per il comando dei movimenti
+HMI_AbilitaComandiAnticipatiRibaltino : BOOL := FALSE; // Abilitazione della gestione avanzata del ribaltino
+HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio : bool := false; // Abilitazione del deposito del pacco orrizzontale in modalità tasteggio
+HMI_AbilitaInterpolazioneAssi : BOOL := FALSE; // Abilitazione dell'interpolazione degli assi
+HMI_AbilitaGestioneAZone : BOOL := TRUE; //Abilitazione della gestione a zone delle WorkArea
+HMI_VelocitaPercorso : REAL := 1000000000; // Velocità di percorrenza traiettoria con assi interpolati
+HMI_TempoAccDec		 : REAL := 2; // Tempo di Accelerazione/Decelerazione dei movimenti nella traiettoria con assi interpolati
+HMI_AbilitaOffsetUscitaTasteggioPrelPallet : BOOL := TRUE; // Abilitazione dell'offset in uscita dei tastatori in prelievo pallet con tasteggio
+HMI_AbilitaCalcoloIngombroOttimizzato : BOOL := TRUE; // Abilitazione de calcolo degli ingombri in modo ottimizzato, valutando l'angolo di rotazione in tempo reale della pinza
+HMI_AbilitaAccostamentoAsseZ : BOOL := TRUE; // Abilitazione dell'accostamento dell'asse Z.. Se TRUE : Ad una certa quota l'asse si muove in lenta 
+HMI_AbilitaSimulazioneAVuoto : BOOL;//Abilitazione della simulazione senza pacchi-falde-pallet
+
+HMI_AbilitaPosizionamentoDaQuoteApprese : BOOL; //Abilitazione del posizionamento utilizzando le quote ricavate in automatico dalla macchina
+
+HMI_OvemParameters 				: Ovem_TargetParameters; //Parametri di funzionamento Vacuostato OVEM
+
+HMI_AbilitaCilTastatoriPinza : BOOL;//Abilitazione dei tastatori della pinza
+HMI_AbilitaSbloccoRotPinza : BOOL;//Abilitazione dello sblocco della rotazione della pinza
+HMI_NumeroTentativiPresa :  UINT := 2;//numero di tentativi prima di dichiarare prelievo terminato
+HMI_AbilitaTasteggioRotazionePinza : bool := true; //Abilitazione della ricerca automatica della posizione della rotazione mediante la distanza delle FTC di tasteggio
+HMI_TempoPresaPiastrella : REAL := 2000;//Tempo per di attesa salita
+HMI_VelocitaDiUscitaDaTastatoriAxY : real := 5;
+HMI_OffsetUscitaTastatori : REAL := 2;
+HMI_OffsetCompensazioneRotazionePinza : REAL := 5;
+
+HMI_AbilitaSfogliaturaJ : BOOL := TRUE;
+HMI_GradiSfogliaturaJ 	: REAL := 2;
+ 
+HMI_TempoControlloPresaPiastrella 	: REAL := 500;//Tempo per il controllo di pistrella presa
+HMI_TempoRilascioInDeposito 		: REAL := 500;//Tempo di attesa per distacco lastra in deposito
+HMI_TempoAttesaPartenzaDopoPrelievo : REAL := 500;//Tempo di attesa per ripartenza dopo prelievo lastra
+HMI_AbilitaAperturaAutomaticaPinza 	: BOOL;//Abilitazione apertura Automatica della pinza
+
+HMI_ArrestoRullieraBancalino : BOOL;//Stop della rulliera su cui deposita la pinza
+HMI_AbilitaPostazionePrelievo1 : BOOL;
+HMI_AbilitaPostazionePrelievo2 : BOOL;
+
+HMI_NumeroTentativiPolistiroloSuPallet : UINT := 2; //Indica il numero di tentativi di controllo sotto "HMI_AltezzaControlloPolistirolo" prima di espellere il pallet anche se risulta qualcosa in pinza che non sia una piastrella
+HMI_AltezzaControlloPolistirolo : REAL := 0;//Indica la quota al di sotto della quale la macchina attiva il controllo di presenza se quota ripetuta
+
+HMI_SpazioInterventoTastoriCartone : REAL := 30;
+
+HMI_VelocitaDistaccoLastra_Z : REAL := 45;
+HMI_VelocitaDistaccoLastra_Y : REAL := 10;
+
+HMI_DisabilitaAsservimentoLGV : ARRAY[1..MAXAREA] OF BOOL;//Disabilitazione chiamata veicolo sulla postazione
+HMI_AbilitaLettoreBC : bool; //Abilitazione lettore BC
+
+HMI_TempoPresaFalda 						: REAL := 500;//Tempo di aggancio falda prima di risalire
+HMI_TempoControlloPresaFalda 				: REAL := 500;//Tempo per il controllo di falda presa
+HMI_TempoAttesaPartenzaDopoPrelievoFalda 	: REAL := 500;//Tempo di attesa per ripartenza dopo prelievo falda
+HMI_TempoRilascioInDepositoFalda 			: REAL := 500;//Tempo di attesa per ripartenza dopo DEPOSITO falda
+HMI_AbilitaDepositoFalda					: BOOL := TRUE; //ABilitazione deposito falda 
+
+HMI_OffsetDepositoLastra	: ST_OffsetAllDirection;//Offset deposito lastra impostabile da HMI
+
+HMI_OffsetGradiJPrelDaCanti				: REAL := 0;//Offset di inclinazione pinza x correzione posizione J in prelievo
+HMI_AbilitaPosJPrelConFTC        : BOOL := TRUE;//Abilitazione del posizionamento J con le FTC poste sulla pinza
+
+HMI_AbilitaBascolantePinza : bool;//Abilitazione del bascolante della pinza
+
+END_VAR
+
+VAR_GLOBAL
+	HMI_AbilitazioneCicloAStep : BOOL := FALSE; // Variabile che abilita la modalità di funzionamento a step
+	HMI_AbilitaErroriTastatori : BOOL := TRUE; // Variabile che abilita l'errore dovuto ai tastatori della pinza
+	HMI_DisabilitaAnticipiGLOBALE : BOOL := TRUE; // Variabile per disabilitare tutti gli anticipi...si previene motion axis error 17035!!!!!!!!!
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

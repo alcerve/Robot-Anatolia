@@ -1,0 +1,207 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Stato_WorkArea" Id="{99cd3464-07f6-477e-9c3c-c778b9481b1d}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Stato del WorkAreaManager
+TYPE e_Stato_WorkArea :
+(
+	WORKAREA_STATE_FREE_ENABLED					:= 0,	//WA senza pallet e Abilitata
+	WORKAREA_STATE_FREE_DISABLED				:= 1,	//WA senza pallet e disabilitata
+	WORKAREA_STATE_OCCUPIED_DISABLED			:= 2,	//WA con pallet e disabilitata
+	WORKAREA_STATE_FREE_WORKING					:= 3,	//WA senza pallet e in lavorazione
+	WORKAREA_STATE_OCCUPIED_WORKING				:= 4,	//WA con pallet e in lavorazione	
+	WORKAREA_STATE_OCCUPIED_WORKED				:= 5, 	//WA con pallet e pallettizzazione terminata
+	WORKAREA_STATE_OCCUPIED_WORKED_DISABLED		:= 6,	//WA con pallet e pallettizzazione terminata e area disabilitata
+	WORKAREA_STATE_OCCUPIED_TAPING				:= 7,	//WA con pallet in richiesta di nastratura
+	WORKAREA_STATE_OCCUPIED_TAPING_DISABLED		:= 8,	//WA con pallet in richiesta di nastratura e area disabilitata
+	WORKAREA_STATE_OCCUPIED_TAPED				:= 9,	//WA con pallet e nastratura terminata
+	WORKAREA_STATE_OCCUPIED_TAPED_DISABLED		:= 10,	//WA con pallet e nastratura terminata e area disabilitata
+	WORKAREA_STATE_OCCUPIED_ENDED				:= 11, 	//WA con pallet e lavorazione terminata
+	WORKAREA_STATE_OCCUPIED_ENDED_DISABLED		:= 12, 	//WA con pallet e lavorazione terminata e area disabilitata
+	WORKAREA_STATE_OCCUPIED_LGVREQ				:= 13, 	//WA con pallet e richiesta TGV in ingresso
+	WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED		:= 14, 	//WA con pallet e richiesta TGV in ingresso e area disabilitata
+	WORKAREA_STATE_OCCUPIED_LGVIN				:= 15, 	//WA con pallet e TGV in ingombro
+	WORKAREA_STATE_OCCUPIED_LGVIN_DISABLED		:= 16, 	//WA con pallet e TGV in ingombro e area disabilitata
+	WORKAREA_STATE_OCCUPIED_LGVEND				:= 17, 	//WA con pallet e TGV fuori ingombro e Pallet estratto
+	WORKAREA_STATE_OCCUPIED_LGVEND_DISABLED		:= 18, 	//WA con pallet e TGV fuori ingombro e Pallet estratto e area disabilata
+	WORKAREA_STATE_OCCUPIED_LGVREQ_ABORT        := 19, 	//WA con pallet e richiesta TGV ABORTITA
+	
+	WORKAREA_STATE_FREE_LGVREQ					:= 20, 	//WA SENZA SUPPORTO e richiesta TGV in ingresso
+	WORKAREA_STATE_FREE_LGVREQ_DISABLED			:= 21, 	//WA SENZA SUPPORTO e richiesta TGV in ingresso e area disabilitata
+	WORKAREA_STATE_FREE_LGVIN					:= 22, 	//WA SENZA SUPPORTO e TGV in ingombro
+	WORKAREA_STATE_FREE_LGVIN_DISABLED			:= 23, 	//WA SENZA SUPPORTO e TGV in ingombro e area disabilitata
+	WORKAREA_STATE_FREE_LGVEND					:= 24, 	//WA SENZA SUPPORTO e TGV fuori ingombro e Pallet estratto
+	WORKAREA_STATE_FREE_LGVEND_DISABLED			:= 25, 	//WA SENZA SUPPORTO e TGV fuori ingombro e Pallet estratto e area disabilata
+	WORKAREA_STATE_FREE_LGVREQ_ABORT        	:= 26, 	//WA SENZA SUPPORTO e richiesta TGV ABORTITA
+	
+	WORKAREA_STATE_ERROR						:= 99	//WA in errore
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_ENABLED"</v>
+              <v n="TextDefault">"0"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_DISABLED"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_DISABLED"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_WORKING"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_WORKING"</v>
+              <v n="TextDefault">"4"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_WORKED"</v>
+              <v n="TextDefault">"5"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_WORKED_DISABLED"</v>
+              <v n="TextDefault">"6"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_TAPING"</v>
+              <v n="TextDefault">"7"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_TAPING_DISABLED"</v>
+              <v n="TextDefault">"8"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_TAPED"</v>
+              <v n="TextDefault">"9"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_TAPED_DISABLED"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_ENDED"</v>
+              <v n="TextDefault">"11"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_ENDED_DISABLED"</v>
+              <v n="TextDefault">"12"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_LGVREQ"</v>
+              <v n="TextDefault">"13"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED"</v>
+              <v n="TextDefault">"14"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_LGVIN"</v>
+              <v n="TextDefault">"15"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_LGVIN_DISABLED"</v>
+              <v n="TextDefault">"16"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_LGVEND"</v>
+              <v n="TextDefault">"17"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_LGVEND_DISABLED"</v>
+              <v n="TextDefault">"18"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_OCCUPIED_LGVREQ_ABORT"</v>
+              <v n="TextDefault">"19"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_LGVREQ"</v>
+              <v n="TextDefault">"20"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_LGVREQ_DISABLED"</v>
+              <v n="TextDefault">"21"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_LGVIN"</v>
+              <v n="TextDefault">"22"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_LGVIN_DISABLED"</v>
+              <v n="TextDefault">"23"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_LGVEND"</v>
+              <v n="TextDefault">"24"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_LGVEND_DISABLED"</v>
+              <v n="TextDefault">"25"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_FREE_LGVREQ_ABORT"</v>
+              <v n="TextDefault">"26"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WORKAREA_STATE_ERROR"</v>
+              <v n="TextDefault">"99"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{cc030e08-d13f-4d95-b431-33bcdedd57a1}</v>
+          <v n="GuidReInit">{d25609d8-32f5-4741-a506-43982e88aa67}</v>
+          <v n="GuidExitX">{15bdc442-cf52-4e37-b79f-301c68dc6bdc}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

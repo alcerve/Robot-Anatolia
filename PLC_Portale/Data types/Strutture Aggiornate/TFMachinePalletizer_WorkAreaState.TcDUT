@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="TFMachinePalletizer_WorkAreaState" Id="{f445a6f6-bdb3-4491-a238-23c5c62cfdf0}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkAreaState :
+STRUCT
+	ID				: LINT; (* Identificatore univoco dell'oggetto sulla WorkArea *)
+	State			: e_Stato_WorkArea	:= WORKAREA_STATE_FREE_DISABLED;	(* Stato Area di Lavoro/Piazzola
+																			(0=Assente e Area Disabilitata,
+																			1=Presente e Area Disabilitata,
+																			2=Assente in Lavorazione,
+																			3=Presente in Lavorazione,
+																			4=Presente con Pallettizzazione Terminata,
+																			5=Presente con Pallettizzazione Terminata e Area Disabilitata,
+																			6=Presente in Nastratura,
+																			7=Presente in Nastratura e Area Disabilitata,
+																			8=Presente con Nastratura Terminata,
+																			9=Presente con Nastratura Terminata e Area Disabilitata,
+																			10=Presente con Lavorazione Terminata,
+																			11=Presente con Lavorazione Terminata e Area Disabilitata,
+																			12=Presente con LGV in Richiesta Ingresso,
+																			13=Presente con LGV in Richiesta Ingresso e Area Disabilitata,
+																			14=Presente con LGV in Ingombro,
+																			15=Presente con LGV in Ingombro e Area Disabilitata,
+																			16=Presente con LGV Fuori Ingombro e Pallet Estratto,
+																			17=Presente con LGV Fuori Ingombro e Pallet Estratto e Area Disabilitata, NOT USED !!!!!!!!!!!
+																			99=Errore
+																			-1 dato non valido) *)
+	F					: INT	:= 0;	(* Forming Pointer - Puntatore tabella formature (1..n=, -1 dato non valido *)
+	P					: INT	:= 0;	(* Pack Pointer - Puntatore tabella ELEMENTO (0..n-1=, -1 dato non valido),Numero ELEMENTO successivo da depositare *)
+	
+	Code				: INT	:= 0;	(* Codice di Pallettizzazione (0..n=, -1 dato non valido) x lastre, se Magazzino Falde, codice della falda *)
+	
+	PackPointerModified	: BOOL	:= FALSE;(* Se TRUE, indica che è stata effettuata una modfica sui dati della WA da parte dell' HMI (Settata da HMI e resettata da PLC) *)
+	PackPointer			: INT	:= 0;	 (* Rappresenta l'indice del pacco da depositare dopo modfica manuale,cioè con PackPointerModified=TRUE *)
+
+	Slab				: ARRAY[1..MAXFORMINGSLAB] OF TFMachinePalletizer_PlaceElement; (* Struttura Usata per Tracciare Gli Elementi Depositati sulla Workarea *)
+	LGVAttr				: INT := 0;
+	BCRead				: ARRAY[1..MAXNUMBARCODE] OF TFMachinePalletizer_BarCode;
+	Supporto			: TFMachinePalletizer_Pallet; (* Struttura del supporto presente sulla POSTAZIONE *)
+	
+	H					: LREAL	:= 0.0; (* (mm) Altezza Reale. Viene calcolata dal PLC dopo ogni prelievo (Vuoti o Falde) o deposito Pallet e durante la pallettizzazione *)
+	HPL					: LREAL	:= 0.0; (* (mm) Altezza del pallett utilizzato + altezza layers utilizzati *)
+	
+	Apprendimento : TFMachinePalletizer_CoordinateApprendimento;(* Apprendimenti nelle varie direzioni *)
+	
+	
+	TransportState : TFMachinePalletizer_WorkAreaTransport_State; (* Stato della WORKAREA quando la Tipologia è TYPOLOGY_OVER_TRANSPORT *)
+	
+	Slow			: INT	:= 0;		(* Primo Pacco/Lastra in Lenta (0=no, 1=si, -1= non valido) *)
+	Taped			: INT	:= 0;		(* Nastratura eseguita. Determina espulsione! (0=non eseguita, 1=eseguita, -1= non valido) *)
+	
+	Initialize		: BOOL	:= FALSE; 	(* Deposito pallet e falda se prevista ma non continua la pallettizzazione, TRUE= deposita pallet e falda e non continua pallettizzazione, FALSE= Esegue tutto il ciclo regolarmente*)
+
+	
+	RefuseLGV       : BOOL	:= FALSE;	(* Abilitazione chiamata LGV a termine pallettizzazione - TRUE= Non chiama LGV quando pallet pieno, FALSE= viene eseguita richiesta LGV *)
+
+	LGV_Req			: INT	:= 0;	(* Richiesta LGV (0=Nop, 1=Richiesta LGV, 2= Consenso Ingresso, -1= non valido) *)
+	LGV_GetIn_GetOut: INT	:= 0;	(* Tipo Richiesta LGV  (0=Nop,1=REQ_PRELIEVO_LGV_PIENO,2=REQ_DEPOSITO_LGV_PIENO,3=REQ_PRELIEVO_LGV_VUOTO,4=REQ_DEPOSITO_LGV_VUOTO*)
+	//LGV_LetIn		: INT	:= 0;	(* Stato LGV (0=Nop, 1=Richiesta Ingresso, 2=Fine Ingresso, -1= non valido) *)
+	//LGV_Footprint	: INT	:= 0;	(* Presenza Ingombro Veicolo (0=Nessun Ingombro, 1=In Ingombro, -1= non valido) *)
+	LGV_ReqAbort	: BOOL	:= FALSE; (* Abort chimata LGV *)
+	SupportEmpty	: BOOL  := FALSE; (* Se TRUE, con chiamata veicolo attiva significa che l'elemento è vuoto, senza pezzi sopra (lastre o falde) *)
+	SupportCentered : BOOL  := FALSE; (* Se TRUE, indica che il supporto è stato centrato *)
+	LayerData 		: ST_LayerData; (* Descrizione Falda*)
+	SlabData        : ARRAY[1..MAXFORMINGSLAB] OF ST_SlabData;(* Dati delle lastre che servono al supervisore *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

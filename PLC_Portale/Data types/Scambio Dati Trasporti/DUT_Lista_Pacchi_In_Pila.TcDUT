@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="DUT_Lista_Pacchi_In_Pila" Id="{27bd9b7e-3e5c-4bae-b000-6ce6bf195991}">
+    <Declaration><![CDATA[TYPE DUT_Lista_Pacchi_In_Pila :
+STRUCT
+	ID_Pacco : ARRAY[0..MAXHANDLINGSTACK-1] OF UDINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

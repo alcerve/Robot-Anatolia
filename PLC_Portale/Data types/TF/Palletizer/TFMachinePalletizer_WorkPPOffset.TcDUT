@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPPOffset" Id="{cb6cab8f-c81b-4a74-a9bc-e6777bff977f}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPPOffset :
+STRUCT
+	Xv	:	REAL := 0.0; (* READ	- (mm) Offset del punto di prelievo in direzione X per ribaltino verticale *)
+	Yv	:	REAL := 0.0; (* READ	- (mm) Offset del punto di prelievo in direzione Y per ribaltino verticale *)
+	Zv	:	REAL := 0.0; (* READ	- (mm) Offset del punto di prelievo in direzione Z per ribaltino verticale *)
+	Jv	:	REAL := 0.0; (* READ	- (mm) Offset di rotazione J  per ribaltino verticale *)
+	
+	Xh	:	REAL := 0.0; (* READ	- (mm) Offset del punto di prelievo in direzione X per ribaltino orrizontale *)
+	Yh	:	REAL := 0.0; (* READ	- (mm) Offset del punto di prelievo in direzione Y per ribaltino orrizontale *)
+	Zh	:	REAL := 0.0; (* READ	- (mm) Offset del punto di prelievo in direzione Z per ribaltino orrizontale *)
+	Jh	:	REAL := 0.0; (* READ	- (mm) Offset di rotazione J per ribaltino orrizontale  *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

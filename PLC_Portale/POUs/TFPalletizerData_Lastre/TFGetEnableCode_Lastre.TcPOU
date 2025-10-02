@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFGetEnableCode_Lastre" Id="{84e93a98-c29e-4715-81d7-c0e288f45a54}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFGetEnableCode_Lastre : ARRAY [1..MAXFORMINGCODE*MAXFORMING] OF INT
+VAR_INPUT
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+END_VAR
+VAR
+	EnableCode : ARRAY [1..MAXFORMINGCODE*MAXFORMING] OF INT;
+	pp : UINT;
+	pf : UINT;
+	c : INT;
+	i : UINT;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i:=1 TO MAXFORMINGCODE*MAXFORMING DO
+	EnableCode[i]:= 0;
+END_FOR
+c:=1; 
+(* Per Tutte le Formature Attive *)
+FOR pf:=1 TO MAXFORMING DO
+	IF Forming^[pf].Enable = 1 THEN
+		(* Per tutti i codici di Pallettizzazione Validi *)
+		FOR pp:=1 TO MAXFORMINGCODE DO
+			IF Forming^[pf].Code[pp] > 0 THEN
+				EnableCode[c] := Forming^[pf].Code[pp];
+				c := c+1;
+			END_IF
+		END_FOR
+	END_IF
+END_FOR
+TFGetEnableCode_Lastre := EnableCode;]]></ST>
+    </Implementation>
+    <LineIds Name="TFGetEnableCode_Lastre">
+      <LineId Id="55" Count="1" />
+      <LineId Id="49" Count="1" />
+      <LineId Id="8" Count="5" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="33" Count="4" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

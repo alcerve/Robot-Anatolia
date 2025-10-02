@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="Configurazione_Impianto" Id="{0754fa64-eabd-4f54-a637-5d279d07d749}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL PERSISTENT
+	(***********************************************************************************************************************************************************************************)
+	(* Configurazioni comuni *)
+	(***********************************************************************************************************************************************************************************)
+	VERSO_PALLETTIZZATORE 				: e_Verso_Pallettizzatore 	:= PALLETTIZZATORE_SX; //Verso Pallettizzatore: stabilito guardando il pallettizzatore con la linea alle spalle
+	TIPO_MAGAZZINO_FALDE  				: e_Tipo_Magazzino_Falde 	:= MAGAZZINO_FALDE_IN_WA; //Identifica il tipo di magazzino falde: MAGAZZINO_FALDE_CENTRO_FISSO = LA Y DI PRELIEVO RIMANE COSTANTE PER OGNI FORMATO,MAGAZZINO_FALDE_CENTRO_VARIABILE=LA Y DI PRELIEVO SI ADATTA AL FORMATO DELLA FALDA
+	(***********************************************************************************************************************************************************************************)
+	(* SOLO PER PALLETTIZZATORE LASTRE *)
+	(***********************************************************************************************************************************************************************************)
+	RIFERIMENTO_POSTAZIONE_WA			: e_RiferimentoPostazione 	:= CENTRALE; (*
+												= 0		Identifica che la fotocellula di presenza della WorkArea è disposta sulla mediana della WorkArea stessa 	
+												= 1 	Identifica che la fotocellula di presenza della WorkArea è disposta nell'angolo a SX della WorkArea stessa *)
+	TIPOLOGIA_FUNZIONAMENTO_MACCHINA	: e_Tipo_Funzionamento := FUNZIONAMENTO_PICKING; (* Identifica la Tipolgia di funzionamento della Macchina *)											
+	(***********************************************************************************************************************************************************************************)
+	(* SOLO PER PALLETTIZZATORE PACCHI *)
+	(***********************************************************************************************************************************************************************************)
+	CATASTA_VUOTI_CON_RISCONTRI_FISSI 	: BOOL 						:= FALSE;	(*Se TRUE Identifica la presenza di riscontri fissi nella catasta dei vuoti (riscontri di centraggio) *)
+	TIPO_RIBALTINO		  				: e_Tipo_Ribaltino 			:= RIBALTINO_DIRETTO;   (* Identifica il tipo di ribaltino (1= RIBALTINO DOPO SQUADRO,2= RIBALTINO DIRETTO) *)
+	NPOSTAZIONE_DOPODELPUNTODIPREL		: UINT 						:= 5;		(* Numero Postazione DOPO del ribaltino ordine crescente di numero *)
+	NPOSTAZIONE_PRIMADELPUNTODIPREL		: UINT 						:= 4;		(* Numero Postazione PRIMA del ribaltino, orfdine decrescente *)
+	NumPostazionePALLET 				: INT; 									(* Indica il numero di postazione dove sono presenti I PALLET VUOTI *)
+	(***********************************************************************************************************************************************************************************)
+	(***********************************************************************************************************************************************************************************)
+	NumPostazioneFALDE 					: UINT := 2; 							(* Indica il numero di postazione dove sono presenti LE FALDE *)
+	NumPostazioneDiPareggiatura			: UINT := 3;							(* Indica il numero di postazione dove è presente la tavola di Pareggiatura *)
+
+	ASSE_DISPOSIZIONE_POSTAZIONI		: e_Disposizione_Postazioni := LUNGO_X; (* Indica la disposizione delle postazioni rispeto gli assi della macchina, serve per capire la ciclica della macchina senza andare in collisione con le postazioni *)
+
+	NUMERO_MACCHINA : UINT := 1; //Indica il numero della macchina in un impianto che usa la stessa HMI per discriminare eventuali pagine o funzioni in comune 
+
+	ORDINE_DISPOSIZIONE_POSTAZIONI : e_OrdinamentoPostazione;// Indica come sono ordinate le postazioni rispetto l'origine della macchina: CRESCENTE o DECRESCENTE
+
+	MAXAREAPRESENT : UINT := 4;//Piazzole di lavoro EFFETTIVAMENTE PRESENTI
+
+	AngoloInclinazioneTavolaPareggiatura : REAL := 7; //Angolo in ° di inclinazione del della tavola di pareggiatura
+
+	NumPostazioneBundle 	: UINT := 8;//Numero della postazione dedicata al bundle	
+	AngoloInclinazioneBundle : REAL := 7; //Angolo in ° di inclinazione del del bundle
+
+	NumPostazioneDeposito 	: UINT := 2;//Numero della postazione dedicata al deposito del materiale per pal picking
+	NumPostazioneSuRulliera	: UINT := 1;//Numero della postazione dedicata al deposito del materiale per pal picking posizionata sulla rulliera
+	
+
+	
+	HMaxScarto 			: REAL := 250;//Altezza massima ammissibile sul pancone degli scarti 
+	CodeWasteSupport 	: INT := 4;	//Codice "Pallet dedicato al supporto degli scarti"
+	
+	TIPOLOGIA_RULLIERA_PRELIEVO : e_Tipologia_Rul_Prel;//Tipologia della ruliera di prelievo
+	HMinFalde 			: REAL := 30;//Altezza minima sotto alla quale si manda in espulsione il pancone delle falde 
+	CodeLayerSupport 	: INT := 15;	//Codice "Pallet dedicato al supporto delle falde"
+	CodeWasteSlab		: INT := 3;//Codice lastra da scarare
+
+	OFFSET_POSTAZIONE_LEGNO  : REAL := 680;//Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_TELAIO : REAL := 2630;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	
+	INGOMBRO_RISCONTRO_BUNDLE : REAL := 200;//Dimensione riscontro FISSO BUNDLE 
+	INGOMBRO_RISCONTRO_FRAME : REAL := 100;//Dimensione riscontro FISSO BUNDLE 
+END_VAR
+
+VAR_GLOBAL CONSTANT
+
+	(***********************************************************************************************************************************************************************************)
+	(* SOLO PER PALLETTIZZATORE LASTRE *)
+	(***********************************************************************************************************************************************************************************)
+	//MAXPICKPOINTSTORE					: INT := 1;	(* Numero massimo di Punti di Prelievo di tipo Magazzino Falda *)
+	//MAXPICKPOINTROLLER					: INT := 2;	(* Numero massimo di Punti di Prelievo di Tipo Rulliera *)
+	(***********************************************************************************************************************************************************************************)
+	(* SOLO PER PALLETTIZZATORE PACCHI *)
+	(***********************************************************************************************************************************************************************************)
+	ALTEZZA_CATASTA_VUOTI				: REAL := 1250;	(* Altezza Catasta Vuoti *)
+	ALTEZZA_CATASTA_FALDE				: REAL := 900;	(* Altezza Catasta Falde *)
+	
+	DISTANZA_FTC_PINZA	: REAL := 650; (* Distanza tra le due fotocellule KEINCE sulla pinza *)
+
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

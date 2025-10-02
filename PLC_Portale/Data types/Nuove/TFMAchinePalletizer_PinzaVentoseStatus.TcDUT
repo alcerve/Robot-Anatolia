@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMAchinePalletizer_PinzaVentoseStatus" Id="{2fc1b973-c227-4170-a3c7-72afb05e02c1}">
+    <Declaration><![CDATA[TYPE TFMAchinePalletizer_PinzaVentoseStatus :
+STRUCT
+
+	Module : TFMachinePalletizer_ModuleState;
+
+	CilindroApertura 			: TF_CylinderState;
+	CilindroSbloccoRotazione 	: TF_CylinderState;
+	AspirazioneFaldaDX 			: TF_CylinderState;
+	AspirazioneFaldaSX 			: TF_CylinderState;
+	AspirazioneDX 				: TF_CylinderState;
+	AspirazioneSX 				: TF_CylinderState;		
+	CilindroTasteggio			: TF_CylinderState;	
+	AspirazioneDX2 				: TF_CylinderState;
+	AspirazioneSX2 				: TF_CylinderState;		
+	CilindroSbloccoBascolante 	: TF_CylinderState;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

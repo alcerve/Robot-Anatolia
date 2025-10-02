@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPickPointStore_State" Id="{b3100a46-05ec-4926-b281-4baf79062452}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPickPointStore_State :
+STRUCT
+	
+	ProdPresence	: INT	:= 0;	(* Stato PickPoint (0=Prodotto Assente, 1=Prodotto Presente *)
+	Code			: INT   := -1;	(* Indica il codice della falda *)
+		
+	XDim			: REAL	:= 0;		(* (mm) Dimensione X Prodotto *)
+	YDim			: REAL	:= 0;		(* (mm) Dimensione Y Prodotto *)
+	ZDim			: REAL	:= 0;		(* (mm) Dimensione Z Prodotto *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

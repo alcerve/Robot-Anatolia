@@ -1,0 +1,1360 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoloTraiettoriaLastre" Id="{2cd96357-7907-4919-9caa-6761bf7d69d1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCalcoloTraiettoriaLastre
+VAR_INPUT
+	Traiettoria : POINTER TO TFTraiettoria;
+	WorkSpace : POINTER TO TFMachinePalletizer_WorkSpace;
+	WorkFootprint : POINTER TO ARRAY [1..MAXFOOTPRINT] OF TFMachinePalletizer_WorkFootprint;
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	WorkPickPointDimension 		: POINTER TO ARRAY [1..MAXPICKPOINT] OF Work_PickPoint_Dimension;
+
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	//ZDim : REAL;
+	
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	//ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	Eseguito : BOOL;
+	
+END_VAR
+VAR
+	f : UINT;
+	wa : UINT;
+	P : UINT;
+	a : uint;
+	
+	WASX : UINT;
+	WADX : UINT;
+	WAPARTENZA : UINT;
+	WADESTINAZIONE : UINT;
+
+	AltezzaDiIngombroArea_CCENTRALE : LREAL; //Altezza ingombro dell'Area nel corridoio CENTRALE
+	AltezzaDiIngombroArea_CESTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio ESTERNO
+	AltezzaDiIngombroArea_CINTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio INTERNO
+	
+	AltezzaDiIngombroIngombri_CCENTRALE : LREAL; //Altezza ingombro dell'Area nel corridoio CENTRALE
+	AltezzaDiIngombroIngombri_CESTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio ESTERNO
+	AltezzaDiIngombroIngombri_CINTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio INTERNO
+	
+
+	
+	
+	AltezzaDiIngombroOstacoli : LREAL;
+	AltezzaDiIngombroPuntiPrelievo : LREAL;
+	AssegnaQuote : BOOL;
+	OffsetSicurezzaConPacco : REAL;
+	AltezzaPinzaDaTastatoreAFlangiaMotore : REAL; // Altezza della pinza dal tastatore al bordo superiore della flangia di supporto motore asse K
+	AltezzaDaPavimentoAPiastraSupportoColonnaCentrale : REAL;
+	LarghezzaPiastraSupportoColonnaCentrale : REAL;
+	Quota_X_CentroColonnaCentrale : REAL;
+	
+	
+
+
+	(*
+	IngombroX_Pos 	: LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroY_Pos 	: LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y
+	IngombroZ_Pos 	: LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Z
+	
+	IngombroX_Neg 	: LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroY_Neg 	: LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y
+	IngombroZ_Neg 	: LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Z
+
+	IngombroY_Tot 	: LREAL;//Ingombro totale In direzione Y
+	*)
+	debug : bool;
+	CalcolaQuote : BOOL;
+	AbilitaValutazioneFISuSingolaWA 		: BOOL;
+	NumeroWAValutazioneFISingolaPostazione 	: UINT;
+	//TFCalcolaNumeroPostazioneDXSX : TFCalcolaNumeroPostazioneDXSX;
+	
+
+END_VAR	]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*(* Calcolo gli ingombri della pinza nelle varie direzioni *)
+TFCalcoliIngombroPinza(Mission := Mission,
+					WorkAreaManager := WorkAreaManager,
+					ModuleAX_J := ModuleAX_J,
+					AngoloRotazioneDestinazionePinza:= Mission^.JPick,
+					IngombroX_Pos := ADR(IngombroX_Pos),
+					IngombroY_Pos := ADR(IngombroY_Pos),
+					IngombroX_Neg := ADR(IngombroX_Neg),
+					IngombroY_Neg := ADR(IngombroY_Neg),
+					IngombroZ_Pos := ADR(IngombroZ_Pos),
+					IngombroZ_Neg := ADR(IngombroZ_Neg),
+					IngombroY_Tot := ADR(IngombroY_Tot),
+					IngombroDestinazioneX_Pos := ADR(IngombroDestinazioneX_Pos),
+					IngombroDestinazioneY_Pos := ADR(IngombroDestinazioneY_Pos),
+					IngombroDestinazioneX_Neg := ADR(IngombroDestinazioneX_Neg),
+					IngombroDestinazioneY_Neg := ADR(IngombroDestinazioneY_Neg),
+					IngombroDestinazioneZ_Pos := ADR(IngombroDestinazioneZ_Pos),
+					IngombroDestinazioneZ_Neg := ADR(IngombroDestinazioneZ_Neg),
+					IngombroMaxX_Pos := ADR(IngombroMaxX_Pos),
+					IngombroMaxY_Pos := ADR(IngombroMaxY_Pos),
+					IngombroMaxX_Neg := ADR(IngombroMaxX_Neg),
+					IngombroMaxY_Neg := ADR(IngombroMaxY_Neg),
+					IngombroMaxZ_Pos := ADR(IngombroMaxZ_Pos),
+					IngombroMaxZ_Neg := ADR(IngombroMaxZ_Neg));*)
+
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP:
+		CalcolaQuote := TRUE;
+	
+	WAMANAGER_CICLO_RIPOSO_INIT:
+		CalcolaQuote := TRUE;
+
+{Region "Ciclo Riposo"}		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+
+		IF CalcolaQuote THEN
+			CalcolaQuote := FALSE;
+			(*QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= 0;
+			AltezzaDiIngombroPuntiPrelievo := 0;
+			AltezzaDiIngombroIngombri_CCENTRALE := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO
+				AltezzaDiIngombroIngombri_CCENTRALE := MAX(AltezzaDiIngombroIngombri_CCENTRALE,WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + IngombroMaxZ_Neg);
+			END_FOR
+
+			(* Valuto I Pick-Point *)
+			FOR P:=1 TO MAXPICKPOINT DO	
+				AltezzaDiIngombroPuntiPrelievo := MAX(AltezzaDiIngombroPuntiPrelievo,WorkPickPointDimension^[P].Zdim,WorkPickPoint^[P].ZRaise,WorkPickPoint^[P].Z);
+			END_FOR
+
+			(* Valuto le wa *)			
+			CASE ASSE_DISPOSIZIONE_POSTAZIONI OF
+				
+				LUNGO_X:
+						CalcolaIngombroWALungoX_Pal();
+				
+				LUNGO_Y:
+						CalcolaIngombroWALungoY_Pal();
+			
+			END_CASE
+
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO := MAX(AltezzaDiIngombroArea_CESTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO := MAX(AltezzaDiIngombroArea_CINTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) +IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+			*)
+			(* Valuto se gli assi sono in finestra di prelievo, in questo modo valuto nel ciclo se devo andare fuori ingombro oppure posso partire da dove sono *)
+			AsseXInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.XPick - 50) AND (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <=  Mission^.XPick + 50) THEN
+				AsseXInFinestraDiPrelievo := TRUE;
+			END_IF
+			AsseYInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos  >=  Mission^.YPick - 50) AND (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.SetPos <= Mission^.YPick + 50) THEN
+				AsseYInFinestraDiPrelievo := TRUE;
+			END_IF
+			(* Valuto la rotazione della pinza *)
+			AsseJInFinestraDiPrelievo := FALSE;
+			IF ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.JPick - 5 AND ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos <= Mission^.JPick + 5 THEN
+				AsseJInFinestraDiPrelievo := TRUE;
+			END_IF
+			
+		END_IF
+
+		//QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+		//QuotaFuoriIngombro_Z_ConPEZZO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Carico;
+
+
+	WAMANAGER_CICLO_RIPOSO_END:
+		CalcolaQuote := TRUE;
+{Endregion}
+
+{Region "CCLO LASTRA PP"}
+	WAMANAGER_CICLO_LASTRA_PP_INIT:
+		CalcolaQuote := TRUE;
+
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_RUN:
+		
+		IF CalcolaQuote THEN
+			(*CalcolaQuote := FALSE;
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= 0;
+			AltezzaDiIngombroPuntiPrelievo := 0;
+			AltezzaDiIngombroIngombri_CCENTRALE := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO
+				AltezzaDiIngombroIngombri_CCENTRALE := MAX(AltezzaDiIngombroIngombri_CCENTRALE,WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + IngombroMaxZ_Neg);
+			END_FOR
+
+			(* Valuto I Pick-Point *)
+			FOR P:=1 TO MAXPICKPOINT DO	
+				AltezzaDiIngombroPuntiPrelievo := MAX(AltezzaDiIngombroPuntiPrelievo,WorkPickPointDimension^[P].Zdim,WorkPickPoint^[P].ZRaise,WorkPickPoint^[P].Z);
+			END_FOR
+			//Per la postazione 2 valuto il FI solo della postazione stessa perchè non è in interferenza con la postazione n°1
+			AbilitaValutazioneFISuSingolaWA 		:= FALSE;
+			NumeroWAValutazioneFISingolaPostazione 	:= 0;
+			//IF Mission^.PPick = 2 THEN
+			//	AbilitaValutazioneFISuSingolaWA 		:= TRUE;
+			//	NumeroWAValutazioneFISingolaPostazione 	:= 2;
+			//END_IF
+
+
+			(* Valuto le wa *)			
+			CASE ASSE_DISPOSIZIONE_POSTAZIONI OF
+				
+				LUNGO_X:
+						CalcolaIngombroWALungoX_Pal();
+				
+				LUNGO_Y:
+						CalcolaIngombroWALungoY_Pal();
+			
+			END_CASE
+	
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO := MAX(AltezzaDiIngombroArea_CESTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO := MAX(AltezzaDiIngombroArea_CINTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) +IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+			*)	
+			(* Valuto se gli assi sono in finestra di prelievo, in questo modo valuto nel ciclo se devo andare fuori ingombro oppure posso partire da dove sono *)
+			AsseXInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.XPick - 50) AND (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <=  Mission^.XPick + 50) THEN
+				AsseXInFinestraDiPrelievo := TRUE;
+			END_IF
+			AsseYInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos  >=  Mission^.YPick - 50) AND (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos <= Mission^.YPick + 50) THEN
+				AsseYInFinestraDiPrelievo := TRUE;
+			END_IF
+			(* Valuto la rotazione della pinza *)
+			AsseJInFinestraDiPrelievo := FALSE;
+			IF ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.JPick - 5 AND ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos <= Mission^.JPick + 5 THEN
+				AsseJInFinestraDiPrelievo := TRUE;
+			END_IF
+	
+		END_IF //riferito all'IF dello stato della missione	
+			
+		//QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+		//QuotaFuoriIngombro_Z_ConPEZZO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Carico;
+
+		Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Z := Mission^.ZPick + OffsetDistacco.Lastra.Z;
+		
+		
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_END:
+		CalcolaQuote := TRUE;
+
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_RUN:
+
+		IF CalcolaQuote THEN
+			(*CalcolaQuote := FALSE;
+
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO 	:= 0;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO 	:= 0;
+			AltezzaDiIngombroPuntiPrelievo := 0;
+			AltezzaDiIngombroIngombri_CCENTRALE := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO
+				AltezzaDiIngombroIngombri_CCENTRALE := MAX(AltezzaDiIngombroIngombri_CCENTRALE,WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + IngombroMaxZ_Neg);
+			END_FOR
+
+			(* Valuto I Pick-Point *)
+			FOR P:=1 TO MAXPICKPOINT DO	
+				AltezzaDiIngombroPuntiPrelievo := MAX(AltezzaDiIngombroPuntiPrelievo,WorkPickPointDimension^[P].Zdim,WorkPickPoint^[P].ZRaise,WorkPickPoint^[P].Z);
+			END_FOR
+
+			//Per la postazione 2 valuto il FI solo della postazione stessa perchè non è in interferenza con la postazione n°1
+			AbilitaValutazioneFISuSingolaWA 		:= FALSE;
+			NumeroWAValutazioneFISingolaPostazione 	:= 0;
+			IF Mission^.PPick = 2 THEN
+				AbilitaValutazioneFISuSingolaWA 		:= TRUE;
+				NumeroWAValutazioneFISingolaPostazione 	:= 2;
+			END_IF
+			(* Valuto le wa *)			
+			CASE ASSE_DISPOSIZIONE_POSTAZIONI OF
+				
+				LUNGO_X:
+						CalcolaIngombroWALungoX_Pal();
+				
+				LUNGO_Y:
+						CalcolaIngombroWALungoY_Pal();
+			
+			END_CASE
+
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CESTERNO := MAX(AltezzaDiIngombroArea_CESTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) + IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO_CINTERNO := MAX(AltezzaDiIngombroArea_CINTERNO,AltezzaDiIngombroIngombri_CCENTRALE,AltezzaDiIngombroPuntiPrelievo) +IngombroMaxZ_Neg;
+			QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+	
+			(* Valuto se gli assi sono in finestra di prelievo, in questo modo valuto nel ciclo se devo andare fuori ingombro oppure posso partire da dove sono *)
+			AsseXInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.XPick - 50) AND (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <=  Mission^.XPick + 50) THEN
+				AsseXInFinestraDiPrelievo := TRUE;
+			END_IF
+			AsseYInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos  >=  Mission^.YPick - 50) AND (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.SetPos <= Mission^.YPick + 50) THEN
+				AsseYInFinestraDiPrelievo := TRUE;
+			END_IF
+			(* Valuto la rotazione della pinza *)
+			AsseJInFinestraDiPrelievo := FALSE;
+			IF ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.JPick - 5 AND ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos <= Mission^.JPick + 5 THEN
+				AsseJInFinestraDiPrelievo := TRUE;
+			END_IF
+			FuoriIngombroXNecessario := NOT AsseXInFinestraDiPrelievo;
+			FuoriIngombroYNecessario := NOT AsseYInFinestraDiPrelievo;*)
+		END_IF
+
+		//QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+		//QuotaFuoriIngombro_Z_ConPEZZO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Carico;
+	
+		Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Z := Mission^.ZPick + OffsetDistacco.Lastra.Z;
+		
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_END:
+		CalcolaQuote := TRUE;
+{Endregion}
+
+{Region "CCLO LASTRA WA"}
+	WAMANAGER_CICLO_LASTRA_WA_INIT:
+		CalcolaQuote := TRUE;
+
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_RUN:
+		
+		IF CalcolaQuote THEN
+			(* Valuto se gli assi sono in finestra di prelievo, in questo modo valuto nel ciclo se devo andare fuori ingombro oppure posso partire da dove sono *)
+			AsseXInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.XPick - 50) AND (ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <=  Mission^.XPick + 50) THEN
+				AsseXInFinestraDiPrelievo := TRUE;
+			END_IF
+			AsseYInFinestraDiPrelievo := FALSE;
+			IF (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos  >=  Mission^.YPick - 50) AND (ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos <= Mission^.YPick + 50) THEN
+				AsseYInFinestraDiPrelievo := TRUE;
+			END_IF
+			(* Valuto la rotazione della pinza *)
+			AsseJInFinestraDiPrelievo := FALSE;
+			IF ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos >= Mission^.JPick - 5 AND ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos <= Mission^.JPick + 5 THEN
+				AsseJInFinestraDiPrelievo := TRUE;
+			END_IF
+			
+			Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Z := Mission^.ZPick + OffsetDistacco.Falda.Z;
+		END_IF
+
+
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_END:
+		CalcolaQuote := TRUE;
+
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN:
+
+		IF CalcolaQuote THEN
+			Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Z := Mission^.ZPick + OffsetDistacco.Falda.Z;
+		
+		
+			IF Mission^.JPlace >= 85 AND Mission^.JPlace <= 95 AND HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio THEN
+				Mission^.ZPlace	:= Mission^.ZPlace -100;
+			ELSE
+				Mission^.ZPlace := Mission^.ZPlace;
+			END_IF
+			CalcolaQuote := FALSE;
+		END_IF		
+		//QuotaFuoriIngombro_Z_AVUOTO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Avuoto;
+		//QuotaFuoriIngombro_Z_ConPEZZO := MAX(QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE,QuotaFuoriIngombro_Z_AVUOTO_CESTERNO,QuotaFuoriIngombro_Z_AVUOTO_CINTERNO)+OffsetSicurezza.Z.Carico;
+	
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_END:
+		CalcolaQuote := TRUE;
+{Endregion}
+
+END_CASE
+
+(* Punto di approccio iniziale - Necessario per lo start lenta *)
+Traiettoria^.PuntoDiApproccioStartPoint.X := Mission^.XPickApproach;
+Traiettoria^.PuntoDiApproccioStartPoint.Y := Mission^.YPickApproach;
+Traiettoria^.PuntoDiApproccioStartPoint.Z := Mission^.ZPickApproach;
+Traiettoria^.PuntoDiApproccioStartPoint.J := Mission^.JPickApproach;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+(* Punto iniziale - Cincidente con il punto di prelievo *)
+Traiettoria^.StartPoint.X := Mission^.XPick;
+Traiettoria^.StartPoint.Y := Mission^.YPick;
+Traiettoria^.StartPoint.Z := Mission^.ZPick;// - 100;
+Traiettoria^.StartPoint.J := Mission^.JPick;
+
+Traiettoria^.PuntoDiPostPosizionamentoStartPoint.X := Mission^.XPick;
+IF Mission^.JPick > 90 THEN		
+	Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Y := Mission^.YPick + OffsetDistacco.Lastra.Y;
+ELSIF Mission^.JPick < 90 THEN	
+	//Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Y := Mission^.YPick - OffsetDistacco.Lastra.Y;
+	Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Y := Mission^.YPick - OffsetDistacco.Lastra.Y;
+END_IF	
+ 
+Traiettoria^.PuntoDiPostPosizionamentoStartPoint.Z := Mission^.ZPick + OffsetDistacco.Lastra.Z;
+Traiettoria^.PuntoDiPostPosizionamentoStartPoint.J := Mission^.JPick;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(* Punto di approccio finale :
+- nel caso di deposito falda su catasta con apprendimento, la quota Z di approccio coincide con la quota di start lenta
+- nel caso di deposito falda su catasta SENZA apprendimento, la quota Z di approccio coincide con la quota di start lenta per evitare che se c'è un pallet fuori sagoma, evitiamo collisioni brusche della pinza*)
+
+Traiettoria^.PuntoDiApproccioEndPoint.X := Mission^.XPlaceApproach;
+Traiettoria^.PuntoDiApproccioEndPoint.Y := Mission^.YPlaceApproach;
+Traiettoria^.PuntoDiApproccioEndPoint.Z := Mission^.ZPlaceApproach;
+Traiettoria^.PuntoDiApproccioEndPoint.J := Mission^.JPlaceApproach;
+
+Traiettoria^.PuntoDiApproccioSecondarioEndPoint.X := Mission^.XPlaceApproachSecondario;
+Traiettoria^.PuntoDiApproccioSecondarioEndPoint.Y := Mission^.YPlaceApproachSecondario;
+Traiettoria^.PuntoDiApproccioSecondarioEndPoint.Z := Mission^.ZPlaceApproachSecondario;
+Traiettoria^.PuntoDiApproccioSecondarioEndPoint.J := Mission^.JPlaceApproachSecondario;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(* Punto finale*)
+Traiettoria^.EndPoint.X := Mission^.XPlace;
+Traiettoria^.EndPoint.Y := Mission^.YPlace;
+Traiettoria^.EndPoint.Z := Mission^.ZPlace;
+Traiettoria^.EndPoint.J := Mission^.JPlace;
+
+Traiettoria^.EndPointSecondario.X := Mission^.XPlaceSecondario;
+Traiettoria^.EndPointSecondario.Y := Mission^.YPlaceSecondario;
+Traiettoria^.EndPointSecondario.Z := Mission^.ZPlaceSecondario;
+Traiettoria^.EndPointSecondario.J := Mission^.JPlaceSecondario;
+
+//
+Traiettoria^.PassModeGlobalEnable := AbilitazionePassModeGlobale;
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <Action Name="CalcolaIngombroWALungoX" Id="{3442fa2b-4b69-4755-928b-08810a891885}">
+      <Implementation>
+        <ST><![CDATA[/////////////////////////////////////////////////////////////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//////////////////////////////
+(*TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+								WorkArea:=WorkArea,
+								DirezioneAsseX_Positiva:= TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick),
+								NPostazioneDX=>WADX,
+								NPostazioneSX=>WASX,
+								PostazionePartenza=>WAPARTENZA);*)
+								
+AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE															
+END_FOR	
+		
+(*ELSE
+	(*TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+									WorkArea		:= WorkArea,
+									DirezioneAsseX_Positiva:=FALSE,
+									NPostazioneDX	=> WADX,
+									NPostazioneSX	=> WASX,
+									PostazionePartenza=>WAPARTENZA);*)
+			
+	FOR wa := MAXAREA TO 1 BY -1 DO
+		AltezzaDiIngombroArea_CCENTRALE := 0;
+		IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+			AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].H;
+		ELSE
+			AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].HPL;
+		END_IF
+		IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto  THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+		END_IF
+	END_FOR			
+		(* Valuto I Pick-Point *)
+		(*FOR P:=1 TO MAXPICKPOINT DO
+			AltezzaDiIngombroPuntiPrelievo := 0;
+			IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+				AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+			END_IF
+			IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+				AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+			END_IF
+			IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+				AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+			END_IF
+			IF WAPARTENZA = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN //Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+				IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+					QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			ELSE		//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+				IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+					QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+				END_IF
+			END_IF
+		END_FOR*)
+	//END_IF
+	IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoRiposo THEN
+		QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+	ELSE
+		QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+	END_IF
+
+
+
+END_IF*)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcolaIngombroWALungoX_Pal" Id="{dcb24656-9119-428a-b8e5-45f4645f0a37}">
+      <Implementation>
+        <ST><![CDATA[								
+AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+						
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															WorkAreaState^[wa].Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE															
+END_FOR	
+		]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcolaIngombroWALungoY" Id="{c2d51ba4-24ec-49c0-a693-8d44eac8a2d5}">
+      <Implementation>
+        <ST><![CDATA[AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	IF AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		wa := NumeroWAValutazioneFISingolaPostazione; 	
+	END_IF
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+				
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;				
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;	
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE	
+	IF 	AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		RETURN; 	
+	END_IF														
+END_FOR	
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CalcolaIngombroWALungoY_Pal" Id="{8db16a95-82d4-46f4-afbb-25e145dd9b0d}">
+      <Implementation>
+        <ST><![CDATA[AltezzaDiIngombroArea_CCENTRALE := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+AltezzaDiIngombroArea_CESTERNO := 0;
+FOR wa := 1 TO MAXAREAPRESENT DO
+	IF AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		wa := NumeroWAValutazioneFISingolaPostazione; 	
+	END_IF
+	CASE WorkArea^[wa].Typology OF
+		TYPOLOGY_PALLET:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+				
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;				
+	
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+					
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+						
+		TYPOLOGY_LAYER:
+			AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE,
+													WorkArea^[wa].Z,
+													WorkAreaState^[wa].H,
+													WorkAreaState^[wa].HPL);
+
+			AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+			AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+		
+		TYPOLOGY_EXTERNAL_DEPPREL:
+			AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+					
+		TYPOLOGY_OVER_TRANSPORT:
+			CASE WorkAreaState^[wa].TransportState.Supporto.Tipologia OF
+					
+				PALLET_STANDARD:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+				PALLET_ACCOPPIATI:
+
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;	
+					
+				CASSA_STANDARD:
+									
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z +  MAX(//WorkArea^[wa].Z,
+															WorkAreaState^[wa].H,
+															WorkAreaState^[wa].HPL,
+															WorkAreaState^[wa].TransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim));
+
+					AltezzaDiIngombroArea_CESTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CCENTRALE;
+					
+					
+				CAVALLETTO:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				BUNDLE:
+					AltezzaDiIngombroArea_CCENTRALE := MAX(AltezzaDiIngombroArea_CCENTRALE, 
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CESTERNO	:= MAX(AltezzaDiIngombroArea_CESTERNO,
+															WorkArea^[wa].Z,
+															//WorkAreaState^[wa].WorkPickPointTransportState.Supporto.HMAX,
+															WorkAreaState^[wa].TransportState.Supporto.ZDim);
+
+					AltezzaDiIngombroArea_CINTERNO	:= AltezzaDiIngombroArea_CESTERNO;
+				
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;;//Fisso l'altezza ad una quota di default
+			END_CASE
+	END_CASE	
+	IF 	AbilitaValutazioneFISuSingolaWA AND NumeroWAValutazioneFISingolaPostazione > 0 THEN
+		RETURN; 	
+	END_IF														
+END_FOR	
+]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="TFCalcoloTraiettoriaLastre">
+      <LineId Id="15191" Count="36" />
+      <LineId Id="16269" Count="43" />
+      <LineId Id="15272" Count="3" />
+      <LineId Id="16267" Count="1" />
+      <LineId Id="15278" Count="182" />
+      <LineId Id="16404" Count="0" />
+      <LineId Id="16408" Count="3" />
+      <LineId Id="16405" Count="0" />
+      <LineId Id="15462" Count="0" />
+      <LineId Id="16493" Count="0" />
+      <LineId Id="16412" Count="0" />
+      <LineId Id="15463" Count="4" />
+      <LineId Id="15876" Count="1" />
+      <LineId Id="15879" Count="3" />
+      <LineId Id="15884" Count="15" />
+      <LineId Id="16573" Count="0" />
+      <LineId Id="15900" Count="40" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoloTraiettoriaLastre.CalcolaIngombroWALungoX">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="6" />
+      <LineId Id="245" Count="2" />
+      <LineId Id="12" Count="3" />
+      <LineId Id="203" Count="3" />
+      <LineId Id="266" Count="5" />
+      <LineId Id="211" Count="2" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="280" Count="10" />
+      <LineId Id="279" Count="0" />
+      <LineId Id="214" Count="3" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="219" Count="19" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="305" Count="10" />
+      <LineId Id="304" Count="0" />
+      <LineId Id="47" Count="5" />
+      <LineId Id="239" Count="5" />
+      <LineId Id="60" Count="4" />
+      <LineId Id="129" Count="3" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="272" Count="5" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="302" Count="0" />
+      <LineId Id="291" Count="9" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="260" Count="5" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="170" Count="1" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="151" Count="1" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="182" Count="1" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="199" Count="0" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="318" Count="10" />
+      <LineId Id="317" Count="0" />
+      <LineId Id="161" Count="2" />
+      <LineId Id="126" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="73" Count="51" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoloTraiettoriaLastre.CalcolaIngombroWALungoX_Pal">
+      <LineId Id="10" Count="0" />
+      <LineId Id="245" Count="2" />
+      <LineId Id="12" Count="3" />
+      <LineId Id="203" Count="3" />
+      <LineId Id="266" Count="5" />
+      <LineId Id="211" Count="2" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="280" Count="10" />
+      <LineId Id="279" Count="0" />
+      <LineId Id="214" Count="3" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="219" Count="19" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="315" Count="0" />
+      <LineId Id="303" Count="11" />
+      <LineId Id="47" Count="5" />
+      <LineId Id="239" Count="5" />
+      <LineId Id="60" Count="4" />
+      <LineId Id="129" Count="3" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="272" Count="5" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="302" Count="0" />
+      <LineId Id="291" Count="9" />
+      <LineId Id="167" Count="0" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="260" Count="5" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="170" Count="1" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="151" Count="1" />
+      <LineId Id="180" Count="0" />
+      <LineId Id="200" Count="0" />
+      <LineId Id="182" Count="1" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="199" Count="0" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="318" Count="10" />
+      <LineId Id="317" Count="0" />
+      <LineId Id="161" Count="2" />
+      <LineId Id="126" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="73" Count="1" />
+    </LineIds>
+    <LineIds Name="TFCalcoloTraiettoriaLastre.CalcolaIngombroWALungoY">
+      <LineId Id="380" Count="3" />
+      <LineId Id="540" Count="1" />
+      <LineId Id="384" Count="6" />
+      <LineId Id="504" Count="5" />
+      <LineId Id="395" Count="3" />
+      <LineId Id="518" Count="9" />
+      <LineId Id="517" Count="0" />
+      <LineId Id="516" Count="0" />
+      <LineId Id="399" Count="1" />
+      <LineId Id="484" Count="5" />
+      <LineId Id="407" Count="16" />
+      <LineId Id="545" Count="0" />
+      <LineId Id="557" Count="0" />
+      <LineId Id="546" Count="10" />
+      <LineId Id="424" Count="21" />
+      <LineId Id="510" Count="5" />
+      <LineId Id="450" Count="2" />
+      <LineId Id="528" Count="0" />
+      <LineId Id="530" Count="9" />
+      <LineId Id="529" Count="0" />
+      <LineId Id="453" Count="2" />
+      <LineId Id="490" Count="5" />
+      <LineId Id="462" Count="16" />
+      <LineId Id="570" Count="0" />
+      <LineId Id="558" Count="11" />
+      <LineId Id="479" Count="4" />
+      <LineId Id="543" Count="1" />
+      <LineId Id="542" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="TFCalcoloTraiettoriaLastre.CalcolaIngombroWALungoY_Pal">
+      <LineId Id="380" Count="3" />
+      <LineId Id="540" Count="1" />
+      <LineId Id="384" Count="6" />
+      <LineId Id="504" Count="5" />
+      <LineId Id="395" Count="3" />
+      <LineId Id="518" Count="9" />
+      <LineId Id="517" Count="0" />
+      <LineId Id="516" Count="0" />
+      <LineId Id="399" Count="1" />
+      <LineId Id="484" Count="5" />
+      <LineId Id="407" Count="16" />
+      <LineId Id="545" Count="0" />
+      <LineId Id="557" Count="0" />
+      <LineId Id="546" Count="10" />
+      <LineId Id="424" Count="21" />
+      <LineId Id="510" Count="5" />
+      <LineId Id="450" Count="2" />
+      <LineId Id="528" Count="0" />
+      <LineId Id="530" Count="9" />
+      <LineId Id="529" Count="0" />
+      <LineId Id="453" Count="2" />
+      <LineId Id="490" Count="5" />
+      <LineId Id="462" Count="16" />
+      <LineId Id="558" Count="0" />
+      <LineId Id="570" Count="0" />
+      <LineId Id="559" Count="10" />
+      <LineId Id="479" Count="4" />
+      <LineId Id="543" Count="1" />
+      <LineId Id="542" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

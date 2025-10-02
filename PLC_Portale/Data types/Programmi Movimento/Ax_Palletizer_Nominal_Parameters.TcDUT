@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Ax_Palletizer_Nominal_Parameters" Id="{94ffb4bb-fecc-453b-8758-3408725423c1}">
+    <Declaration><![CDATA[TYPE Ax_Palletizer_Nominal_Parameters :
+STRUCT
+	ReferenceVelocity 		: REAL := 0.0;
+	MaximumAcceleration 	: REAL := 0.0;
+	MaximumDeceleration 	: REAL := 0.0;
+	DefaultJerk 			: REAL := 0.0;
+	DefaultTorque 			: REAL := 100.0;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

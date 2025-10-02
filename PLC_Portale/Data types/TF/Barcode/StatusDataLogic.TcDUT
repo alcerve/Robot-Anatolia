@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="StatusDataLogic" Id="{84db95ff-bb18-4dde-af6b-6887c9b093a5}">
+    <Declaration><![CDATA[TYPE StatusDataLogic :
+STRUCT
+	BarcodeRunMode 	: BOOL; //Barcode in Run Mode
+	BarcodeReadRun 	: BOOL; //Barcode in lettura
+	ReadDone 		: BOOL; //Lettura terminata
+	DataOk 			: BOOL; //Dato valido
+	DataMultiple 	: BOOL; //Dato Multiplo Letto
+	DataNotRead		: BOOL; //Dato non letto
+	ErrorComunication : bool;//Errore comunicazione con barcode/Malfunzionamento dispositivo
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

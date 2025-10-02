@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFAxCentratoreManCmd" Id="{5ff4471b-3ae5-460d-8261-43bb1efa83e3}">
+    <Declaration><![CDATA[TYPE TFAxCentratoreManCmd :
+STRUCT
+	
+	Home	: BOOL	:= FALSE;	(* Home (Ricerca Posizione di Home) *)
+	JogPos	: BOOL	:= FALSE;	(* Jog + *)
+	JogNeg	: BOOL	:= FALSE;	(* Jog - *)
+	JogFast	: BOOL	:= FALSE;	(* Jog +/- in Fast Speed *)
+	
+	EseguiApertura 		: BOOL := FALSE; (* Porta il centratore tutto aperto *)
+	EseguiCentratura 	: BOOL := FALSE; (* Esegue il ciclo di centratura *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

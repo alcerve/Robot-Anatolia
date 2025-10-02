@@ -1,0 +1,1284 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFModulePalletizer_Pinza_mag" Id="{a01c6770-8d6e-40a0-84eb-4ca0b2b11347}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFModulePalletizer_Pinza_mag
+VAR_INPUT
+	Cmd 	: CommandBuffer;
+	Cfg 	: Config;
+	IN 		: TFMchinePalletizer_PinzaVentose_IN;
+	IN_Ax 	: Module_Palletizer_Ax_IN;
+	
+	AspirazioneDX1 : POINTER TO TF_VacumOVEM;
+	AspirazioneSX1 : POINTER TO TF_VacumOVEM;
+	AspirazioneDX2 : POINTER TO TF_VacumOVEM;
+	AspirazioneSX2 : POINTER TO TF_VacumOVEM;
+
+	CilindroSbloccoRotazione 	: POINTER TO SC_Cylinder;
+	CilindroSbloccoBascolante 	: POINTER TO SC_Cylinder;
+	CilindroApertura 			: POINTER TO DC_Cylinder;
+	
+	ModuleJ : POINTER TO TFModulePalletizer_Ax;
+	ModuleK : POINTER TO TFModulePalletizer_Ax;
+
+	ManCmd 				: POINTER TO TFMachinePalletizer_PinzaVentoseManCmd;
+	ElementoInPrelievo 	: TFMachinePalletizer_PlaceElement;
+	DataElement			: TFMachinePalletizer_DataElement; (* Struttura dati che la macchina acquisisce/trasferisce in fase di pallettizzazione/depallettizazione *)
+	PrelievoSuMagazino : BOOL;//indica che il prelievo è su cavallina
+
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	AbilitazioneSbloccoRotazione 	: BOOL;//Abilitazione sblocco rotazione pinza
+	AbilitazioneSbloccoBascolante 	: BOOL;//Abilitazione sblocco bascolante pinza	
+	IN_SimulazioneSenzaHW : BOOL;
+	AbilitaAperturaAutomaticaPinza : BOOL;//Abilitazione apertura automatica pinza
+END_VAR
+VAR_OUTPUT
+	CmdExe 		: CommandExe;
+	CmdExd 		: CommandExe;
+	CmdNext 	: Command;
+	CmdLog 		: CommandLog;
+	ProgramLog 	: ProgrammaLog; 
+	State 		: State;
+	StateLog 	: StateLog;
+	Error 		: Error;
+	ErrorLog 	: ErrorLog;
+	Warning 	: Warning;
+	WarningLog	: WarningLog;
+	OUT 		: TFMachinePalletizer_PinzaVentose_OUT;
+	StatoPinza 	: TFMachinePalletizer_PinzaState;
+
+END_VAR
+VAR
+	Power 	: UINT;
+	Init 	: BOOL;
+	Timer 	: REAL;
+	Timeout : REAL;
+	TimerAspirazione 	: REAL;
+	ParametersArray 	: ParametersArray;
+	MAN_Actuator 		: UINT;
+	MAN_Cmd 			: UINT;
+
+	DistanzaFTC_J0 		: REAL;
+	DistanzaFTC_J180 	: REAL;
+	DistanzaFTC_K0 		: REAL;
+	DistanzaFTC_K180 	: REAL;
+
+	TimerPresaPiastrella : REAL;		
+	DisattivazioneTotaleAspirazioni : bool;
+	ByPassAttesaDistacco : BOOL;
+
+	DistanzaJForzata : REAL;
+	DistanzaKForzata : REAL;
+
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT Init THEN
+	TFCommandBufferClear(ADR(Cmd));
+	TFCommandClear(ADR(CmdNext));
+	TFCommandExeClear(ADR(CmdExe));
+	TFStateUpdate(ADR(State),StateNOP);
+	TFErrorClear(ADR(Error));
+	TFWarningClear(ADR(Warning));
+	Init := TRUE;
+END_IF
+
+(* Generic Timer - Add here all your Timers *)
+TFTimerCall(ADR(Timer),Cfg.TimeBase);
+TFTimerCall(ADR(Timeout),Cfg.TimeBase);
+TFTimerCall(ADR(TimerPresaPiastrella),Cfg.TimeBase);
+TFTimerCall(ADR(TimerAspirazione),Cfg.TimeBase);
+(* External To Buffered Command *)
+TFCommandToNext(ADR(Cmd),ADR(CmdNext),ADR(CmdExe),ADR(Cfg),ADR(Error),ADR(ErrorLog),ADR(State));
+
+(* Buffered To Exe Command *)
+TFCommandToExecution(ADR(CmdNext),ADR(CmdExe),ADR(Error),ADR(ErrorLog),ADR(State),ADR(CmdLog));
+
+(* Chiamata FB *)
+AspirazioneDX1^();
+AspirazioneSX1^();
+AspirazioneDX2^();
+AspirazioneSX2^();
+CilindroSbloccoRotazione^();
+CilindroSbloccoBascolante^();
+
+DistanzaFTC_J0 		:= Keyence_LRTB2000C(IN.InKeyence_J0_Byte0,IN.InKeyence_J0_Byte1);
+DistanzaFTC_J180	:= Keyence_LRTB2000C(IN.InKeyence_J180_Byte0,IN.InKeyence_J180_Byte1);
+DistanzaFTC_K0 		:= Keyence_LRTB2000C(IN.InKeyence_K0_Byte0,IN.InKeyence_K0_Byte1);
+DistanzaFTC_K180	:= Keyence_LRTB2000C(IN.InKeyence_K180_Byte0,IN.InKeyence_K180_Byte1);
+
+OUT.DistanzaFTC_J0 		:= DistanzaFTC_J0; 		
+OUT.DistanzaFTC_J180	:= DistanzaFTC_J180;	
+OUT.DistanzaFTC_K0 		:= DistanzaFTC_K0; 		
+OUT.DistanzaFTC_K180   	:= DistanzaFTC_K180; 
+
+DistanzaJForzata:=0;
+IF ABS(DistanzaFTC_J0-DistanzaFTC_J180) > 30 THEN
+	DistanzaJForzata := MIN(DistanzaFTC_J0,DistanzaFTC_J180);
+END_IF
+DistanzaKForzata:=0;
+IF ABS(DistanzaFTC_K0-DistanzaFTC_K180) > 30 THEN
+	DistanzaKForzata := MIN(DistanzaFTC_K0,DistanzaFTC_K180);
+END_IF
+OUT.DistanzaMedia := (DistanzaFTC_J0 + 	
+                 DistanzaFTC_J180 +
+                 DistanzaFTC_K0 + 	
+                 DistanzaFTC_K180)/4;
+				 
+IF DistanzaKForzata > 0 THEN
+	OUT.DistanzaMedia := (DistanzaJForzata +
+                 DistanzaFTC_K0 + 	
+                 DistanzaFTC_K180)/3;
+END_IF
+IF DistanzaJForzata > 0 THEN
+	OUT.DistanzaMedia := (DistanzaFTC_J0 + 	
+                 DistanzaFTC_J180 +
+                 DistanzaKForzata)/3;
+END_IF
+IF DistanzaKForzata > 0 AND DistanzaJForzata > 0 THEN
+	OUT.DistanzaMedia := (DistanzaJForzata +
+                 DistanzaKForzata)/2;
+END_IF
+
+(* Exe Command *)
+CASE CmdExe.Code OF
+
+	(* ******************************************************************************************************** *)
+	(* Nop  *)
+	(* ******************************************************************************************************** *)
+	CmdNOP:	;			
+	(* ******************************************************************************************************** *)
+	(* Stop *)
+	(* ******************************************************************************************************** *)
+	CmdSTOP:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateSTOP_RUN);
+				TFTimerSet(ADR(Timeout),500,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+
+			(* Case 1 - Clear All Commands*)
+			1:	
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateSTOP_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+	
+	(* ******************************************************************************************************** *)
+	(* Error Reset *)
+	(* ******************************************************************************************************** *)
+	CmdRESET:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateRESET_RUN);
+				TFTimerSet(ADR(Timeout),2000+100,TRUE);
+				TFTimerSet(ADR(Timer),2000,TRUE);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_JMP);
+
+			
+			(* Case 1 - RESET COMANDI*)
+			1: 
+				TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 2 - Invio comando di reset *)
+			2:
+				AspirazioneDX1^.Command^.ErrorReset 				:= TRUE;	
+				AspirazioneSX1^.Command^.ErrorReset 				:= TRUE;	
+				AspirazioneDX2^.Command^.ErrorReset 				:= TRUE;	
+				AspirazioneSX2^.Command^.ErrorReset 				:= TRUE;	
+				CilindroSbloccoRotazione^.Command.ErrorReset 	:= TRUE;	
+				CilindroSbloccoBascolante^.Command.ErrorReset 	:= TRUE;	
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+			
+			(* Case 3 - Invio comando di reset *)
+			3:
+				IF (AspirazioneDX1^.Status.ErrorResetDone AND AspirazioneDX2^.Status.ErrorResetDone AND
+					AspirazioneSX1^.Status.ErrorResetDone AND AspirazioneSX2^.Status.ErrorResetDone AND
+					CilindroSbloccoRotazione^.Status.ErrorResetDone AND CilindroSbloccoBascolante^.Status.ErrorResetDone) OR IN_SimulazioneSenzaHW THEN					
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFCommandCase(ADR(CmdExe),99,CommandCase_JMP);
+				ELSIF TFTimerDone(ADR(Timer)) THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrTORESET,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 99 *)
+			99:	TFErrorClear(ADR(Error));
+				TFWarningClear(ADR(Warning));
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateRESET_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+
+		(*IF AspirazioneDX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneSX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF CilindroApertura^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,CilindroApertura^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneFaldaDX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneFaldaDX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneFaldaSX^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinza(AspirazioneDX,AspirazioneSX,CilindroApertura,CilindroSbloccoRotazione,AspirazioneFaldaDX,AspirazioneFaldaSX,CilindroTasteggio);
+			TFError(ErrCYLINDER,AspirazioneFaldaSX^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		*)
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+	
+	(* ******************************************************************************************************** *)
+	(* Power *)
+	(* ******************************************************************************************************** *)
+	CmdPOWER:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StatePOWER_RUN);
+				TFTimerSet(ADR(Timeout),500,TRUE);
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+
+			1: TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StatePOWER_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+	
+	(* ******************************************************************************************************** *)
+	(* Home *)
+	(* ******************************************************************************************************** *)
+	CmdHOME:
+		CASE CmdExe.CmdCase OF
+
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateHOME_RUN);
+				TFTimerSet(ADR(Timeout),3000+200,TRUE);
+				TFTimerSet(ADR(Timer),3000,TRUE);
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+
+			(* Case 1 - *)
+			1: 
+				TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+
+			(* Case 10 - Set automatico Soglie *)
+			10:
+				AspirazioneDX1^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneSX1^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneDX2^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneSX2^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				IF AspirazioneDX1^.Status.CommandDone AND AspirazioneSX1^.Status.CommandDone AND
+					AspirazioneDX2^.Status.CommandDone AND AspirazioneSX2^.Status.CommandDone THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF TFTimerDone(ADR(Timer)) THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+	
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateHOME_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+		
+		IF AspirazioneDX1^.Status.ErrorID <> ErrNULL AND NOT IN_SimulazioneSenzaHW THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCYLINDER,AspirazioneDX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneSX1^.Status.ErrorID <> ErrNULL AND NOT IN_SimulazioneSenzaHW THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCYLINDER,AspirazioneSX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneDX2^.Status.ErrorID <> ErrNULL AND NOT IN_SimulazioneSenzaHW THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCYLINDER,AspirazioneDX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF AspirazioneSX2^.Status.ErrorID <> ErrNULL AND NOT IN_SimulazioneSenzaHW THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCYLINDER,AspirazioneSX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		ELSIF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+
+	(* ******************************************************************************************************** *)
+	(* Manual *)
+	(* ******************************************************************************************************** *)
+	CmdMAN:
+		CASE CmdExe.CmdCase OF
+			(* Case 0 *)
+			0: 	TFStateUpdate(ADR(State),StateMAN_RUN);
+				TFTimerSet(ADR(Timeout),3000,TRUE);
+				TFTimerSet(ADR(Timer),10,TRUE);
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),2) THEN
+					MAN_Actuator	:= STRING_TO_UINT(ParametersArray.Parameters[0]);
+					MAN_Cmd		:= STRING_TO_UINT(ParametersArray.Parameters[1]);
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF;
+
+				CASE MAN_Actuator OF
+					(* Case 0..99 for Actuators *)
+					(* Case 100..199  for Axis *)
+
+					(* Case Nop *)
+					0:	;
+
+					(* Case 1: *)
+					1:	CASE MAN_Cmd OF
+							0:	;
+							
+							
+							(* Case 20: Sgancio Sblocco Rotazione *)
+							20:	
+								CilindroSbloccoRotazione^.Command.Activation 	:= TRUE;
+								CilindroSbloccoRotazione^.Command.Deactivation 	:= FALSE;
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);
+								
+							(* Case 21: Aggancio Sblocco Rotazione *)
+							21:	
+								CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+								CilindroSbloccoRotazione^.Command.Deactivation 	:= TRUE;
+								TFTimerSet(ADR(Timeout),3000,TRUE);
+								TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);
+	
+							(* Case 50: Ativazione Aspirazione SX *)
+							50:	
+								
+								IF NOT IN_SimulazioneSenzaHW THEN 
+									AspirazioneSX1^.Command^.Aspirazione_ON		:= TRUE;
+									AspirazioneSX1^.Command^.Aspirazione_OFF 	:= FALSE;
+									AspirazioneDX1^.Command^.Aspirazione_ON 	:= TRUE;
+									AspirazioneDX1^.Command^.Aspirazione_OFF 	:= FALSE;
+									AspirazioneSX2^.Command^.Aspirazione_ON 	:= TRUE;
+									AspirazioneSX2^.Command^.Aspirazione_OFF 	:= FALSE;
+									AspirazioneDX2^.Command^.Aspirazione_ON 	:= TRUE;
+									AspirazioneDX2^.Command^.Aspirazione_OFF 	:= FALSE;
+	
+									TFTimerSet(ADR(Timeout),3000,TRUE);
+									TFCommandCase(ADR(CmdExe),50,CommandCase_JMP);
+								ELSE
+									TFCommandCase(ADR(CmdExe),1,CommandCase_JMP);
+								END_IF
+										
+							(* Case 51: Disattivazione Aspirazione SX *)
+							51:	
+								StatoPinza.ElementoPrelevato := FALSE;
+								IF NOT IN_SimulazioneSenzaHW THEN 
+									AspirazioneSX1^.Command^.Aspirazione_ON 	:= FALSE;
+									AspirazioneSX1^.Command^.Aspirazione_OFF 	:= TRUE;
+									AspirazioneDX1^.Command^.Aspirazione_ON 	:= FALSE;
+									AspirazioneDX1^.Command^.Aspirazione_OFF 	:= TRUE;
+									AspirazioneSX2^.Command^.Aspirazione_ON 	:= FALSE;
+									AspirazioneSX2^.Command^.Aspirazione_OFF 	:= TRUE;
+									AspirazioneDX2^.Command^.Aspirazione_ON 	:= FALSE;
+									AspirazioneDX2^.Command^.Aspirazione_OFF 	:= TRUE;
+									TFTimerSet(ADR(Timeout),3000,TRUE);
+									TFCommandCase(ADR(CmdExe),50,CommandCase_JMP);
+								ELSE
+									TFCommandCase(ADR(CmdExe),1,CommandCase_JMP);
+								END_IF
+
+							(* Case 60: Ativazione Aspirazione DX *)
+							60:	
+								IF NOT IN_SimulazioneSenzaHW THEN 
+									AspirazioneSX1^.Command^.Aspirazione_ON 	:= TRUE;
+									AspirazioneSX1^.Command^.Aspirazione_OFF 	:= FALSE;
+									AspirazioneDX1^.Command^.Aspirazione_ON 	:= TRUE;
+									AspirazioneDX1^.Command^.Aspirazione_OFF 	:= FALSE;
+									AspirazioneSX2^.Command^.Aspirazione_ON 	:= TRUE;
+									AspirazioneSX2^.Command^.Aspirazione_OFF 	:= FALSE;
+									AspirazioneDX2^.Command^.Aspirazione_ON 	:= TRUE;
+									AspirazioneDX2^.Command^.Aspirazione_OFF 	:= FALSE;
+									TFTimerSet(ADR(Timeout),3000,TRUE);
+									TFCommandCase(ADR(CmdExe),60,CommandCase_JMP);
+								ELSE
+									TFCommandCase(ADR(CmdExe),1,CommandCase_JMP);
+								END_IF
+
+							(* Case 61: Disattivazione Aspirazione SX *)
+							61:	
+								StatoPinza.ElementoPrelevato := FALSE;
+								IF NOT IN_SimulazioneSenzaHW THEN 
+									AspirazioneDX1^.Command^.Aspirazione_ON  := FALSE;
+									AspirazioneDX1^.Command^.Aspirazione_OFF := TRUE;
+									AspirazioneSX1^.Command^.Aspirazione_ON  := FALSE;
+									AspirazioneSX1^.Command^.Aspirazione_OFF := TRUE;
+									AspirazioneDX2^.Command^.Aspirazione_ON  := FALSE;
+									AspirazioneDX2^.Command^.Aspirazione_OFF := TRUE;
+									AspirazioneSX2^.Command^.Aspirazione_ON  := FALSE;
+									AspirazioneSX2^.Command^.Aspirazione_OFF := TRUE;
+									StatoPinza.ElementoPrelevato := FALSE;
+									TFTimerSet(ADR(Timeout),3000,TRUE);
+									TFCommandCase(ADR(CmdExe),60,CommandCase_JMP);
+								ELSE
+									TFCommandCase(ADR(CmdExe),1,CommandCase_JMP);
+								END_IF
+							ELSE
+								TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					100:CASE MAN_Cmd OF
+							0:	;
+							ELSE
+								TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+						END_CASE;
+
+					ELSE
+						TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_CASE;
+
+				//IF CmdExe.CmdCase = 0 THEN
+					//TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				//END_IF
+
+			(* Case 1 - *)
+			1: 	IF (MAN_Cmd = 0) OR TFTimerDone(ADR(Timer)) THEN
+					(* Clear All Output Here *)
+					;
+					TFStateUpdate(ADR(State),StateMAN_END);
+					TFCommandExeClear(ADR(CmdExe));
+				END_IF;
+
+			(* Case 20 - CilindroSbloccoRotazione *)
+			20: 
+				IF CilindroSbloccoRotazione^.Status.Inactive AND CilindroSbloccoRotazione^.Command.Deactivation OR
+					CilindroSbloccoRotazione^.Status.Active AND CilindroSbloccoRotazione^.Command.Activation THEN
+						CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+						CilindroSbloccoRotazione^.Command.Deactivation 	:= FALSE;
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 50 - AspirazioneSX *)
+			50: 
+				IF AspirazioneSX1^.Status.CommandDone AND AspirazioneDX1^.Status.CommandDone AND
+					AspirazioneSX2^.Status.CommandDone AND AspirazioneDX2^.Status.CommandDone THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF AspirazioneSX1^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneSX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX1^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneDX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneSX2^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneSX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX2^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneDX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 60 - AspirazioneDX *)
+			60: 
+				IF AspirazioneSX1^.Status.CommandDone AND AspirazioneDX1^.Status.CommandDone AND
+					AspirazioneSX2^.Status.CommandDone AND AspirazioneDX2^.Status.CommandDone THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF AspirazioneSX1^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneSX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX1^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneDX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneSX2^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneSX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX2^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneDX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+			(* Case 100 - End *)
+			100:(* Clear All Output Here *)
+				TFStateUpdate(ADR(State),StateMAN_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE;
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+	
+
+	(* ******************************************************************************************************** *)
+	(* PRELOAD - Attivazione vuoto *)
+	(* ******************************************************************************************************** *)
+	CmdPRELOAD:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StatePRELOAD_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				PrelievoSuMagazino := FALSE;
+				StatoPinza.ElementoPrelevato := FALSE;
+				IF TFCommandParRead(CmdExe.Cmd.Parameter,ADR(ParametersArray),1) THEN
+					PrelievoSuMagazino	:= STRING_TO_BOOL(ParametersArray.Parameters[0]);
+					IF NOT IN_SimulazioneSenzaHW THEN
+						TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+					ELSE
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					END_IF
+				ELSE
+					TFError(ErrCMDPARNUM,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					RETURN;
+				END_IF;
+				
+			(* Case 10 - CilindroSbloccoRotazione *)
+			10: 
+				IF PrelievoSuMagazino AND FALSE THEN
+					CilindroSbloccoRotazione^.Command.Activation 	:= AbilitazioneSbloccoRotazione;
+					CilindroSbloccoRotazione^.Command.Deactivation 	:= FALSE;
+	
+					IF (CilindroSbloccoRotazione^.Status.Active OR NOT AbilitazioneSbloccoRotazione)THEN
+						CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+						CilindroSbloccoRotazione^.Command.Deactivation 	:= FALSE;
+						TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+					ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL AND AbilitazioneSbloccoRotazione THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					END_IF
+				ELSE
+					TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+				END_IF
+
+
+			(* Case 40 - AspirazioneDX + AspirazioneSX *)
+			40: 
+				AspirazioneDX1^.Command^.Aspirazione_ON 	:= TRUE;
+				AspirazioneDX1^.Command^.Aspirazione_OFF 	:= FALSE;
+				AspirazioneSX1^.Command^.Aspirazione_ON 	:= TRUE;
+				AspirazioneSX1^.Command^.Aspirazione_OFF 	:= FALSE;
+				AspirazioneDX2^.Command^.Aspirazione_ON 	:= TRUE;
+				AspirazioneDX2^.Command^.Aspirazione_OFF 	:= FALSE;
+				AspirazioneSX2^.Command^.Aspirazione_ON 	:= TRUE;
+				AspirazioneSX2^.Command^.Aspirazione_OFF 	:= FALSE;
+	
+				IF (AspirazioneDX1^.Status.CommandDone AND AspirazioneSX1^.Status.CommandDone AND
+					AspirazioneDX2^.Status.CommandDone AND AspirazioneSX2^.Status.CommandDone) OR IN.ByPassSensoreVuoto THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF AspirazioneSX1^.Status.ErrorID <> ErrNULL AND NOT IN_SimulazioneSenzaHW THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneSX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX1^.Status.ErrorID <> ErrNULL AND NOT IN_SimulazioneSenzaHW THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneDX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneSX2^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneSX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX2^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneDX2^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StatePRELOAD_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+	
+	(* ******************************************************************************************************** *)
+	(* LOAD - Presa del pezzo *)
+	(* ******************************************************************************************************** *)
+	CmdCHECKPRESENCE:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateCHECKPRESENCE_RUN);
+				TFTimerSet(ADR(Timeout),60000.0+100+HMI_TempoControlloPresaPiastrella,TRUE);
+				TFTimerSet(ADR(Timer),2000.0+HMI_TempoControlloPresaPiastrella,TRUE);
+				TFTimerSet(ADR(TimerPresaPiastrella),HMI_TempoControlloPresaPiastrella,TRUE);
+				StatoPinza.ElementoPrelevato := FALSE;
+
+				TFCommandCase(ADR(CmdExe),1,CommandCase_INC);
+				
+			(* Case 1 - *)					
+			1:
+				IF IN.ByPassSensoreVuoto OR TFTimerDone(ADR(TimerPresaPiastrella)) THEN 
+					//Tutte piastrelle o tutte falde
+					IF (AspirazioneDX1^.Status.DepressioneSoglia1_OK AND AspirazioneSX1^.Status.DepressioneSoglia1_OK AND
+						 AspirazioneDX2^.Status.DepressioneSoglia1_OK AND AspirazioneSX2^.Status.DepressioneSoglia1_OK) OR IN.ByPassSensoreVuoto THEN
+						StatoPinza.ElementoPrelevato := TRUE;
+						TFCommandCase(ADR(CmdExe),11,CommandCase_JMP);
+					ELSIF TFTimerDone(ADR(TimerPresaPiastrella)) THEN
+						TFCommandCase(ADR(CmdExe),11,CommandCase_JMP);
+						StatoPinza.ElementoPrelevato := IN.ByPassSensoreVuoto;	
+					END_IF			
+				END_IF
+				IF TFTimerDone(ADR(Timer)) THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrMalfunzionamentoSensoriPresenzaPinza,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF TFTimerDone(ADR(Timeout)) THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+						
+			(* Case 11 - *)		
+			11:
+				TFStateUpdate(ADR(State),StateCHECKPRESENCE_RUN+10);
+				TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+								
+					
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateCHECKPRESENCE_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+	(* ******************************************************************************************************** *)
+	(* CmdSbloccaBascolante - SGANCIO BASCULANTE *)
+	(* ******************************************************************************************************** *)
+	CmdSbloccaBascolante:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateSbloccaBascolante_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+				
+			(* Case 10 - CilindroSblocco bacolante *)
+			10: 
+				CilindroSbloccoBascolante^.Command.Activation 	:= AbilitazioneSbloccoBascolante;
+				CilindroSbloccoBascolante^.Command.Deactivation := FALSE;
+
+				IF (CilindroSbloccoBascolante^.Status.Active OR NOT AbilitazioneSbloccoBascolante)THEN
+					CilindroSbloccoBascolante^.Command.Activation 	:= FALSE;
+					CilindroSbloccoBascolante^.Command.Deactivation 	:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF CilindroSbloccoBascolante^.Status.ErrorID <> ErrNULL AND AbilitazioneSbloccoBascolante THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoBascolante^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateSbloccaBascolante_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+		
+		(* ******************************************************************************************************** *)
+	(* CmdBloccaBascolante - AGGANCIO BASCULANTE *)
+	(* ******************************************************************************************************** *)
+	CmdBloccaBascolante:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateBloccaBascolante_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+				
+			(* Case 10 - CilindroSblocco bacolante *)
+			10: 
+				CilindroSbloccoBascolante^.Command.Activation 	:= FALSE;
+				CilindroSbloccoBascolante^.Command.Deactivation := TRUE;
+
+				IF  CilindroSbloccoBascolante^.Status.Inactive THEN
+					CilindroSbloccoBascolante^.Command.Activation 	:= FALSE;
+					CilindroSbloccoBascolante^.Command.Deactivation := FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF CilindroSbloccoBascolante^.Status.ErrorID <> ErrNULL AND AbilitazioneSbloccoBascolante THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoBascolante^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateBloccaBascolante_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+		
+	(* ******************************************************************************************************** *)
+	(* CmdSbloccaRotazione - SGANCIO rotazione *)
+	(* ******************************************************************************************************** *)
+	CmdSbloccaRotazione:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateSbloccaRotazione_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+				
+			(* Case 10 - CilindroSblocco bacolante *)
+			10: 
+				CilindroSbloccoRotazione^.Command.Activation 	:= AbilitazioneSbloccoRotazione;
+				CilindroSbloccoRotazione^.Command.Deactivation := FALSE;
+
+				IF (CilindroSbloccoRotazione^.Status.Active OR NOT AbilitazioneSbloccoRotazione)THEN
+					CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+					CilindroSbloccoRotazione^.Command.Deactivation 	:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF CilindroSbloccoBascolante^.Status.ErrorID <> ErrNULL AND AbilitazioneSbloccoRotazione THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateSbloccaRotazione_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+		
+	(* ******************************************************************************************************** *)
+	(* CmdBloccaROTAZIONE - BLOCCA ROTAZIONE *)
+	(* ******************************************************************************************************** *)
+	CmdBloccaRotazione:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateBloccaRotazione_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+				
+			(* Case 10 - CilindroSblocco bacolante *)
+			10: 
+				CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+				CilindroSbloccoRotazione^.Command.Deactivation  := TRUE;
+
+				IF (CilindroSbloccoRotazione^.Status.Inactive) THEN
+					CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+					CilindroSbloccoRotazione^.Command.Deactivation := FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF CilindroSbloccoBascolante^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoBascolante^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateBloccaBascolante_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+		
+	(* ******************************************************************************************************** *)
+	(* CmdBloccaPinza- BLOCCA ROTAZIONE + BLOCCA BASCULANTE *)
+	(* ******************************************************************************************************** *)
+	CmdBloccaPinza:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateBloccaPinza_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+				
+			(* Case 10 - CilindroSblocco bascolante + rotazione *)
+			10: 
+				CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+				CilindroSbloccoRotazione^.Command.Deactivation  := TRUE;
+				
+				CilindroSbloccoBascolante^.Command.Activation 	:= FALSE;
+				CilindroSbloccoBascolante^.Command.Deactivation  := TRUE;
+
+				IF (CilindroSbloccoRotazione^.Status.Inactive) AND CilindroSbloccoRotazione^.Status.Inactive THEN
+					CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+					CilindroSbloccoRotazione^.Command.Deactivation := FALSE;
+					CilindroSbloccoBascolante^.Command.Activation 	:= FALSE;
+					CilindroSbloccoBascolante^.Command.Deactivation  := FALSE;
+
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF CilindroSbloccoBascolante^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoBascolante^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+
+				
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StateBloccaPinza_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+
+	
+	(* ******************************************************************************************************** *)
+	(* CmdSbloccaPinza- SBLOCCA ROTAZIONE + SBLOCCA BASCULANTE *)
+	(* ******************************************************************************************************** *)
+	CmdSbloccaPinza:
+			CASE CmdExe.CmdCase OF
+				
+				(* Case 0 - Init Command*)
+				0: 	TFStateUpdate(ADR(State),StateSbloccaPinza_RUN);
+					TFTimerSet(ADR(Timeout),30000+200,TRUE);
+					TFTimerSet(ADR(Timer),30000,TRUE);
+					IF NOT IN_SimulazioneSenzaHW THEN
+						TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+					ELSE
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					END_IF
+					
+				(* Case 10 - CilindroSblocco bascolante + rotazione *)
+				10: 
+					CilindroSbloccoBascolante^.Command.Activation 	:= AbilitazioneSbloccoBascolante;
+					CilindroSbloccoBascolante^.Command.Deactivation := FALSE;
+					CilindroSbloccoRotazione^.Command.Activation 	:= AbilitazioneSbloccoRotazione;
+					CilindroSbloccoRotazione^.Command.Deactivation  := FALSE;
+	
+					IF (CilindroSbloccoBascolante^.Status.Active OR NOT AbilitazioneSbloccoBascolante) AND 
+						(CilindroSbloccoRotazione^.Status.Active OR NOT AbilitazioneSbloccoRotazione) THEN
+							CilindroSbloccoBascolante^.Command.Activation 	:= FALSE;
+							CilindroSbloccoBascolante^.Command.Deactivation := FALSE;
+							CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+							CilindroSbloccoRotazione^.Command.Deactivation  := FALSE;
+							TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					ELSIF CilindroSbloccoBascolante^.Status.ErrorID <> ErrNULL AND AbilitazioneSbloccoBascolante THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFError(ErrCYLINDER,CilindroSbloccoBascolante^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+					END_IF
+					
+				(* Case 100 *)
+				100:TFStateUpdate(ADR(State),StateSbloccaPinza_END);
+					TFCommandExeClear(ADR(CmdExe));
+	
+				ELSE
+					TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+			END_CASE
+	
+			IF TFTimerDone(ADR(Timeout)) THEN
+				TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+				TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+			END_IF
+		
+	
+	(* ******************************************************************************************************** *)
+	(* UNLOAD - Attivazione aspirazione + discesa ventose *)
+	(* ******************************************************************************************************** *)
+	CmdUNLOAD:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StateUNLOAD_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				DisattivazioneTotaleAspirazioni := FALSE;
+				ByPassAttesaDistacco := FALSE;
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),20,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+			
+			(* Case 20 - Disattivazione aspirazione piastrella *)		
+			20: 
+				AspirazioneDX1^.Command^.Aspirazione_ON 	:= FALSE;
+				AspirazioneDX1^.Command^.Aspirazione_OFF 	:= TRUE;
+				AspirazioneSX1^.Command^.Aspirazione_ON 	:= FALSE;
+				AspirazioneSX1^.Command^.Aspirazione_OFF 	:= TRUE;
+				AspirazioneDX2^.Command^.Aspirazione_ON 	:= FALSE;
+				AspirazioneDX2^.Command^.Aspirazione_OFF 	:= TRUE;
+				AspirazioneSX2^.Command^.Aspirazione_ON 	:= FALSE;
+				AspirazioneSX2^.Command^.Aspirazione_OFF 	:= TRUE;
+				IF NOT AspirazioneDX1^.Status.DepressioneSoglia1_OK AND NOT AspirazioneDX1^.Status.DepressioneSoglia1_OK AND
+					NOT AspirazioneDX1^.Status.DepressioneSoglia1_OK AND NOT AspirazioneDX1^.Status.DepressioneSoglia1_OK THEN
+						ByPassAttesaDistacco := TRUE;
+				END_IF
+				
+				IF AspirazioneDX1^.Status.CommandDone AND AspirazioneSX1^.Status.CommandDone AND
+					AspirazioneDX2^.Status.CommandDone AND AspirazioneSX2^.Status.CommandDone THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						StatoPinza.ElementoPrelevato := FALSE;
+						TFTimerSet(ADR(TimerAspirazione),HMI_TempoRilascioInDeposito,TRUE);
+						TFCommandCase(ADR(CmdExe),30,CommandCase_JMP);
+				ELSIF AspirazioneSX1^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneSX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				ELSIF AspirazioneDX1^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,AspirazioneDX1^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			(* Case 30 - Attesa tempo distacco *)		
+			30:
+				IF TFTimerDone(ADR(TimerAspirazione)) OR ByPassAttesaDistacco THEN
+					IF IN.RichiestaRicalibrazioneOvemEsterna THEN
+						IN.RichiestaRicalibrazioneOvemEsterna := FALSE;
+						TFCommandCase(ADR(CmdExe),40,CommandCase_JMP);
+					ELSE
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+					END_IF		
+				END_IF
+				
+			(* Case 40 - Attesa tempo distacco *)		
+			40:	
+				AspirazioneDX1^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneSX1^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneDX2^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				AspirazioneSX2^.Command^.Aspirazione_ON_ScritturaSoglia 	:= TRUE;
+				IF AspirazioneDX1^.Status.CommandDone AND AspirazioneSX1^.Status.CommandDone AND
+					AspirazioneDX2^.Status.CommandDone AND AspirazioneSX2^.Status.CommandDone THEN
+						TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+						TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF TFTimerDone(ADR(Timer)) THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrTOHOME,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+				
+			(* Case 100 *)
+			100:
+				StatoPinza.ElementoPrelevato := FALSE;
+				TFStateUpdate(ADR(State),StateUNLOAD_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+
+	(* ******************************************************************************************************** *)
+	(* POSTUNLOAD - AGGANCIO BASCULANTE *)
+	(* ******************************************************************************************************** *)
+	CmdPOSTUNLOAD:
+		CASE CmdExe.CmdCase OF
+			
+			(* Case 0 - Init Command*)
+			0: 	TFStateUpdate(ADR(State),StatePOSTUNLOAD_RUN);
+				TFTimerSet(ADR(Timeout),30000+200,TRUE);
+				TFTimerSet(ADR(Timer),30000,TRUE);
+				IF NOT IN_SimulazioneSenzaHW THEN
+					TFCommandCase(ADR(CmdExe),10,CommandCase_JMP);
+				ELSE
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				END_IF
+				
+			(* Case 10 - CilindroSbloccoRotazione *)
+			10: 
+				CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+				CilindroSbloccoRotazione^.Command.Deactivation 	:= TRUE;
+
+				IF (CilindroSbloccoRotazione^.Status.Inactive)THEN
+					CilindroSbloccoRotazione^.Command.Activation 	:= FALSE;
+					CilindroSbloccoRotazione^.Command.Deactivation 	:= FALSE;
+					TFCommandCase(ADR(CmdExe),100,CommandCase_JMP);
+				ELSIF CilindroSbloccoRotazione^.Status.ErrorID <> ErrNULL THEN
+					TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+					TFError(ErrCYLINDER,CilindroSbloccoRotazione^.Status.ErrorID,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+				END_IF
+			
+			(* Case 100 *)
+			100:TFStateUpdate(ADR(State),StatePOSTUNLOAD_END);
+				TFCommandExeClear(ADR(CmdExe));
+
+			ELSE
+				TFError(ErrNOCMDCASE,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_CASE
+
+		IF TFTimerDone(ADR(Timeout)) THEN
+			TFClearAllCmdModulePinzaMagazzino(AspirazioneDX1,AspirazioneSX1,AspirazioneDX2,AspirazioneSX2,CilindroSbloccoRotazione,CilindroSbloccoBascolante);
+			TFError(ErrCMDTIMEOUT,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+		END_IF
+
+	ELSE
+		TFError(ErrNOCMD,ErrNULL,ADR(CmdExe),ADR(State),ADR(Error),ADR(ErrorLog));
+
+END_CASE;
+
+
+(* ******************************************************************************************************** *)
+(* State Input/Output *)
+(* ******************************************************************************************************** *)
+(* Fill Input/Output bit with sensor, electrovalve, etc. status *)
+
+StatoPinza.LatoDxPiastrellaInPresa	:= ((AspirazioneDX1^.Status.DepressioneSoglia1_OK AND AspirazioneDX2^.Status.DepressioneSoglia1_OK)  OR IN.ByPassSensoreVuoto);// AND NOT IN.TastoreCartoneDX;
+StatoPinza.LatoSxPiastrellaInPresa	:=((AspirazioneSX1^.Status.DepressioneSoglia1_OK AND AspirazioneSX2^.Status.DepressioneSoglia1_OK)  OR IN.ByPassSensoreVuoto);// AND NOT IN.TastoreCartoneSX;
+StatoPinza.RotazioneBloccata		:= CilindroSbloccoRotazione^.Status.Inactive;
+StatoPinza.RotazioneSbloccata 		:= CilindroSbloccoRotazione^.Status.Active;
+StatoPinza.PianoInPresa				:= StatoPinza.LatoDxPiastrellaInPresa AND StatoPinza.LatoSxPiastrellaInPresa OR (IN.ByPassSensoreVuoto AND StatoPinza.ElementoPrelevato);
+
+(* ******************************************************************************************************** *)
+(* Input *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Alarm *)
+(* ******************************************************************************************************** *)
+
+(* ******************************************************************************************************** *)
+(* Error Check - Clear All Output!!! *)
+(* ******************************************************************************************************** *)
+IF Error.Code > ErrNULL THEN
+	IF CmdExe.Code <> CmdNOP THEN
+		IF CmdExe.Code <> CmdSTOP AND
+			CmdExe.Code <> CmdPOWER AND
+			CmdExe.Code <> CmdRESET AND
+			CmdExe.Code <> CmdMAN AND
+			CmdExe.Code <> CmdLOAD AND
+			CmdExe.Code <> CmdUNLOAD THEN
+			TFCommandClear(ADR(CmdNext));
+			TFCommandExeClear(ADR(CmdExe));
+
+			(* Clear All Output Here *)
+
+		END_IF;
+	END_IF;
+END_IF;
+
+
+(* ******************************************************************************************************** *)
+(* Common Outputs *)
+(* ******************************************************************************************************** *)
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFModulePalletizer_Pinza_mag">
+      <LineId Id="10654" Count="23" />
+      <LineId Id="11679" Count="1" />
+      <LineId Id="10678" Count="91" />
+      <LineId Id="11716" Count="1" />
+      <LineId Id="10770" Count="8" />
+      <LineId Id="11681" Count="0" />
+      <LineId Id="10780" Count="1" />
+      <LineId Id="11682" Count="0" />
+      <LineId Id="10783" Count="35" />
+      <LineId Id="11683" Count="0" />
+      <LineId Id="10820" Count="46" />
+      <LineId Id="11718" Count="1" />
+      <LineId Id="10867" Count="0" />
+      <LineId Id="11720" Count="0" />
+      <LineId Id="11725" Count="0" />
+      <LineId Id="10870" Count="1" />
+      <LineId Id="10874" Count="0" />
+      <LineId Id="11726" Count="0" />
+      <LineId Id="10875" Count="11" />
+      <LineId Id="11727" Count="0" />
+      <LineId Id="10889" Count="1" />
+      <LineId Id="10893" Count="0" />
+      <LineId Id="11728" Count="0" />
+      <LineId Id="11731" Count="5" />
+      <LineId Id="10894" Count="0" />
+      <LineId Id="10897" Count="0" />
+      <LineId Id="11729" Count="0" />
+      <LineId Id="10898" Count="0" />
+      <LineId Id="10901" Count="0" />
+      <LineId Id="11730" Count="0" />
+      <LineId Id="10902" Count="50" />
+      <LineId Id="10954" Count="1" />
+      <LineId Id="11743" Count="1" />
+      <LineId Id="11746" Count="1" />
+      <LineId Id="10956" Count="12" />
+      <LineId Id="11748" Count="5" />
+      <LineId Id="10969" Count="11" />
+      <LineId Id="10982" Count="0" />
+      <LineId Id="11754" Count="1" />
+      <LineId Id="11757" Count="2" />
+      <LineId Id="10984" Count="12" />
+      <LineId Id="11739" Count="3" />
+      <LineId Id="10997" Count="39" />
+      <LineId Id="11684" Count="0" />
+      <LineId Id="11038" Count="5" />
+      <LineId Id="11761" Count="0" />
+      <LineId Id="11737" Count="0" />
+      <LineId Id="11048" Count="1" />
+      <LineId Id="11685" Count="0" />
+      <LineId Id="11051" Count="1" />
+      <LineId Id="11686" Count="0" />
+      <LineId Id="11054" Count="0" />
+      <LineId Id="11762" Count="5" />
+      <LineId Id="11055" Count="3" />
+      <LineId Id="11774" Count="1" />
+      <LineId Id="11738" Count="0" />
+      <LineId Id="11064" Count="1" />
+      <LineId Id="11687" Count="0" />
+      <LineId Id="11067" Count="1" />
+      <LineId Id="11688" Count="0" />
+      <LineId Id="11070" Count="0" />
+      <LineId Id="11768" Count="5" />
+      <LineId Id="11071" Count="11" />
+      <LineId Id="11689" Count="0" />
+      <LineId Id="11084" Count="38" />
+      <LineId Id="11690" Count="0" />
+      <LineId Id="11124" Count="10" />
+      <LineId Id="11136" Count="1" />
+      <LineId Id="11776" Count="3" />
+      <LineId Id="11138" Count="1" />
+      <LineId Id="11780" Count="1" />
+      <LineId Id="11144" Count="1" />
+      <LineId Id="11691" Count="0" />
+      <LineId Id="11147" Count="1" />
+      <LineId Id="11692" Count="0" />
+      <LineId Id="11150" Count="0" />
+      <LineId Id="11782" Count="5" />
+      <LineId Id="11151" Count="10" />
+      <LineId Id="11693" Count="0" />
+      <LineId Id="11163" Count="22" />
+      <LineId Id="11788" Count="0" />
+      <LineId Id="11186" Count="7" />
+      <LineId Id="11694" Count="0" />
+      <LineId Id="11195" Count="1" />
+      <LineId Id="11695" Count="0" />
+      <LineId Id="11198" Count="42" />
+      <LineId Id="11696" Count="0" />
+      <LineId Id="11242" Count="12" />
+      <LineId Id="11697" Count="0" />
+      <LineId Id="11256" Count="28" />
+      <LineId Id="11698" Count="0" />
+      <LineId Id="11286" Count="12" />
+      <LineId Id="11699" Count="0" />
+      <LineId Id="11300" Count="28" />
+      <LineId Id="11700" Count="0" />
+      <LineId Id="11330" Count="12" />
+      <LineId Id="11701" Count="0" />
+      <LineId Id="11344" Count="28" />
+      <LineId Id="11702" Count="0" />
+      <LineId Id="11374" Count="12" />
+      <LineId Id="11703" Count="0" />
+      <LineId Id="11388" Count="34" />
+      <LineId Id="11704" Count="0" />
+      <LineId Id="11424" Count="1" />
+      <LineId Id="11705" Count="0" />
+      <LineId Id="11427" Count="12" />
+      <LineId Id="11706" Count="0" />
+      <LineId Id="11441" Count="34" />
+      <LineId Id="11707" Count="0" />
+      <LineId Id="11477" Count="1" />
+      <LineId Id="11708" Count="0" />
+      <LineId Id="11480" Count="11" />
+      <LineId Id="11709" Count="0" />
+      <LineId Id="11493" Count="25" />
+      <LineId Id="11520" Count="1" />
+      <LineId Id="11789" Count="3" />
+      <LineId Id="11522" Count="0" />
+      <LineId Id="11793" Count="0" />
+      <LineId Id="11523" Count="3" />
+      <LineId Id="11794" Count="1" />
+      <LineId Id="11531" Count="3" />
+      <LineId Id="11710" Count="0" />
+      <LineId Id="11536" Count="1" />
+      <LineId Id="11711" Count="0" />
+      <LineId Id="11539" Count="17" />
+      <LineId Id="11796" Count="1" />
+      <LineId Id="11557" Count="0" />
+      <LineId Id="11798" Count="0" />
+      <LineId Id="11800" Count="0" />
+      <LineId Id="11560" Count="1" />
+      <LineId Id="11799" Count="0" />
+      <LineId Id="11564" Count="2" />
+      <LineId Id="11568" Count="10" />
+      <LineId Id="11712" Count="0" />
+      <LineId Id="11580" Count="28" />
+      <LineId Id="11713" Count="0" />
+      <LineId Id="11610" Count="11" />
+      <LineId Id="11714" Count="0" />
+      <LineId Id="11623" Count="1" />
+      <LineId Id="11627" Count="40" />
+      <LineId Id="11801" Count="0" />
+      <LineId Id="11669" Count="7" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

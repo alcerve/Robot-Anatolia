@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="Safety" Id="{4c4dd618-3665-49c7-99cc-d30fa1d6afd4}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+
+(* Variabili per uso Interno *)
+	I_MarciaOK							AT %I* : BOOL; // Presenza marcia Ausiliari 
+	I_EmergenzeOK						(*AT %I*) : BOOL; // Emergenze TUTTE ok
+
+	I_BarrierePallettizzatoreOK			(*AT %I*) : BOOL; // Barriere TUTTE ok
+	
+	EnableGroupPortSafety 				AT %Q* : BOOL; 
+	
+	(* Stato FB Safety *)
+	I_SafetyStateFunghiPal				AT %I* : USINT; //Stato FB Funghi Pallettizzatore
+	I_SafetyStateBarrierDXPal			AT %I* : USINT; //Stato FB barriera Pallettizatore
+	I_SafetyStateBarrierSXPal			AT %I* : USINT; //Stato FB barriera Pallettizatore
+	I_SafetyStateBarrierCentroDXPal		AT %I* : USINT; //Stato FB barriera Pallettizatore
+	I_SafetyStateBarrierCentroSXPal		AT %I* : USINT; //Stato FB barriera Pallettizatore
+	I_SafetyStateBarrierKarv			AT %I* : USINT; //Stato FB barriera Pallettizatore
+	I_SafetyStateEmergenze_Generali		AT %I* : USINT; //Stato FB Funghi Zona Bancalini
+
+	//I_SafetyStateEmergenza_ConsollePS305	AT %I* : USINT; //Stato Fungo Consolle
+	I_SafetyStateEmergenza_PS306_307			AT %I* : USINT; //Stato Fungo PS306
+	I_SafetyStateEmergenza_PS308_309			AT %I* : USINT; //Stato Fungo PS307
+
+	
+	I_SafetyCOMERR						AT %I* : BOOL;  //Errore COM SAFETY 
+	I_SafetyFBERR						AT %I* : BOOL;  //Errore FB SAFETY 
+	I_SafetyOTHERERR					AT %I* : BOOL;  //Errore OTHER SAFETY 
+	I_SafetyOUTERR						AT %I* : BOOL;  //Errore OUT SAFETY 
+
+	I_SafetyCOMERR2						AT %I* : BOOL;  //Errore COM SAFETY 
+	I_SafetyFBERR2						AT %I* : BOOL;  //Errore FB SAFETY 
+	I_SafetyOTHERERR2					AT %I* : BOOL;  //Errore OTHER SAFETY 
+	I_SafetyOUTERR2						AT %I* : BOOL;  //Errore OUT SAFETY 	
+
+	O_AbilitazioneMarcia				AT %Q* : BOOL; //Abilitazione marcia a Centralina di sicurezza
+	O_Reset_Plc_Sicurezza				AT %Q* : BOOL; //Comando di Reset PLC Sicurezza
+	O_OverrideSoftwareBarriere_Pal		AT %Q* : BOOL := FALSE; //Override Software Barriere di sicurezza
+	
+	
+	O_ResetACKAzionamenti AT%Q*:BOOL;
+	
+	I_FtcLGVPost_1 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	I_FtcLGVPost_2 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	I_FtcLGVPost_3 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	I_FtcLGVPost_4 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	I_FtcLGVPost_5 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	I_FtcLGVPost_6 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	I_FtcLGVPost_7 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	I_FtcLGVPost_8 AT %I* : BOOL;//Ftc richiesta ingresso veicolo
+	
+	O_RichiestaIngressoASafety AT %Q* : ARRAY[1..MAXAREA] OF BOOL;// Richiesta ingresso safety
+	
+	PortaleASx  : BOOL;//Il portale sta lavorando a SX e quindi l'operatore può entrare a DX
+	PortaleADx  : BOOL;//Il portale sta lavorando a DX e quindi l'operatire può entrare a SX
+
+END_VAR
+
+VAR_GLOBAL CONSTANT
+		
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

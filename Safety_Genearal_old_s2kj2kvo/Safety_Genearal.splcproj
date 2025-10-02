@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Crc="2717055718" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{c387ebf9-0edc-4f6b-b682-6cc2e3c32c0d}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>TwinCAT3SafePlcProject</RootNamespace>
+    <AssemblyName>TwinCAT3SafePlcProject</AssemblyName>
+    <FileUpgradeFlags />
+    <UpgradeBackupLocation />
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <TargetSystem>EL6900</TargetSystem>
+    <ProgrammingLanguage>Graphical Editor</ProgrammingLanguage>
+    <Worker>pugnaghip</Worker>
+    <IntProjName>Safety_DepalRulliere</IntProjName>
+    <IsNewCreated>false</IsNewCreated>
+    <SPlcProjVersion>1.7.0.0</SPlcProjVersion>
+    <NextSdsId>308</NextSdsId>
+    <Name>Safety_Genearal</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="Globali\Alias Devices\GroupPort_RunStop.sds" />
+    <None Include="Globali\Alias Devices\ErrorAcknowledgement.sds" />
+    <None Include="Globali\Globali.sal" />
+    <None Include="Globali\Globali.sal.diagram">
+      <Visible>false</Visible>
+      <DependentUpon>Globali\Globali.sal</DependentUpon>
+    </None>
+    <None Include="IO\Alias Devices\GroupPort_RunStop.sds" />
+    <None Include="IO\Alias Devices\AP200_10 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP200_3 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP200_4 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP200_6 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP200_7 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP200_9 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP201_2 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP201_5 %28EL2904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP202_2 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP202_3 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP202_5 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\AP202_6 %28EL1904%29 - Module 1 %28FSOES%29.sds" />
+    <None Include="IO\Alias Devices\Input\I_EnableMarciaPalettizzatore.sds" />
+    <None Include="IO\Alias Devices\Input\I_OverrideBarrierePalett.sds" />
+    <None Include="IO\Alias Devices\Output\O_EmergenzeOk.sds" />
+    <None Include="IO\Alias Devices\Output\O_MarciaOkPortale.sds" />
+    <None Include="IO\Alias Devices\Output\O_EmergenzeGeneralePalettizzatoreOK.sds" />
+    <None Include="IO\Alias Devices\Output\O_SafetyCOMERR.sds" />
+    <None Include="IO\Alias Devices\Output\O_SafetyFBERR.sds" />
+    <None Include="IO\Alias Devices\Output\O_SafetyOUTERR.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\O_PresenzaVeicolo2.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\O_PresenzaVeicolo3.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\O_PresenzaVeicolo4.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\O_PresenzaVeicolo5.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\O_PresenzaVeicolo6.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\O_PresenzaVeicolo7.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\O_PresenzaVeicolo8.sds" />
+    <None Include="IO\Alias Devices\Output\PresenzaVeicoli\P_PresenzaVeicolo1.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo5.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo4.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo3.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo2.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo1.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo6.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo7.sds" />
+    <None Include="IO\Alias Devices\Output\RicevitoriVeicoli\O_RicevitoreConsVeicolo8.sds" />
+    <None Include="IO\IO.sal" />
+    <None Include="IO\IO.sal.diagram">
+      <DependentUpon>IO\IO.sal</DependentUpon>
+      <Visible>false</Visible>
+    </None>
+    <None Include="TargetSystemConfig.xml">
+      <Visible>false</Visible>
+    </None>
+    <None Include="User FBs\GestioneRichiestaIngresso.ufb" />
+    <None Include="User FBs\GestioneRichiestaIngresso.ufb.diagram">
+      <Visible>false</Visible>
+      <DependentUpon>User FBs\GestioneRichiestaIngresso.ufb</DependentUpon>
+    </None>
+    <None Include="ZonaPallet\Alias Devices\GroupPort_RunStop.sds" />
+    <None Include="ZonaPallet\Alias Devices\AsseJ %28MOVI-C MOVIDRIVE CiA402%29 - Module 2 %28FSoE Safety IO 48 bit%29.sds" />
+    <None Include="ZonaPallet\Alias Devices\AsseX %28MOVI-C MOVIDRIVE CiA402%29 - Module 2 %28FSoE Safety IO 48 bit%29.sds" />
+    <None Include="ZonaPallet\Alias Devices\AsseY %28MOVI-C MOVIDRIVE CiA402%29 - Module 2 %28FSoE Safety IO 48 bit%29.sds" />
+    <None Include="ZonaPallet\Alias Devices\AsseZ %28MOVI-C MOVIDRIVE CiA402%29 - Module 2 %28FSoE Safety IO 48 bit%29.sds" />
+    <None Include="ZonaPallet\Alias Devices\I_ErrorAcknowledgementAzionamenti.sds" />
+    <None Include="ZonaPallet\Alias Devices\O_SafetyCOMERR2.sds" />
+    <None Include="ZonaPallet\Alias Devices\O_SafetyFBERR2.sds" />
+    <None Include="ZonaPallet\Alias Devices\O_SafetyOUTERR2.sds" />
+    <None Include="User FBs\ErrorAck.ufb" />
+    <None Include="User FBs\ErrorAck.ufb.diagram">
+      <Visible>false</Visible>
+      <DependentUpon>User FBs\ErrorAck.ufb</DependentUpon>
+    </None>
+    <None Include="User FBs\ByPassSegnalazioneBarrieraInfranta.ufb" />
+    <None Include="User FBs\ByPassSegnalazioneBarrieraInfranta.ufb.diagram">
+      <Visible>false</Visible>
+      <DependentUpon>User FBs\ByPassSegnalazioneBarrieraInfranta.ufb</DependentUpon>
+    </None>
+    <None Include="User FBs\CreaSegnale.ufb" />
+    <None Include="User FBs\CreaSegnale.ufb.diagram">
+      <Visible>false</Visible>
+      <DependentUpon>User FBs\CreaSegnale.ufb</DependentUpon>
+    </None>
+    <None Include="ZonaPallet\Alias Devices\ErrorAcknowledgement.sds" />
+    <None Include="ZonaPallet\ZonaPallet.sal" />
+    <None Include="ZonaPallet\ZonaPallet.sal.diagram">
+      <Visible>false</Visible>
+      <DependentUpon>ZonaPallet\ZonaPallet.sal</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Globali" />
+    <Folder Include="Globali\Alias Devices" />
+    <Folder Include="GVLs" />
+    <Folder Include="IO" />
+    <Folder Include="IO\Alias Devices">
+      <SortMode>2</SortMode>
+    </Folder>
+    <Folder Include="IO\Alias Devices\Input" />
+    <Folder Include="IO\Alias Devices\Output" />
+    <Folder Include="IO\Alias Devices\Output\PresenzaVeicoli" />
+    <Folder Include="IO\Alias Devices\Output\RicevitoriVeicoli" />
+    <Folder Include="User FBs" />
+    <Folder Include="ZonaPallet" />
+    <Folder Include="ZonaPallet\Alias Devices" />
+    <None Include="IO\Alias Devices\ErrorAcknowledgement.sds" />
+  </ItemGroup>
+  <ProjectExtensions />
+</Project>

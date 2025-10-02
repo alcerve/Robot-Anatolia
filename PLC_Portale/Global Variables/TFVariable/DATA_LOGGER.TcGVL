@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="DATA_LOGGER" Id="{9813c452-ced8-49a9-9585-e022fbb91ab6}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+	(* DataLogger *)
+	DLogger : DataLogger();
+	Channels : ARRAY [0..50] OF TFDataLogger.StatoCanaleRecord;
+	DLOG_Cmd_ResetCounter 	: BOOL; //Resetta Tutti i contatori presenti 
+	DLOG_Cmd_Alarm_reset 	: BOOL; //Resetta eventuali allarmi
+	DLOG_Day_Reset : INT;
+	DLOG_Week_Reset : INT := 7;
+	DLOG_SaveDataOnReset : BOOL;
+	Clogger : CounterLogger();
+	Counters : ARRAY [0..50] OF TFDataLogger.StatoCanaleCounter;
+	Reset_Operatore : BOOL;	// Comando da operatore di reset statistiche contattori
+	Formign_ID_Active_Code : ARRAY [1..MAXFORMINGCODE] OF INT;	// Array per verifica formatura attiva su codice in verifica
+	CLOG_Global_reset : BOOL;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

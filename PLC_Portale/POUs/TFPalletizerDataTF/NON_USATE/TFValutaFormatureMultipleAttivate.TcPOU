@@ -1,0 +1,357 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFValutaFormatureMultipleAttivate" Id="{5021cc4c-b76d-4dc2-9cd2-01aeb97d5779}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFValutaFormatureMultipleAttivate : BOOL // Valuta se ci sono più formature DIVERSE attive 
+VAR_INPUT
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming; //Struttura formature
+END_VAR
+VAR
+	f : INT;	// Indice formatura
+	c: INT;
+	TFValutaFormatureMultipleAttivateMEM: BOOL;
+END_VAR
+// Valuta se ci sono più formature DIVERSE attive ]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Valuta se ci sono più formature DIVERSE attive 
+FOR f := 1 TO 4 DO
+	CASE f OF
+		1:
+			IF Forming^[f].Enable = 1 THEN					// se la formatura è abilitata
+				IF Forming^[2].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[2].GUID THEN //Se la formatura attiva è diversa da quella su indice i
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[2].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF	
+				IF Forming^[3].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[3].GUID THEN //Se la formatura attiva è diversa da quella su indice i
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[3].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF
+				IF Forming^[4].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[4].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[4].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF 
+			END_IF
+		2:
+			IF Forming^[f].Enable = 1 THEN					// se la formatura è abilitata
+				IF Forming^[1].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[1].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[1].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF
+				IF Forming^[3].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[3].GUID THEN //Se la formatura attiva è diversa da quella su indice i
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[3].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF
+				IF Forming^[4].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[4].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[4].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF 
+			END_IF
+		3:
+			IF Forming^[f].Enable = 1 THEN					// se la formatura è abilitata
+				IF Forming^[1].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[1].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[1].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF
+				IF Forming^[2].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[2].GUID THEN //Se la formatura attiva è diversa da quella su indice i
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[2].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF
+				IF Forming^[4].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[4].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[4].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF 
+			END_IF
+		4:
+			IF Forming^[f].Enable = 1 THEN					// se la formatura è abilitata
+				IF Forming^[1].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[1].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[1].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF
+				IF Forming^[2].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[2].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[2].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF
+				IF Forming^[3].Enable = 1 THEN
+					IF Forming^[f].GUID <> Forming^[3].GUID THEN
+						FOR c := 1 TO MAXFORMINGCODE DO
+							IF Forming^[f].Code[c] > 0 THEN
+								TFValutaFormatureMultipleAttivateMEM := TRUE;
+								//RETURN;
+							END_IF
+							IF Forming^[3].Code[c] > 0 AND TFValutaFormatureMultipleAttivateMEM THEN //Se ha almeno un codice assegnato
+								TFValutaFormatureMultipleAttivate := TRUE;
+								RETURN;
+							ELSE
+								TFValutaFormatureMultipleAttivate := FALSE;
+								//RETURN;
+							END_IF
+						END_FOR
+					END_IF
+				END_IF 
+			END_IF
+		
+	END_CASE
+END_FOR
+TFValutaFormatureMultipleAttivate := FALSE;
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFValutaFormatureMultipleAttivate">
+      <LineId Id="52" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="83" Count="1" />
+      <LineId Id="94" Count="2" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="129" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="186" Count="0" />
+      <LineId Id="257" Count="1" />
+      <LineId Id="263" Count="0" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="261" Count="1" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="126" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="235" Count="5" />
+      <LineId Id="265" Count="5" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="128" Count="0" />
+      <LineId Id="99" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="195" Count="4" />
+      <LineId Id="272" Count="5" />
+      <LineId Id="271" Count="0" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="86" Count="1" />
+      <LineId Id="102" Count="1" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="200" Count="4" />
+      <LineId Id="279" Count="5" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="145" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="171" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="242" Count="5" />
+      <LineId Id="286" Count="5" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="172" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="205" Count="4" />
+      <LineId Id="293" Count="5" />
+      <LineId Id="292" Count="0" />
+      <LineId Id="151" Count="0" />
+      <LineId Id="108" Count="1" />
+      <LineId Id="88" Count="1" />
+      <LineId Id="110" Count="1" />
+      <LineId Id="153" Count="0" />
+      <LineId Id="210" Count="4" />
+      <LineId Id="300" Count="5" />
+      <LineId Id="299" Count="0" />
+      <LineId Id="154" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="173" Count="0" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="249" Count="5" />
+      <LineId Id="307" Count="5" />
+      <LineId Id="306" Count="0" />
+      <LineId Id="255" Count="0" />
+      <LineId Id="114" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="159" Count="0" />
+      <LineId Id="215" Count="4" />
+      <LineId Id="314" Count="5" />
+      <LineId Id="313" Count="0" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="116" Count="1" />
+      <LineId Id="90" Count="1" />
+      <LineId Id="118" Count="1" />
+      <LineId Id="162" Count="0" />
+      <LineId Id="220" Count="4" />
+      <LineId Id="321" Count="5" />
+      <LineId Id="320" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="120" Count="0" />
+      <LineId Id="175" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="225" Count="4" />
+      <LineId Id="328" Count="5" />
+      <LineId Id="327" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="123" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="230" Count="4" />
+      <LineId Id="335" Count="5" />
+      <LineId Id="334" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="124" Count="1" />
+      <LineId Id="92" Count="1" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

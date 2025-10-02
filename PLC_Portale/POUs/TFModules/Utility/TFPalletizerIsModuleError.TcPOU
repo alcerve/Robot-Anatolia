@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerIsModuleError" Id="{7edb5307-49b9-46f3-a633-7365319a3652}" SpecialFunc="None">
+    <Declaration><![CDATA[//Funzione che ritorna TRUE se almeno un modulo è in errore
+FUNCTION TFPalletizerIsModuleError : bool 
+VAR_INPUT
+	Modules : POINTER TO TFPalletizerModules;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerIsModuleError := TFIsModuleError(Modules^.AX_X.Error)OR
+								TFIsModuleError(Modules^.AX_Y.Error)OR
+								TFIsModuleError(Modules^.AX_Z.Error)OR
+								TFIsModuleError(Modules^.AX_J.Error)OR
+								TFIsModuleError(Modules^.Pinza.Error); ]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerIsModuleError">
+      <LineId Id="9" Count="3" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMchinePalletizer_PinzaVentose_IN" Id="{02c24b80-1d38-4e4f-aefa-18fd8df7b27b}">
+    <Declaration><![CDATA[TYPE TFMchinePalletizer_PinzaVentose_IN :
+STRUCT
+	TastoreCartoneSX : BOOL; //Sensore Tastatore lato SX
+	TastoreCartoneDX : BOOL; //Sensore Tastatore lato SX
+	ExtraCorsaPinzaSganciata : BOOL; //Sensore Di sicurezza rotazione lungo Z
+	
+	InKeyence0_Byte0 : BYTE;
+	InKeyence0_Byte1 : BYTE;
+	InKeyence180_Byte0 : BYTE;
+	InKeyence180_Byte1 : BYTE;
+	
+	InKeyence0_Byte0_2 : BYTE;
+	InKeyence0_Byte1_2 : BYTE;
+	InKeyence180_Byte0_2 : BYTE;
+	InKeyence180_Byte1_2 : BYTE;
+
+	ByPassSensoreVuoto : BOOL;
+	RichiestaRicalibrazioneOvemEsterna : BOOL;//Richiesta calibrazione esterna da macchina
+	
+	FTC_FaldaDX : BOOL;
+	FTC_FaldaSX : BOOL;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

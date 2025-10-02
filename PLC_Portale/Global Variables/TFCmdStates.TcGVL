@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TFCmdStates" Id="{48814083-ed69-4a26-b84f-7c040c941f28}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+	
+	(* Command *)
+	CmdPICK 								: UINT := 2000;
+	CmdPLACE			 					: UINT := 2100;
+	CmdSWAP			 						: UINT := 2200;
+	CmdMAINTENANCE 							: UINT := 2300;
+	CmdLEARN								: UINT := 2400;
+
+	CmdMOVETOPOS							: UINT := 2600;		// Muovi a posizione data
+	CmdMOVEJOG								: UINT := 2700;		// Movimento in jog..Per tasteggio
+	CmdTASTEGGIO							: UINT := 2800;		//Comando per tasteggio con FTC per penza basculante
+
+	CmdHALT									: UINT := 2900;
+
+	CmdMOVE		 							: UINT := 3000;
+	CmdCYCLEPALLET							: UINT := 4100;
+	CmdCYCLELAYER							: UINT := 4200;
+	CmdRAISE								: UINT := 4300;
+	CmdLOOPPLACE							: UINT := 4400;
+	
+	CmdPRINT								: UINT := 4500;
+	
+	CmdCICLORIPOSO							: UINT := 5000;
+	
+	CmdLOADSEMPLICE							: UINT := 6000;
+	CmdUNLOADSEMPLICE						: UINT := 7000;
+		
+	CmdCHECKPRESENCE						: UINT := 1100; //Comando che valuta la presenza di un oggetto depositato, il suo end arriva se una FTC è intercettatta
+	StateCHECKPRESENCE_RUN 					: UINT := 1100; 
+	StateCHECKPRESENCE_END 					: UINT := 1199;
+	
+	
+
+
+	(* State *)
+	StatePICK_RUN 							: UINT := 2000;
+	StatePICK_END 							: UINT := 2099;
+	StatePLACE_RUN 							: UINT := 2100;
+	StatePLACE_END 							: UINT := 2199;
+	StateSWAP_RUN 							: UINT := 2200;
+	StateSWAP_END 							: UINT := 2299;
+	StateMAINTENANCE_RUN 					: UINT := 2300;
+	StateMAINTENANCE_END 					: UINT := 2399;
+	StateLEARN_RUN							: UINT := 2400;
+	StateLEARN_END							: UINT := 2499;
+
+	StateMOVETOPOS_RUN						: UINT := 2600;
+	StateMOVETOPOS_END						: UINT := 2699;
+	
+	StateMOVEJOG_RUN						: UINT := 2700;
+	StateMOVEJOG_END						: UINT := 2799;
+
+	StateTASTEGGIO_RUN						: UINT := 2800;
+	StateTASTEGGIO_END						: UINT := 2899;
+
+	StateHALT_RUN							: UINT := 2800;
+	StateHALT_END							: UINT := 2899;
+
+	StateMOVE_RUN 							: UINT := 3000;
+	StateMOVE_END 							: UINT := 3099;
+	
+	StateCYCLEPALLET_RUN 					: UINT := 4100;
+	StateCYCLEPALLET_END 					: UINT := 4199;
+	StateCYCLELAYER_RUN 					: UINT := 4200;
+	StateCYCLELAYER_END 					: UINT := 4299;
+	StateRAISE_RUN							: UINT := 4300;
+	StateRAISE_END							: UINT := 4399;
+	StateLOOPPLACE_RUN						: UINT := 4400;
+	StateLOOPPLACE_END						: UINT := 4499;
+	
+	StatePRINT_RUN							: UINT := 4500;
+	StatePRINT_END							: UINT := 4599;
+	
+	StateCICLORIPOSO_RUN					: UINT := 4600;
+	StateCICLORIPOSO_END					: UINT := 4699;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

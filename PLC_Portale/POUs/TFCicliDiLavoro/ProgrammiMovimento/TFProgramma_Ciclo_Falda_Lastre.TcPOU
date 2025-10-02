@@ -1,0 +1,297 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFProgramma_Ciclo_Falda_Lastre" Id="{b1d06867-2451-4771-b40f-e14ac5ef4968}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFProgramma_Ciclo_Falda_Lastre
+VAR_INPUT
+	X_Par : Ax_Program_Parameters; // Parametri degli assi
+	Y_Par : Ax_Program_Parameters; // Parametri degli assi
+	Z_Par : Ax_Program_Parameters; // Parametri degli assi
+	//K_Par : Ax_Program_Parameters; // Parametri degli assi
+	J_Par : Ax_Program_Parameters; // Parametri degli assi
+	
+	(*X*)
+	Quota_Prelievo_Falda_X : LREAL;
+	Quota_Deposito_Falda_SuCatastaPallet_X : LREAL;
+	Quota_Deposito_Falda_SuPiazzola_X : LREAL;
+	Quota_Fuori_Ingombro_X : LREAL;	
+	
+	(*Y*)
+	Quota_Prelievo_Falda_Y 					: LREAL;
+	Quota_Deposito_Falda_SuCatastaPallet_Y 	: LREAL;
+	Quota_Deposito_Falda_SuPiazzola_Y		: LREAL;
+	
+	Quota_Fuori_Ingombro_Y					: LREAL;
+	
+	(*Z*)
+	Quota_StartLenta_Prelievo_Falda_Z 					: LREAL;
+	Quota_Prelievo_Falda_Z 								: LREAL;
+	Quota_StartLenta_Deposito_Falda_SuPiazzola_Z 		: LREAL; //Se non si utilizza il tasteggio in fase di deposito si utilizza questa quota come quota di rilascio!!!
+	Quota_Deposito_Falda_SuPiazzola_Z					: LREAL;
+	Quota_StartLenta_Deposito_Falda_SuCatastaPallet_Z	: LREAL;
+	Quota_Deposito_Falda_SuCatastaPallet_Z				: LREAL;
+	QUota_Fuori_Ingombro_Falda_Z 						: LREAL;
+	Quota_Attesa_Caduta_Falda_Z							: LREAL;
+	
+	(*k*)
+	//Quota_Apertura_Prelievo_Falda_K : LREAL;
+	//Quota_Chiusura_Prelievo_Falda_K : LREAL;
+	//Quota_Apertura_Deposito_Falda_K : LREAL;
+		
+	(*J*)
+	Quota_Rotazione_Prelievo_Falda 			: LREAL;
+	Quota_Rotazione_Deposito_Falda 			: LREAL;
+	
+END_VAR
+VAR_OUTPUT
+	Inizializzato : BOOL;
+END_VAR
+VAR
+	;	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+PRELIEVO FALDA:
+1- Programma asse X per raggiungere magazzino falde da quota attuale in direzione X
+2- Programma asse Y per raggiungere magazzino falde da quota attuale in direzione Y
+3- Programma asse J per raggiungere l'angolo di rotazione richiesto
+4- Programma asse K per raggiungere la quota di apertura pinza 
+5- Programma asse Z per raggiungere la quota di cambio velocità in direzione Z (si passerà da veloce a lenta + tastatori disabilitati) in VELOCE
+6- Programma asse Z in cui si effettua la traslazione in LENTA in direzione Z fino tocco dei tastatori
+7- Programma asse K per raggiungere la quota di chiusura pinza !!!! PREVISTO MA NON UTILIZZATO !!!!!!
+
+DEPOSITO FALDA:
+8- Programma asse Z per raggiungere la quota di "Attesa caduta Falda" 
+9- Programma asse Z per raggiungere la quota di "Fuori Ingombro" ostacoli 
+10- Programma asse X per raggiungere la quota di deposito falda da quota attuale in direzione X; puù essere sul pallet in catasta(ciclo vuoti) o pallet su piazzola
+11- Programma asse Y per posizione la quota di deposito falda da quota attuale in direzione Y
+12: 
+12.1- Programma asse Z per raggiungere la quota di rilascio falda in direzione Z su PIAZZOLA
+12.2- Programma asse Z Z in cui si effettua la traslazione in LENTA in direzione Z fino tocco dei tastatori su CATASTA VUOTI
+
+*)
+Inizializzato := FALSE;
+(*************************************************************************************************************************************)
+(******************************************************  ASSE X **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 51 Asse X : Traslazione Verso Postazione di Prelievo Pacco*)
+Programma_X[X_PosPrelievoFalda].ID 					:= X_PosPrelievoFalda;
+Programma_X[X_PosPrelievoFalda].Quota_Destinazione	:= Quota_Prelievo_Falda_X;
+Programma_X[X_PosPrelievoFalda].Velocita			:= X_Par.Vel_Vuoto;
+Programma_X[X_PosPrelievoFalda].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[X_PosPrelievoFalda].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[X_PosPrelievoFalda].Jerk				:= X_Par.Jerk_Vuoto;
+
+(* Programma 52 Asse X : Traslazione Verso Postazione di deposito Falda su catasta vuoti*)
+Programma_X[X_PosDepositoSuCatastaFalda].ID 					:= X_PosDepositoSuCatastaFalda;
+Programma_X[X_PosDepositoSuCatastaFalda].Quota_Destinazione	:= Quota_Deposito_Falda_SuCatastaPallet_X;
+Programma_X[X_PosDepositoSuCatastaFalda].Velocita			:= X_Par.Vel_Vuoto;
+Programma_X[X_PosDepositoSuCatastaFalda].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[X_PosDepositoSuCatastaFalda].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[X_PosDepositoSuCatastaFalda].Jerk				:= X_Par.Jerk_Vuoto;
+
+(* Programma 53 Asse X : Traslazione a quota di deposito Falda su piazzola*)
+Programma_X[X_PosDepositoFalda].ID 					:= X_PosDepositoFalda;
+Programma_X[X_PosDepositoFalda].Quota_Destinazione	:= Quota_Deposito_Falda_SuPiazzola_X;
+Programma_X[X_PosDepositoFalda].Velocita			:= X_Par.Vel_Vuoto;
+Programma_X[X_PosDepositoFalda].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[X_PosDepositoFalda].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[X_PosDepositoFalda].Jerk				:= X_Par.Jerk_Vuoto;
+
+(* Programma 56 Asse Y : Traslazione a quota di riposo a Vuoto *)
+Programma_X[X_PosFuoriIngombroVuotoFalda].ID 					:= X_PosFuoriIngombroVuotoFalda;
+Programma_X[X_PosFuoriIngombroVuotoFalda].Quota_Destinazione	:= Quota_Fuori_Ingombro_X;
+Programma_X[X_PosFuoriIngombroVuotoFalda].Velocita			:= X_Par.Vel_Vuoto;
+Programma_X[X_PosFuoriIngombroVuotoFalda].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[X_PosFuoriIngombroVuotoFalda].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[X_PosFuoriIngombroVuotoFalda].Jerk				:= X_Par.Jerk_Vuoto;
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE Y **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 51 Asse Y : Traslazione a quota di Prelievo Falda*)
+Programma_Y[Y_PosPrelievoFalda].ID 					:= Y_PosPrelievoFalda;
+Programma_Y[Y_PosPrelievoFalda].Quota_Destinazione	:= Quota_Prelievo_Falda_Y;
+Programma_Y[Y_PosPrelievoFalda].Velocita			:= Y_Par.Vel_Vuoto;
+Programma_Y[Y_PosPrelievoFalda].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[Y_PosPrelievoFalda].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[Y_PosPrelievoFalda].Jerk				:= Y_Par.Jerk_Vuoto;
+
+(* Programma 52 Asse Y : Traslazione a quota di Deposito Falda su catasta vuoti*)
+Programma_Y[Y_PosDepositoSuCatastaFalda].ID 					:= Y_PosDepositoSuCatastaFalda;
+Programma_Y[Y_PosDepositoSuCatastaFalda].Quota_Destinazione	:= Quota_Deposito_Falda_SuCatastaPallet_Y;
+Programma_Y[Y_PosDepositoSuCatastaFalda].Velocita			:= Y_Par.Vel_Vuoto;
+Programma_Y[Y_PosDepositoSuCatastaFalda].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[Y_PosDepositoSuCatastaFalda].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[Y_PosDepositoSuCatastaFalda].Jerk				:= Y_Par.Jerk_Vuoto;
+
+(* Programma 53 Asse Y : Traslazione a quota di Deposito Falda su piazzola*)
+Programma_Y[Y_PosDepositoFalda].ID 					:= Y_PosDepositoFalda;
+Programma_Y[Y_PosDepositoFalda].Quota_Destinazione	:= Quota_Deposito_Falda_SuPiazzola_Y;
+Programma_Y[Y_PosDepositoFalda].Velocita			:= Y_Par.Vel_Vuoto;
+Programma_Y[Y_PosDepositoFalda].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[Y_PosDepositoFalda].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[Y_PosDepositoFalda].Jerk				:= Y_Par.Jerk_Vuoto;
+
+(* Programma 56 Asse Y : Traslazione a quota di riposo a Vuoto *)
+Programma_Y[Y_PosFuoriIngombroVuotoFalda].ID 					:= Y_PosFuoriIngombroVuotoFalda;
+Programma_Y[Y_PosFuoriIngombroVuotoFalda].Quota_Destinazione	:= Quota_Fuori_Ingombro_Y;
+Programma_Y[Y_PosFuoriIngombroVuotoFalda].Velocita			:= Y_Par.Vel_Vuoto;
+Programma_Y[Y_PosFuoriIngombroVuotoFalda].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[Y_PosFuoriIngombroVuotoFalda].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[Y_PosFuoriIngombroVuotoFalda].Jerk				:= Y_Par.Jerk_Vuoto;
+
+(* Programma 66 Asse Y : Traslazione a quota di riposo con carico*)
+Programma_Y[Y_PosFuoriIngombroCaricoFalda].ID 					:= Y_PosFuoriIngombroCaricoFalda;
+Programma_Y[Y_PosFuoriIngombroCaricoFalda].Quota_Destinazione	:= Quota_Fuori_Ingombro_Y;
+Programma_Y[Y_PosFuoriIngombroCaricoFalda].Velocita			:= Y_Par.Vel_Carico;
+Programma_Y[Y_PosFuoriIngombroCaricoFalda].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[Y_PosFuoriIngombroCaricoFalda].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[Y_PosFuoriIngombroCaricoFalda].Jerk				:= Y_Par.Jerk_Carico;
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE Z **********************************************************************)
+(*************************************************************************************************************************************)
+
+(* Programma 51 Asse Z : Traslazione veloce fino alla quota ammessa in fase di Prelievo Falda*)
+Programma_Z[Z_PosStartLentaPrelievoFalda].ID 					:= Z_PosStartLentaPrelievoFalda;
+Programma_Z[Z_PosStartLentaPrelievoFalda].Quota_Destinazione	:= Quota_StartLenta_Prelievo_Falda_Z;
+Programma_Z[Z_PosStartLentaPrelievoFalda].Velocita			:= Z_Par.Vel_Vuoto;
+Programma_Z[Z_PosStartLentaPrelievoFalda].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosStartLentaPrelievoFalda].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosStartLentaPrelievoFalda].Jerk				:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosStartLentaPrelievoFalda].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 52 Asse Z : Traslazione lenta fino al raggiungimento dei tastatori pinza*)
+Programma_Z[Z_PosPrelievoInLentaFalda].ID 					:= Z_PosPrelievoInLentaFalda;
+Programma_Z[Z_PosPrelievoInLentaFalda].Quota_Destinazione	:= Quota_Prelievo_Falda_Z;
+Programma_Z[Z_PosPrelievoInLentaFalda].Velocita				:= Z_Par.Vel_Ridotta;
+Programma_Z[Z_PosPrelievoInLentaFalda].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosPrelievoInLentaFalda].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosPrelievoInLentaFalda].Jerk					:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosPrelievoInLentaFalda].DisabilitaTasteggio	:= FALSE;
+Programma_Z[Z_PosPrelievoInLentaFalda].InnestoDiretto		:= TRUE;
+
+(* Programma 53 Asse Z : Traslazione a quota di "Attesa caduta Falda"*)
+Programma_Z[Z_PosAttesaCadutaFalda].ID 					:= Z_PosAttesaCadutaFalda;
+Programma_Z[Z_PosAttesaCadutaFalda].Quota_Destinazione	:= Quota_Attesa_Caduta_Falda_Z;
+Programma_Z[Z_PosAttesaCadutaFalda].Velocita			:= Z_Par.Vel_Ridotta;
+Programma_Z[Z_PosAttesaCadutaFalda].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosAttesaCadutaFalda].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosAttesaCadutaFalda].Jerk				:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosAttesaCadutaFalda].DisabilitaTasteggio	:= FALSE;
+
+(* Programma 54 Asse Z : Traslazione a quota di "Fuori Ingombro"*)
+Programma_Z[Z_PosFuoriIngombroFalda].ID 					:= Z_PosFuoriIngombroFalda;
+Programma_Z[Z_PosFuoriIngombroFalda].Quota_Destinazione	:= Quota_Fuori_Ingombro_Falda_Z;
+Programma_Z[Z_PosFuoriIngombroFalda].Velocita			:= Z_Par.Vel_Vuoto;
+Programma_Z[Z_PosFuoriIngombroFalda].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosFuoriIngombroFalda].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosFuoriIngombroFalda].Jerk				:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosFuoriIngombroFalda].DisabilitaTasteggio	:= TRUE;
+Programma_Z[Z_PosFuoriIngombroFalda].InnestoDiretto		:= TRUE;
+
+(* Programma 55 Asse Z : Traslazione veloce fino alla quota per deposito su catasta vuoti Pallet*)
+Programma_Z[Z_PosStartLentaDepositoSuCatasta].ID 					:= Z_PosStartLentaDepositoSuCatasta;
+Programma_Z[Z_PosStartLentaDepositoSuCatasta].Quota_Destinazione	:= Quota_StartLenta_Deposito_Falda_SuCatastaPallet_Z;
+Programma_Z[Z_PosStartLentaDepositoSuCatasta].Velocita			:= Z_Par.Vel_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoSuCatasta].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoSuCatasta].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoSuCatasta].Jerk				:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoSuCatasta].DisabilitaTasteggio	:= TRUE;
+	
+(* Programma 56 Asse Z : Traslazione lenta fino al raggiungimento dei tastatori pinza deposito su catasta vuoti Pallet*)
+Programma_Z[Z_PosDepositoInLentaSuCatasta].ID 					:= Z_PosDepositoInLentaSuCatasta;
+Programma_Z[Z_PosDepositoInLentaSuCatasta].Quota_Destinazione	:= Quota_Deposito_Falda_SuCatastaPallet_Z;
+Programma_Z[Z_PosDepositoInLentaSuCatasta].Velocita			:= Z_Par.Vel_Ridotta;
+Programma_Z[Z_PosDepositoInLentaSuCatasta].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosDepositoInLentaSuCatasta].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosDepositoInLentaSuCatasta].Jerk				:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosDepositoInLentaSuCatasta].DisabilitaTasteggio	:= FALSE;
+Programma_Z[Z_PosDepositoInLentaSuCatasta].InnestoDiretto		:= TRUE;
+
+(* Programma 57 Asse Z : Traslazione veloce fino alla quota per deposito su postazione*)
+Programma_Z[Z_PosStartLentaDepositoFalda].ID 					:= Z_PosStartLentaDepositoFalda;
+Programma_Z[Z_PosStartLentaDepositoFalda].Quota_Destinazione	:= Quota_StartLenta_Deposito_Falda_SuPiazzola_Z;
+Programma_Z[Z_PosStartLentaDepositoFalda].Velocita			:= Z_Par.Vel_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoFalda].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoFalda].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoFalda].Jerk				:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosStartLentaDepositoFalda].DisabilitaTasteggio	:= TRUE;
+	
+(* Programma 58 Asse Z : Traslazione lenta fino al raggiungimento dei tastatori pinza *)
+Programma_Z[Z_PosDepositoInLentaFalda].ID 					:= Z_PosDepositoInLentaFalda;
+Programma_Z[Z_PosDepositoInLentaFalda].Quota_Destinazione	:= Quota_Deposito_Falda_SuPiazzola_Z;
+Programma_Z[Z_PosDepositoInLentaFalda].Velocita				:= Z_Par.Vel_Ridotta;
+Programma_Z[Z_PosDepositoInLentaFalda].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[Z_PosDepositoInLentaFalda].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[Z_PosDepositoInLentaFalda].Jerk					:= Z_Par.Jerk_Vuoto;
+Programma_Z[Z_PosDepositoInLentaFalda].DisabilitaTasteggio	:= FALSE;
+
+(*
+(*************************************************************************************************************************************)
+(******************************************************  ASSE K **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 51 Asse K : Apertura pinza per prelievo falda *)
+Programma_K[51].ID 					:= 51;
+Programma_K[51].Quota_Destinazione	:= Quota_Apertura_Prelievo_Falda_K;
+Programma_K[51].Velocita			:= K_Par.Vel_Vuoto;
+Programma_K[51].Accelerazione		:= K_Par.Acc_Vuoto;
+Programma_K[51].Decelerazione		:= K_Par.Dec_Vuoto;
+Programma_K[51].Jerk				:= K_Par.Jerk_Vuoto;
+Programma_K[51].Torque				:= 100;
+(* Programma 52 Asse K : Chiusura pinza per falda prelievo *)
+Programma_K[52].ID 					:= 52;
+Programma_K[52].Quota_Destinazione	:= Quota_Chiusura_Prelievo_Falda_K;
+Programma_K[52].Velocita			:= K_Par.Vel_Vuoto;
+Programma_K[52].Accelerazione		:= K_Par.Acc_Vuoto;
+Programma_K[52].Decelerazione		:= K_Par.Dec_Vuoto;
+Programma_K[52].Jerk				:= K_Par.Jerk_Vuoto;
+Programma_K[52].Torque				:= 100;
+
+(* Programma 53 Asse K : Apertura pinza per deposito falda *)
+Programma_K[53].ID 					:= 53;
+Programma_K[53].Quota_Destinazione	:= Quota_Apertura_Deposito_Falda_K;
+Programma_K[53].Velocita			:= K_Par.Vel_Vuoto;
+Programma_K[53].Accelerazione		:= K_Par.Acc_Vuoto;
+Programma_K[53].Decelerazione		:= K_Par.Dec_Vuoto;
+Programma_K[53].Jerk				:= K_Par.Jerk_Vuoto;
+Programma_K[53].Torque				:= 100;
+*)
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE J **********************************************************************)
+(*************************************************************************************************************************************)
+
+(* Programma 10 Asse J : Rotazione a quota pelievo falda *)
+Programma_J[10].ID 					:= 10;
+Programma_J[10].Quota_Destinazione	:= Quota_Rotazione_Prelievo_Falda;
+Programma_J[10].Velocita			:= J_Par.Vel_Vuoto;
+Programma_J[10].Accelerazione		:= J_Par.Acc_Vuoto;
+Programma_J[10].Decelerazione		:= J_Par.Dec_Vuoto;
+Programma_J[10].Jerk				:= J_Par.Jerk_Vuoto;
+
+(* Programma 11 Asse J : Rotazione a quota deposito falda *)
+Programma_J[11].ID 					:= 11;
+Programma_J[11].Quota_Destinazione	:= Quota_Rotazione_Deposito_Falda;
+Programma_J[11].Velocita			:= J_Par.Vel_Carico;
+Programma_J[11].Accelerazione		:= J_Par.Acc_Carico;
+Programma_J[11].Decelerazione		:= J_Par.Dec_Carico;
+Programma_J[11].Jerk				:= J_Par.Jerk_Carico;
+
+Inizializzato := TRUE;
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFProgramma_Ciclo_Falda_Lastre">
+      <LineId Id="1077" Count="46" />
+      <LineId Id="1392" Count="7" />
+      <LineId Id="1124" Count="121" />
+      <LineId Id="1344" Count="0" />
+      <LineId Id="1246" Count="3" />
+      <LineId Id="1251" Count="25" />
+      <LineId Id="1345" Count="0" />
+      <LineId Id="1277" Count="20" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

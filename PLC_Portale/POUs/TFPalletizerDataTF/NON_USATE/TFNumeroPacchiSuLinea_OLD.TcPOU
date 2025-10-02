@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFNumeroPacchiSuLinea_OLD" Id="{f3c3226b-56a9-4f5a-aff4-869969f77d4b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFNumeroPacchiSuLinea_OLD : UINT
+VAR_INPUT
+	HandlingPackTable : POINTER TO TFHandlingPackTable;
+END_VAR
+VAR
+	i : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFNumeroPacchiSuLinea := 0; 
+
+FOR i:= 1 TO MAXHANDLINGPACK DO
+	IF HandlingPackTable^.Table[i,1].PP THEN
+		TFNumeroPacchiSuLinea := TFNumeroPacchiSuLinea +1;
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="TFNumeroPacchiSuLinea_OLD">
+      <LineId Id="9" Count="2" />
+      <LineId Id="34" Count="1" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

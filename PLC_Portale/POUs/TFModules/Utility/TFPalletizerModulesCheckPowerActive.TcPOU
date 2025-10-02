@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerModulesCheckPowerActive" Id="{835a485e-c21e-4625-a4ac-436ce06348e9}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerModulesCheckPowerActive : BOOL (* Funzione che ritorna TRUE se tutti gli assi sono in Power *)
+VAR_INPUT
+	Modules : POINTER TO TFPalletizerModules;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerModulesCheckPowerActive:=	
+								 (Modules^.AX_X.Ax^.Status.PowerActive OR (Modules^.AX_X.Ax^.BrakeEnable AND Modules^.AX_X.Ax^.BrakePresent))AND
+								 (Modules^.AX_Y.Ax^.Status.PowerActive OR (Modules^.AX_Y.Ax^.BrakeEnable AND Modules^.AX_Y.Ax^.BrakePresent))AND
+								 (Modules^.AX_Z.Ax^.Status.PowerActive OR (Modules^.AX_Z.Ax^.BrakeEnable AND Modules^.AX_Z.Ax^.BrakePresent))AND
+								 (Modules^.AX_J.Ax^.Status.PowerActive OR (Modules^.AX_J.Ax^.BrakeEnable AND Modules^.AX_J.Ax^.BrakePresent));
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerModulesCheckPowerActive">
+      <LineId Id="109" Count="0" />
+      <LineId Id="140" Count="3" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

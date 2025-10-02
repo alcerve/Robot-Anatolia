@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="Picking" Id="{0d2f8244-2b86-437f-97dc-5348fa0699b7}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+
+	MAXPRODLIST			: UINT := 3; //Numero LISTE DI PRODUZIONE DA ESEGUIRE
+	MAXARTICLEPICKING 	: UINT := 4; //Numero di "Prodotti" necessari per comporre l'ordine di picking.. corrisponde al numero di postazioni disponibili in macchina
+	MAXELEMENTLIST 		: UINT := 100;//Numero massimo di elementi presenti nella lista di produzione -> N° falde+ N° lastre	
+END_VAR
+
+VAR_GLOBAL
+	Cmd_CalcolaLista : ARRAY [1..3] OF BOOL;//Comando che crea la lista di produzione
+	Cmd_AttivaLista : ARRAY [1..3] OF BOOL;//Comando attivazione nuova lista
+	Cmd_AzzeraLista : ARRAY [1..3] OF BOOL; //Comando Reset Lista Attiva
+
+	ListaInEsecuzione 		: ARRAY [1..3] OF BOOL; //Indica che una lista è già in esecuzione
+	NumeroListaInEsecuzione : UINT;
+	IdxMaxNumEl 			: UINT;
+	ElementiDaDepositare 	: ARRAY [1..3] OF UINT;
+	ElementiElaborati 		: ARRAY [1..3] OF UINT;
+	HMI_NumeroLastreDepOrdineAttuale 		: ARRAY [1..3] OF UINT; //Numero lastre depositate ordine attuale
+	HMI_NumeroLastreRimanentiOrdineAttuale 	: ARRAY [1..MAXAREA] OF UINT;//numero lastre rimanenti postazione di prelievo
+	ListaEmpty 								: TFMachinePalletizer_ListaProduzione_WAM;
+	SlabNumber								: INT;
+END_VAR
+
+VAR_GLOBAL PERSISTENT
+	HMI_PareggiaturaLastraAbilitata : BOOL; //Abilitazione Pareggiatore lastre
+	PickingListFROMSupervisorArray 	: ARRAY [1..MAXPRODLIST] OF TFMachinePalletizer_ListaProduzione;//Lista di produzione dal supervisore
+	
+	PickingListFROMSupervisor 		: TFMachinePalletizer_ListaProduzione;//Lista di produzione dal supervisore
+	
+	//ok sotto
+	RequestPickingListFromHMI : ARRAY [1..3] OF ST_DataManualPicking;
+	ActualPickingListFromHMI  : ARRAY [1..3] OF ST_DataManualPicking;
+		
+	HMI_WorkAreaDataPicking 		: ARRAY [1..MAXAREA] OF ST_WorkAreaDataPicking;//Dati da HMI per definire il picking
+	
+	HMI_ErroreCalcoloLista : UINT := 0;//Errori utilizzati per il calcolo della lista
+	
+	//PickingListTOSupervisor 		: ARRAY [1..MAXPRODLIST] OF TFMachinePalletizer_ListaProduzione;//Lista di produzione a supervisore
+	FormaturaBundleRT : ARRAY [1..3] OF TFMachinePalletizer_FormingForSlab; //Formatura real time di appoggio per calcoli di prel-dep in supporti non orizzontali
+	FormaturaAFRAMERT : ARRAY [1..3] OF TFMachinePalletizer_FormingForSlab; //Formatura real time di appoggio per calcoli di prel-dep in supporti non orizzontali
+	
+	HMI_NumeroPezziPresentiPostazione : ARRAY [1..MAXAREA] OF UINT;
+
+	HMI_WorkAreaDataPicking_1_8 	: BOOL; //Ordine postazioni 1..8 in lavoro
+	HMI_WorkAreaDataPicking_1_4 	: BOOL; //Ordine postazioni 1..4 in lavoro
+	HMI_WorkAreaDataPicking_5_8 	: BOOL; //Ordine postazioni 1..4 in lavoro	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

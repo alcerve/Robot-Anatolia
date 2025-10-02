@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="StatoLineaDepal" Id="{b649b611-e29b-4949-ad26-0f8a86d77e7c}">
+    <Declaration><![CDATA[TYPE StatoLineaDepal :
+STRUCT
+	AsseX	: TFMachinePalletizer_AxeState_TF;	(* X Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	AsseY	: TFMachinePalletizer_AxeState_TF;	(* Y Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	AsseZ	: TFMachinePalletizer_AxeState_TF;	(* Z Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	AsseJ	: TFMachinePalletizer_AxeState_TF;	(* J Axe State (UI Position=°,  UI Velocity=°/sec  UI Acc/Dec=°/sec2) *)
+
+	DepalAuto 		: BOOL;	//Indica che il Depal è in automatico
+	DepalError 		: UDINT;	//Se <> 0 identifica il codice di errore della macchina
+
+	RulliereInterneAuto 	: BOOL; //Indica che le rulliere interne sono in automatico
+	RulliereInterneError 	: UDINT; //Se <> 0 identifica il codice di errore della macchina
+
+	RulliereEsterneAuto 	: BOOL; //Indica che le rulliere esterne sono in automatico
+	RulliereEsterneError 	: UDINT; //Se <> 0 identifica il codice di errore della macchina
+	
+	ElementoSuRullieraPrelievo1 : TFMachineTransportElement;
+	ElementoSuRullieraPrelievo2 : TFMachineTransportElement;
+	testnum : REAL;
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

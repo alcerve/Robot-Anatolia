@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <EnumerationTextList Name="e_OrdinamentoPostazione" Id="{ab6a40f6-afcb-4605-a738-4f7b980f15d1}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Riferimento origine assi postazione in WA rispetto l'origine degli assi
+TYPE e_OrdinamentoPostazione :
+(
+	NOT_DEFINED		:= -1,
+	CRESCENTE	 	:= 1,	(* Identifica che LA numerazione CRESCE dall'origine della macchina *)
+	DECRESCENTE	 	:= 2	(* Identifica che LA numerazione DECRESCE dall'origine della macchina *)	
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"CRESCENTE"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"DECRESCENTE"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{d1cd8aef-bc60-4ccd-999a-1709e416e214}</v>
+          <v n="GuidReInit">{2e75bb8c-4128-406c-a4ba-f83362e3bca3}</v>
+          <v n="GuidExitX">{703c363f-75a9-4e51-8ffd-12bb204e7fec}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

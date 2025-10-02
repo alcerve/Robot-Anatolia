@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="LGV_Stato_Postazione" Id="{f63fbe85-c41d-450f-bb6e-55b958ea0d4f}">
+    <Declaration><![CDATA[TYPE LGV_Stato_Postazione :
+STRUCT
+
+	Abilitata			: INT; 	 // Abilitazione: 0=Postazione DISABILITATA, 1=Postazione ABILITATA
+	Tipologia 			: INT; 	 // Tipologia: 1=Catasta Vuoti, 2=Pallet Singolo, 3=Falda,
+	ProgressiveNr 		: UDINT; //Ad ogni deposito PALLET viene incrementato il suo valore ("ID univoco del pallet depositato")
+	LGV_Req 			: INT; 	 //Chiamata Navetta: 0=Nessuna Chiamata, 1=Chiamata LGV
+	CodicePallet 		: INT;	 //Codice identificativo del Pallet
+	CodiceFalda 		: INT;	 //Codice identificativo della Falda
+	CodiceLavorazione 	: INT;	 //Codice identificativo di lavorazione 
+	AltezzaPallet		: REAL;	 //Altezza REALE degli elemti sulla Postazione
+	
+	Stato 				: INT; 	//Stato della Postazione
+	CodiceFormatura 	: INT; 	//Codice di Formatura Associata alla postazione
+	NPaccoSuccesivo 	: INT;	//Numero del pacco da depositare
+	PN					: INT;	//Quota X postazione rispetto all quota X del ribaltino (0=Positiva, 1=Negativa)
+	LGVAttr				: INT;   //Identifica gli attributi che il pallet completo dovrà avere (Tipo di Nastratura,avvolgitura,ecc)
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

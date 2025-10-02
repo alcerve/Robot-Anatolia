@@ -1,0 +1,234 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcolaNumeroPostazioneDXSX" Id="{fd9c8850-63ab-4219-b770-05263b7c49f2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCalcolaNumeroPostazioneDXSX (* Restituisce il numero della postazione a DX e a SX rispetto alla poszione attuale della pinza *)
+VAR_INPUT
+	WorkArea 					: POINTER TO ARRAY[1..MAXAREA] OF TFMachinePalletizer_WorkArea; //Puntatore alla struttura WorkArea
+	PosizioneAttuale			: LREAL;	//Posizione attuale dell'asse X
+	DirezioneAsseX_Positiva		: BOOL;
+END_VAR
+VAR_OUTPUT
+	NPostazioneDX : UINT;
+	NPostazioneSX : UINT;
+	PostazionePartenza : UINT;
+END_VAR
+VAR
+	WADX: UINT;
+	WASX: UINT;
+	waDXSX : UINT;
+END_VAR
+(* Restituisce il numero della postazione a DX e a SX rispetto alla poszione attuale della pinza *)]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[WASX := 0;
+WADX := 0;
+
+CASE VERSO_PALLETTIZZATORE OF
+	PALLETTIZZATORE_DX :
+						FOR waDXSX := 1 TO MAXAREAPRESENT DO
+							IF PosizioneAttuale > WorkArea^[waDXSX].X + 50  THEN
+								WADX := WADX +1;
+								IF WADX > MAXAREAPRESENT THEN
+									WADX := MAXAREAPRESENT;
+								END_IF
+								NPostazioneDX		:= WADX;
+								WorkAreaDX_Attuale  := WADX;
+							ELSE
+								WASX := WADX + 1;
+								IF WADX = 0 THEN
+									WADX:=1;
+								END_IF
+								IF WASX > MAXAREAPRESENT THEN
+									WASX := MAXAREAPRESENT;
+								END_IF
+								NPostazioneSX		:= WASX;
+								WorkAreaSX_Attuale := WASX;
+								IF DirezioneAsseX_Positiva THEN
+									PostazionePartenza:= WADX+1;
+								ELSE
+									PostazionePartenza:= WASX-1;
+									
+								END_IF
+								EXIT;
+							END_IF
+						END_FOR					
+						
+	
+	PALLETTIZZATORE_SX :
+						CASE ORDINE_DISPOSIZIONE_POSTAZIONI OF
+
+							CRESCENTE:
+										FOR waDXSX := 1 TO MAXAREAPRESENT DO
+											IF PosizioneAttuale > WorkArea^[waDXSX].X + 50  THEN
+												WADX := WADX +1;
+												IF WADX > MAXAREAPRESENT THEN
+													WADX := MAXAREAPRESENT;
+												END_IF
+												NPostazioneDX		:= WADX;
+												WorkAreaDX_Attuale  := WADX;
+											ELSE
+												WASX := WADX + 1;
+												IF WADX = 0 THEN
+													WADX:=1;
+												END_IF
+												IF WASX > MAXAREAPRESENT THEN
+													WASX := MAXAREAPRESENT;
+												END_IF
+												NPostazioneSX		:= WASX;
+												WorkAreaSX_Attuale := WASX;
+												IF DirezioneAsseX_Positiva THEN
+													
+													//PostazionePartenza:= WADX;
+													PostazionePartenza:= WASX;
+												ELSE
+													//PostazionePartenza:= WASX;
+													PostazionePartenza:= WASX;
+												END_IF
+												EXIT;
+											END_IF
+										END_FOR
+										
+							DECRESCENTE:
+										FOR waDXSX := MAXAREAPRESENT  TO 1 BY -1 DO
+											IF PosizioneAttuale > WorkArea^[waDXSX].X THEN
+												IF waDXSX = MAXAREAPRESENT THEN
+													NPostazioneSX		:= 99;//Punto di prelievo
+													WorkAreaSX_Attuale  := 99;
+													NPostazioneDX		:= waDXSX;
+													WorkAreaDX_Attuale  := waDXSX;
+												ELSIF waDXSX = 1 THEN
+													NPostazioneSX		:= 1;
+													NPostazioneDX		:= 1;
+													WorkAreaSX_Attuale  := 1;
+													WorkAreaDX_Attuale  := 1;
+													IF DirezioneAsseX_Positiva THEN
+														PostazionePartenza:= WorkAreaDX_Attuale;
+													ELSE
+														PostazionePartenza:= WorkAreaSX_Attuale;
+													END_IF
+													EXIT;
+												ELSE
+													NPostazioneSX		:= waDXSX+1;
+													NPostazioneDX		:= waDXSX-1;
+													WorkAreaSX_Attuale  := waDXSX;
+													WorkAreaDX_Attuale	:= waDXSX;
+												END_IF	
+												
+											ELSIF PosizioneAttuale <= WorkArea^[waDXSX].X THEN
+												IF waDXSX = MAXAREAPRESENT THEN
+													NPostazioneSX		:= 99;//Punto di prelievo
+													NPostazioneDX		:= waDXSX;
+													WorkAreaSX_Attuale  := waDXSX;
+													WorkAreaDX_Attuale  := waDXSX;
+													IF DirezioneAsseX_Positiva THEN
+														PostazionePartenza:= WorkAreaDX_Attuale;
+													ELSE
+														PostazionePartenza:= WorkAreaSX_Attuale;
+													END_IF
+													EXIT;
+												ELSIF waDXSX = 1 THEN
+													NPostazioneSX		:= waDXSX+1;
+													NPostazioneDX		:= 1;
+													WorkAreaSX_Attuale  := waDXSX;
+													WorkAreaDX_Attuale  := waDXSX;
+												ELSE
+													NPostazioneSX		:= waDXSX+1;
+													NPostazioneDX		:= waDXSX-1;
+													WorkAreaSX_Attuale  := waDXSX;
+													WorkAreaDX_Attuale	:= waDXSX;
+													IF DirezioneAsseX_Positiva THEN
+														PostazionePartenza:= WorkAreaDX_Attuale;
+													ELSE
+														PostazionePartenza:= WorkAreaSX_Attuale;
+													END_IF
+													EXIT;
+												END_IF
+												
+											END_IF
+										END_FOR	
+										
+						END_CASE
+	
+	
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcolaNumeroPostazioneDXSX">
+      <LineId Id="10" Count="1" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="28" Count="1" />
+      <LineId Id="41" Count="2" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="109" Count="1" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="44" Count="2" />
+      <LineId Id="120" Count="2" />
+      <LineId Id="112" Count="1" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="295" Count="3" />
+      <LineId Id="398" Count="0" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="48" Count="1" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="31" Count="1" />
+      <LineId Id="155" Count="0" />
+      <LineId Id="159" Count="0" />
+      <LineId Id="157" Count="0" />
+      <LineId Id="335" Count="18" />
+      <LineId Id="376" Count="1" />
+      <LineId Id="380" Count="0" />
+      <LineId Id="355" Count="1" />
+      <LineId Id="381" Count="0" />
+      <LineId Id="357" Count="2" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="164" Count="1" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="170" Count="1" />
+      <LineId Id="249" Count="1" />
+      <LineId Id="272" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="265" Count="0" />
+      <LineId Id="261" Count="1" />
+      <LineId Id="315" Count="3" />
+      <LineId Id="314" Count="0" />
+      <LineId Id="274" Count="0" />
+      <LineId Id="194" Count="0" />
+      <LineId Id="197" Count="0" />
+      <LineId Id="251" Count="0" />
+      <LineId Id="198" Count="0" />
+      <LineId Id="252" Count="0" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="210" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="200" Count="1" />
+      <LineId Id="255" Count="0" />
+      <LineId Id="276" Count="0" />
+      <LineId Id="254" Count="0" />
+      <LineId Id="310" Count="3" />
+      <LineId Id="309" Count="0" />
+      <LineId Id="273" Count="0" />
+      <LineId Id="267" Count="4" />
+      <LineId Id="266" Count="0" />
+      <LineId Id="208" Count="0" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="205" Count="0" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="305" Count="3" />
+      <LineId Id="304" Count="0" />
+      <LineId Id="277" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="206" Count="0" />
+      <LineId Id="183" Count="1" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="133" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

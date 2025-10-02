@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ST_DataWorkArea" Id="{4d32a45a-ddb0-4657-8ae0-92780a8afd3a}">
+    <Declaration><![CDATA[TYPE ST_DataWorkArea :
+STRUCT
+	IDWorkOrder		: LINT; (* Identificatore univoco dell'ordine di lavoro *)
+	SupportType		: INT; (* Identificatore univoco supporto WMS/SUPERvISORE NAV VALORIZZA AL DEPOSITO *)
+	LayerData 		: ST_LayerData; (* Identificatore/descrizione Falda WMS/SUPERvISORE NAV VALORIZZA AL DEPOSITO *)
+	SlabNumber  	: INT := 0; (* Numero di lastre depositate sul supporto *)
+	SlabData		: ARRAY[1..40] OF ST_SlabData; (* Sequenza delle lastre depositate *)
+	Error			: INT := 0;(* Se 0=nessun errore, 1=UDC in errore -> deve andare in carwash*)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

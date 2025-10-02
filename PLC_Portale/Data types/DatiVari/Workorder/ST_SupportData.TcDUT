@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_SupportData" Id="{ba7a11eb-b22d-4a18-8682-f096424de0ab}">
+    <Declaration><![CDATA[TYPE ST_SupportData :
+STRUCT
+	Tipologia				: INT	:= 0;  (* Indica la tipologia dell'elemento: 	PALLET_STANDARD 	:= 1, (* Indica la tipologia di Pallet standard *)
+																					CASSA_STANDARD		:= 2,(* Indica la tipologia di cassa in legno standard *)
+																					CAVALLETTO			:= 3,(* Indica la tipologia cavalletto GENERICA *)*)
+																				 
+	Code					: INT 	:= -1;	(* Codici Del supporto *)
+	XDim					: REAL	:= 0.0;	(* (mm) Dimensione X ex Lunghezza_Cavallina*) // Lunghezza X della cavallina (Lunghezza per la cassa)
+	YDim					: REAL	:= 0.0;	(* (mm) Dimensione Y ex L_Base *) // Larghezza totale della base della cavallina (Larghezza della cassa)
+	ZDim					: REAL	:= 0.0;	(* (mm) Dimensione Z Base Cavallina(interno, + bassa) o Base Cassa *)
+	HMAX					: REAL  := 0.0;	(* (mm) Altezza Massima dell'elemento telaio cavallina o sponde cassa, dal terreno alla massima altezza*)
+
+	DimVertice 				: REAL  := 0.0; // Larghezza parte alta della cavallina
+	DimBaseUtile 			: REAL  := 0.0; // Larghezza della base utile di appoggio delle lastre x cavallina
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

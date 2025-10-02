@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_ParametersFromHMI" Id="{6037807b-1690-4ba1-86b4-a963c1f6b1a8}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_ParametersFromHMI :
+STRUCT
+
+	OffsetKPick					: REAL;	(* Offset di apertura pinza per prelievo pallet, falda  *)
+	OffsetKPickPack				: REAL;	(* Offset di apertura pinza per prelievo pacco *)
+	OffsetKPlacePack			: REAL;	(* Offset di apertura pinza per deposito pacco *)
+	OffsetKPlace				: REAL;	(* Offset di apertura pinza per deposito pallet *)
+	OffsetZPlacePallet			: REAL;	(* Offset quota Z per rilascio pallet *)
+	OffsetZPlaceLayer			: REAL;	(* Offset quota Z per rilascio falda *)
+	
+	KPickTorquePallet			: REAL;	(* Coppia per prelievo Pallet *)
+	
+	OffsetZPlacePaccoVerticale		: REAL	:= 0; (* Offset quota Z per rilascio pacco in verticale *)
+	OffsetZPlacePaccoOrrizzontale	: REAL 	:= 0;	(* Offset quota Z per rilascio pacco in Orrizzontale *)
+	
+	OffsetZUscitaTasteggioPickPallet : REAL := 10; (* Offset dell'asse Z durante un tasteggio in prelievo Pallet: l'asse Z si muove di questo offset dopo la ri-lettura dei tastatori *)
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

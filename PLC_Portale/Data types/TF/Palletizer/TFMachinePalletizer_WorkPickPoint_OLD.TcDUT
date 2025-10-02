@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPickPoint_OLD" Id="{b77a531c-adde-46cd-97d6-b4cf6b8e0afa}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPickPoint_OLD :
+STRUCT
+	
+	Xv					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE *)
+	Yv					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE *)
+	Zv					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE *)
+	Jv					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE *)
+	ZvRaise				: REAL  := 0.0; 	(* READ	- (mm) Quota di salita per uscire dall'ingombro - CON RIBALTINO IN VERTICALE *)
+	
+	Xh					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE *)
+	Yh					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE *)
+	Zh					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE *)
+	Jh					: REAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE *)
+	ZhRaise				: REAL  := 0.0; 	(* READ	- (mm) Quota di salita per uscire dall'ingombro - CON RIBALTINO IN ORIZZONTALE *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFDimensioniPinza" Id="{1de1a2eb-0673-42d6-9f74-6b01f7fd41be}">
+    <Declaration><![CDATA[TYPE TFDimensioniPinza :
+STRUCT
+	Lunghezza : REAL := 1600; // Lunghezza Corpo pinza - Dimensione lungo X (da centro trave)
+	Larghezza : REAL := 1600; // Larghezza Corpo pinza - Dimensione Lungo Y (da centro trave)
+	Spessore  : REAL := 200; // Spessore Corpo Pinza - Dimensione Lungo Z (da centro di rotazione)
+	DimTraveVerticale : REAL := 150; //Dimensione Trave Verticale
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

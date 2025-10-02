@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_OffsetElement" Id="{7d9cf06d-7afe-456b-8d58-a425e03b5ba4}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_OffsetElement :
+STRUCT
+	Dir_X 				: REAL := 0.0;	(* (mm) OFFSET in direzione X *)
+	Dir_Y 				: REAL := 0.0;	(* (mm) OFFSET in direzione Y (+ è grande + mi allontano dal supporto)*)
+	Dir_Z 				: REAL := 0.0;	(* (mm) OFFSET in direzione Z (+ è grande + mi allontano dal supporto)*)
+	Dir_J 				: REAL := 0.0;	(* (°) OFFSET di inclinazione J (Pinza Inclinata: + è grande + è grande l'inclinazione, 
+																		Pinza Pari: più è grande più si sposta verso l'angolo maggiore *)
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFWorkAreaManager" Id="{9858f022-7459-42ca-b749-8fab5c2cd225}">
+    <Declaration><![CDATA[TYPE TFWorkAreaManager :
+STRUCT
+	State : e_Stato_WAManager := -1;	//Stato
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

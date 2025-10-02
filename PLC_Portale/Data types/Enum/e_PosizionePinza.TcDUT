@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_PosizionePinza" Id="{d13cbbdc-bfc3-4792-bfd4-3eaaf8058581}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+//Posizione della pinza rispetto le postazioni
+TYPE e_PosizionePinza :
+(
+	POS_CORRIDOIO_SX 	:= 1, //La pinza si trova a SX rispetto le postazioni
+	POS_CENTRALE 		:= 2, //La Pinza si trova nell'intorno del centro delle postazioni
+	POS_CORRIDOIO_DX 	:= 3 //La pinza si trova a DX rispetto le postazioni
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPickPoint_State" Id="{56e9fdd1-2fce-41ac-bb51-ccf32482db86}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPickPoint_State :
+STRUCT
+	
+	State			: INT	:= 0;	(* Stato della rulliera (0=Rulliera In Manuale, 1=Rulliera in Automatico, 2=Rulliera in Allarme *)
+	PowerOK			: BOOL  := FALSE; (* Indica che ho la marcia degli ausiliari delle rulliere *)
+	ProdPresence	: INT	:= 0;	(* Stato di Presenza prodotto (0=Prodotto Assente, 1=Prodotto Presente *)
+	LastraPronta	: BOOL  := 0;	(* Indica che la lastra è pronta per essere prelevata *)
+	Code			: INT	:= 0;	(* Codice Elemento *)
+	Priority		: INT   := 0;	(* Priorità del punto di prelievo, Attualmente: 0 = Priorità MINIMA, 1 = Priorità MASSIMA *)
+	
+	Element			: TFMachinePalletizer_PlaceElement; (* Struttura Usata per Tracciare l'elemento presente *)
+
+	StatoPrelievo	: INT   := 0;	(* WRITE - Stato del prelievo: 0 = Da effettuare, 1 = Effettuato *)		
+	StatoIngombroEE	: INT   := 0;	(* WRITE - Stato dell'ingombro dell'End-Effector: 0 = Non in ingombro, 1 = In Ingombro *)	
+	
+	XPosBandella		: REAL  := 0.0; (* Quota Bandella, Scritta dalle Rulliere (se posizionamento motorizzato) oppure dall'operatore (misura dal punto fiso della rulliera alla bandella) *)
+	YPosBandella		: REAL  := 0.0; (* Quota Bandella, Scritta dalle Rulliere (se posizionamento motorizzato) oppure dall'operatore (misura dal punto fiso della rulliera alla bandella) *)
+	
+	DataElement		: TFMachinePalletizer_DataElement; (* Struttura dati che la macchina acquisisce/trasferisce in fase di pallettizzazione/depallettizazione *)
+		
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

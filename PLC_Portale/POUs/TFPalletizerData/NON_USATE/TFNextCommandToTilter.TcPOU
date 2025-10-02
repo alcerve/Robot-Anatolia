@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFNextCommandToTilter" Id="{88cfe9b6-bf9b-4d72-83f6-6135a18daa12}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFNextCommandToTilter : INT
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	DistanceFromWAPointer : ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaSort;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	NextCode : INT;
+END_VAR
+VAR
+	i : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFNextCommandToTilter := -1;
+
+FOR i:=1 TO MAXAREA DO
+	IF WorkArea^[DistanceFromWAPointer[i].cwa].Code = NextCode THEN
+		IF WorkArea^[DistanceFromWAPointer[i].cwa].Enable = 1 AND Forming^[WorkAreaState^[DistanceFromWAPointer[i].cwa].F].Enable = 1 AND 
+			WorkAreaState^[DistanceFromWAPointer[i].cwa].State = WORKAREA_STATE_OCCUPIED_WORKING THEN
+				IF DistanceFromWAPointer[i].cwa = Mission^.PPlace THEN
+					TFNextCommandToTilter := Forming^[WorkAreaState^[DistanceFromWAPointer[i].cwa].F].PackXP[WorkAreaState^[DistanceFromWAPointer[i].cwa].P + 1].Grip;
+					RETURN;
+				ELSE
+					TFNextCommandToTilter := Forming^[WorkAreaState^[DistanceFromWAPointer[i].cwa].F].PackXP[WorkAreaState^[DistanceFromWAPointer[i].cwa].P].Grip;
+					RETURN;
+				END_IF	
+		END_IF
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="TFNextCommandToTilter">
+      <LineId Id="12" Count="2" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="50" Count="1" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="InputDataLogic" Id="{329c615b-b60a-4137-b8e1-dee086c45d77}">
+    <Declaration><![CDATA[TYPE InputDataLogic :
+STRUCT
+
+StateETHIP : UINT;
+	
+ItemSequenceNumber : SINT;
+ItemStatus : INT;
+ItemDataSize : INT;
+LocalPresenceInputBits : SINT;
+FailureMask : SINT;
+FragmentSequenceNumber : SINT;
+FragmentDataSize : INT;
+FragmentData : ARRAY [0..127] OF BYTE;
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

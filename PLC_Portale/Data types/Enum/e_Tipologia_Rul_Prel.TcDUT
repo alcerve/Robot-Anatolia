@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_Tipologia_Rul_Prel" Id="{32d4c535-2b56-47a0-8e13-bbbedc4524ac}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//TIPOLOGIA RULLIERA DI PRELIEVO A SECONDA DI COME ARRIVA LA PIASTRELLA: 0=PUNT,1=TRAVERSO
+TYPE e_Tipologia_Rul_Prel :
+(
+	RULLIERA_LONGITUDINALE := 0,//RULLIERA LONGITUDINALE CON ASSE X, IL PEZZO ARRIVA "DI PUNTA"
+	RULLIERA_TRASVERSALE := 1 //RULLIERA TRASVERSALE CON ASSE X, IL PEZZO ARRIVA "DI TRAVERSO"
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

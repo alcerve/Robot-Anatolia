@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerGetUnassignedCode" Id="{c43265ad-1f6d-4d3a-81c6-18da97f70cba}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerGetUnassignedCode : INT
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+END_VAR
+VAR
+	wa : INT;
+	pp : INT;
+	pf : INT;
+	PCode : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Per Tutte le Formature Attive *)
+FOR pf:=1 TO MAXFORMING DO
+	IF Forming^[pf].Enable = 1 THEN
+		(* Per tutti i codici di Pallettizzazione Validi *)
+		FOR pp:=1 TO MAXFORMINGCODE DO
+			IF Forming^[pf].Code[pp] > 0 THEN
+				(* Preassegno il Codice di Pallettizzazione *)
+				PCode := Forming^[pf].Code[pp];
+				(* Per tutte le WorkArea Attive *)
+				FOR wa:=1 TO MAXAREA DO
+					IF WorkArea^[wa].Enable = 1 AND Forming^[WorkAreaState^[wa].F].Enable = 1 THEN
+						(* Verifico se il codice è già stato assegnato *)
+						IF WorkArea^[wa].Code = Forming^[pf].Code[pp] THEN
+							(* Verifico se la piazzola è in lavorazione *)
+							(* Se è in lavorazione allora è inutile assegnarne un'altra con lo stesso codice *)
+							IF WorkAreaState^[wa].State < WORKAREA_STATE_OCCUPIED_WORKED THEN
+								PCode := 0;
+							END_IF
+						END_IF
+					END_IF
+				END_FOR
+				
+				IF PCode > 0 THEN
+					TFPalletizerGetUnassignedCode := PCode;
+					RETURN;
+				END_IF
+			END_IF
+		END_FOR
+	END_IF
+END_FOR
+TFPalletizerGetUnassignedCode := PCode;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerGetUnassignedCode">
+      <LineId Id="48" Count="28" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

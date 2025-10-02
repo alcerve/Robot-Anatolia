@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_SlabData" Id="{a7238be8-41ef-4016-8622-59acbb3c72f2}">
+    <Declaration><![CDATA[TYPE ST_SlabData :
+STRUCT
+	
+	ID			: LINT := 0;		(* Unic ID - Passato da Rulliera *)
+	IDWorkOrder	: LINT  := 0; 		(* Identificatore univoco dell'ordine di lavoro - Passato da Rulliera *)
+	Code		: UINT  := 0;		(* Production Code - Passato da Rulliera *)
+	Dimension 	: ST_DimensionElement; (* Dimensione Lastra - Passati dall'ordine *)
+	DimensionReal 	: ST_DimensionElement; (* Dimensione Lastra REALI - Passati dalla RULLIERA *)
+	Barcode 	: STRING(10) := ''; (* Barcode della lastra - Letto dal lettore *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

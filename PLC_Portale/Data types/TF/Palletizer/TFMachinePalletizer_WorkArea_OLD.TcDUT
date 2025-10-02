@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkArea_OLD" Id="{93d93f30-932b-492d-9507-dab285c3d89f}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkArea_OLD :
+STRUCT
+
+	Enable			: INT	:= -1;	(* READ			- Postazione Abilitata 0=no, 1=si, -1 dato non valido *)
+	Typology		: INT	:= -1;	(* READ			- Tipologia 1=Catasta Vuoti, 2=Pallet Singolo, 3=Falda, -1 dato non valido *)
+	Pallet			: INT	:= -1;	(* READ			- Tipo di pallet assegnato (0 = tipo 0, 1 = tipo 1, 2 = tipo 2,  …. , 0 / -1 dato non valido. Usato se Typology=1 *)
+	Layer			: INT	:= -1;	(* READ			- Tipo di falda dopo il pallet (0 = assente, 1 = tipo 1, 2 = tipo 2,  …. , -1 dato non valido. Usato se Typology=3 *)
+	Code			: INT	:= -1;	(* READ/WRITE	- Codice di Pallettizzazione (0..n=, -1 dato non valido). Viene estratto dalla Forming se Jolly=1, altrimenti lo si riceve! *)
+	Jolly			: INT	:= -1;	(* READ/WRITE	- (Definizione del Codice di Pall... A carico del PLC) (0=no, 1=si, -1= non valido) *)
+	Learn_Z			: REAL	:= 0.0;	(* READ			- (mm) Quota inizio Apprendimento "TouchProbe" Cataste e Falde) (Quota assoluta di impianto DA ORIGINE *)
+	Learned_Z		: REAL	:= 0.0; (* WRITE		- Quota rilevata durante apprendimento *)
+	DoLearn_Z			: INT	:= -1;	(* READ/WRITE 	- Stato apprendimento 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+	Slow			: INT	:= -1;	(* READ			- Primo Pacco in Lento (0=no, 1=si, -1= non valido) *)
+	Taped			: INT	:= -1;	(* READ/WRITE	- Nastratura eseguita. Determina espulsione! (0=non eseguita, 1=eseguita, -1= non valido) *)
+	RefuseLGV       : BOOL	:= FALSE;	(* READ		- Abilitazione chiamata LGV a termine pallettizzazione - TRUE= Non chiama LGV quando pallet pieno, FALSE= viene eseguita richiesta LGV *)
+	Initialize		: BOOL	:= FALSE; 	(* READ		- Deposito pallet e falda se prevista e non continua la pallettizzazione, TRUE= deposita pallet e falda e non continua pallettizzazione, FALSE= Esegue tutto il ciclo regolarmente*)
+	
+	X				: REAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Y				: REAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Z				: REAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	J				: REAL	:= 0.0;	(* READ			- (°) Quota assoluta di impianto DA ORIGINE *)
+	H				: REAL	:= 0.0; (* READ/WRITE	- (mm) Altezza Reale. Viene calcolata dal PLC dopo ogni prelievo (Vuoti o Falde) o deposito Pallet e durante la pallettizzazione *)
+	HPL				: REAL	:= 0.0; (* READ/WRITE   - (mm) Altezza del pallett utilizzato + altezza layers utilizzati *)
+	
+	JPick			: REAL	:= 0.0;	(* READ			- (°) Quota rotazione pinza per prelievo (usata se la workarea è un magazziono pallet/falde) *)
+	KPick			: REAL	:= 0.0;	(* READ			- (mm) Quota apertura pinza per prelievo (usata se la workarea è un magazziono pallet/falde) *)
+	JPlace			: REAL	:= 0.0;	(* READ			- (°) Quota rotazione pinza per deposito pallet/falde *)
+	
+	LGV_Req			: INT	:= 0;	(* READ/WRITE	- Richiesta LGV (0=Nop, 1=Richiesta LGV, 2= Consenso Ingresso, -1= non valido) *)
+	LGV_GetIn_GetOut: INT	:= -1;	(* WRITE		- Tipo Richiesta LGV  (0=Nop, 1=Richiesta Prelievo, 2= Richiesta Deposito, -1= non valido) *)	
+	LGV_LetIn		: INT	:= -1;	(* READ			- Stato LGV (0=Nop, 1=Richiesta Ingresso, 2=Fine Ingresso, -1= non valido) *)
+	LGV_Footprint	: INT	:= -1;	(* READ			- Presenza Ingombro Veicolo (0=Nessun Ingombro, 1=In Ingombro, -1= non valido) *)
+	LGV_ReqAbort	: BOOL	:= FALSE; (* READ		- Aborto chimata LGV *)
+	
+	ProgressiveNr	: UDINT;
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

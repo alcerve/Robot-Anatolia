@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_StatoPostazioneHMI" Id="{40162e21-28b7-4749-aa57-2877fd75a3f5}">
+    <Declaration><![CDATA[TYPE ST_StatoPostazioneHMI :
+STRUCT
+
+	Abilitata			: INT; 	 // Abilitazione: 0=Postazione DISABILITATA, 1=Postazione ABILITATA
+	TipologiaPostazione	: INT; 	 // Tipologia: 1=Catasta Vuoti, 2=Pallet Singolo, 3=Falda,
+	ProgressiveNr 		: INT; //Ad ogni deposito PALLET viene incrementato il suo valore ("ID univoco del pallet depositato")
+	
+	LGV_Req 			: INT; 	 //Chiamata Navetta: 0=Nessuna Chiamata, 1=Chiamata LGV
+	TipologiaSupporto   : INT;
+	CodiceLavorazione 	: INT;	 //Codice identificativo di lavorazione 
+	
+	Stato 				: INT; 	//Stato della Postazione
+	CodiceFormatura 	: INT; 	//Codice di Formatura Associata alla postazione
+	NPezzi			 	: INT;	//Numero dei pezzi presenti
+	
+	LGV_Call_EspulsionePieno : BOOL;
+	LGV_Call_EspulsioneVuoto : BOOL;
+	LGV_Call_RichiestaVuoto : BOOL;
+	LGV_Call_RichiestaPieno : BOOL;
+	
+	LGV_RichiestaIngresso : BOOL;
+	LGV_InIngombro : BOOL;
+	LGV_OkIngresso : BOOL;	
+	
+	ID_Supporto 	: INT;//Identificativo supporto
+	CampoStringa 	: STRING;//campo per scrittura libera di descrizioni varie esempio: tipo falda
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkAreaZone" Id="{68657dd1-bdbf-4e9d-a274-78a172a8dc38}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkAreaZone :
+STRUCT
+	Zone		: ARRAY[1..MAXZONE] OF TFMachinePalletizer_Zone; (* Definizione Zone *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCoppiaPinzaOk" Id="{d76eeba9-88fd-4924-be98-1a5d510a22d0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCoppiaPinzaOk : BOOL // True
+VAR_INPUT
+	Coppia_Attuale : REAL;	// Coppia attuale asse
+	Coppia_Riferimento : REAL; // Coppia che si desidera che sia presente
+	Offset_Controllo : REAL; // Valore che determina la finestra di controllo rispetto al valore di riferimento
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+TFCoppiaPinzaOk := FALSE;
+				
+IF (ABS(Coppia_Attuale) >= Coppia_Riferimento - Offset_Controllo AND (ABS(Coppia_Attuale) <= Coppia_Riferimento + Offset_Controllo)) THEN
+	TFCoppiaPinzaOk := TRUE;
+	RETURN;
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCoppiaPinzaOk">
+      <LineId Id="8" Count="1" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

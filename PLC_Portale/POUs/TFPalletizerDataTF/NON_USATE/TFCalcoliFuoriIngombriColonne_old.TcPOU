@@ -1,0 +1,1920 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoliFuoriIngombriColonne_old" Id="{b12b0920-5560-445f-9c3e-c3d670b7b1b7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCalcoliFuoriIngombriColonne_old : BOOL
+VAR_INPUT
+	Traiettoria : POINTER TO TFTraiettoria;
+	WorkSpace : POINTER TO TFMachinePalletizer_WorkSpace;
+	WorkFootprint : POINTER TO ARRAY [1..MAXFOOTPRINT] OF TFMachinePalletizer_WorkFootprint; //Ingombri
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+	PickPlaceParameters	: POINTER TO TFMachinePalletizer_ParametersFromHMI;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	AbilitaAnticipoDinamico : BOOL;
+	AbilitaCalcoloIngombroOttimizzato : BOOL := TRUE; //Abilitazione dell'utilizzo degli ingombri ottimizzati... calcoli in base all'angolo di rotazione della pinza
+END_VAR
+VAR
+	f : INT;
+	a : INT;
+	P : INT;
+	wa : int;
+	waDXSX : INT;
+	AltezzaDiIngombroArea : REAL;
+	AltezzaDiIngombroOstacoli : REAL;
+	AltezzaDiIngombroPuntiPrelievo : REAL;
+	AssegnaQuote : BOOL;
+	
+	Lunghezza : REAL;
+	Larghezza : REAL;
+	IngombroSuperficialePinzaMAX : REAL;
+	IngombroX : REAL;
+	IngombroY : REAL;
+	IngombroZ : REAL;
+	IngombroOttimizzatoX : REAL;
+	IngombroOttimizzatoY : REAL;
+	
+	IngombroVerticalePinzaMAX : REAL;
+	IngombroVerticaleMaxElementi : REAL;
+	//DirezioneXPositiva_Dep : BOOL;
+	//DirezioneXNegativa_Dep : BOOL;
+	//DirezioneXPositiva_Prel : BOOL;
+	//DirezioneXNegativa_Prel : BOOL;
+	DirezioneZPositiva : BOOL;
+	DirezioneZNegativa : BOOL;
+	DirezioneXNegativa : BOOL;
+	DirezioneXPositiva : BOOL;
+	
+	
+	WASX : UINT;
+	WADX : UINT;
+	WAPARTENZA : UINT;
+	WADESTINAZIONE : UINT;
+	LarghezzaPickPoint : REAL;
+	
+	
+	FuoriIngombroYNecessarioTMP : BOOL;
+	QuotaX_ConsensoRotazionePinza_RaggiuntaTMP : BOOL;
+	ConsensoTraslazioneY_TraColonneTMP : BOOL;
+	AsseXInFinestraDiPrelievoPaccoTMP : BOOL;
+	AsseJInFinestraDiPrelievoPaccoTMP : BOOL;
+	
+	OffsetSicurezza_Y : real := 50;
+	
+	
+	Pinza_InIngombroColonne_Partenza: BOOL; //Indica che la posizione della pinza è in ingombro colonne alla partenza del ciclo/ REAL TIME
+	IngombroOttimizzatoY_Destinazione: LREAL;
+	IngombroOttimizzatoX_Destinazione: LREAL;
+	IngombroOttimizzatoX_InPuntoDiPrelievo: LREAL;
+	IngombroOttimizzatoY_InPuntoDiPrelievo: LREAL;
+	IngombroOttimizzatoY_InPuntoDiDeposito: LREAL;
+	IngombroOttimizzatoX_InPuntoDiDeposito: LREAL;
+	Pinza_InIngombroColonne_Attuale: BOOL;
+	Pinza_InIngombroColonne_Destinazione: BOOL;
+	AsseJInFinestraDiPrelievoPallet: BOOL;
+	AsseXInFinestraDiPrelievoPallet: BOOL;
+	AsseYInFinestraDiPrelievoPallet: BOOL;
+	AsseXInFinestraDiRiposo: BOOL;
+	AsseYInFinestraDiRiposo: BOOL;
+	AsseJInFinestraDiRiposo: BOOL;
+	AsseXInFinestraDiDestinazione: BOOL;
+	AsseJInFinestraDiDestinazione: BOOL;
+	AsseYInFinestraDiDestinazione: BOOL;
+	IngombroOttimizzatoX_InTransito: LREAL;
+	IngombroOttimizzatoY_InTransito: LREAL;
+	Pinza_InIngombroColonne_Transito: BOOL;
+	Angolo: INT;
+	CalcolaIngombro: BOOL;
+	AsseXInFinestraDiPrelievo: BOOL;
+	AsseYInFinestraDiPrelievo: BOOL;
+	AsseJInFinestraDiPrelievo: BOOL;
+	
+	QuotaFuoriIngombro_Attuale_Y 		: LREAL;
+	QuotaFuoriIngombro_Prelievo_Y 		: LREAL;
+	QuotaFuoriIngombro_Deposito_Y		: LREAL;
+END_VAR	]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFCalcoliFuoriIngombriColonne := FALSE;
+
+FuoriIngombroYNecessarioTMP := TRUE;
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(**************************************************************************************************************************************************)
+(**************************************************************************************************************************************************)
+(**************************************************************************************************************************************************)
+(**************************************************************************************************************************************************)
+(* Calcolo Dimensioni pinza *)
+(**************************************************************************************************************************************************)
+Larghezza :=  Dimensioni_Pinza.Larghezza;
+Lunghezza :=  Dimensioni_Pinza.Lunghezza; //Fisso la lunghezza
+
+(* Calcolo delle dimensioni della pinza in base al tipo di ciclo in corso *)
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP,
+	
+	WAMANAGER_CICLO_RIPOSO_INIT,
+		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+		
+		IF (Mission^.KPick > Lunghezza) THEN // Se l'apertura in prelievo è maggiore della lunghezza della pinza
+			Lunghezza := Mission^.KPick;
+		END_IF
+		IF (Mission^.KPlace > Lunghezza) THEN // // Se l'apertura in deposito è maggiore della lunghezza della pinza 
+			Lunghezza := Mission^.KPlace;
+		END_IF
+		
+	WAMANAGER_CICLO_PRELIEVO_PALL_RUN:
+		IF ModuleAX_K^.Ax^.Status.ActPosition >= Dimensioni_Pinza.Lunghezza THEN
+			Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+		ELSE
+			Lunghezza := Dimensioni_Pinza.Lunghezza;
+		END_IF
+				
+	WAMANAGER_CICLO_DEPOSITO_PALL_RUN:
+		IF ModuleAX_K^.Ax^.Status.ActPosition >= Dimensioni_Pinza.Lunghezza THEN
+			Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+		ELSE
+			Lunghezza := Dimensioni_Pinza.Lunghezza;
+		END_IF
+		Larghezza :=  Mission^.YDim;
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_RUN:
+		IF ModuleAX_K^.Ax^.Status.ActPosition >= Dimensioni_Pinza.Lunghezza THEN
+			Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+		ELSE
+			Lunghezza := Dimensioni_Pinza.Lunghezza;
+		END_IF
+		Larghezza :=  Mission^.YDim;
+						
+	WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_RUN:
+		IF ModuleAX_K^.Ax^.Status.ActPosition >= Dimensioni_Pinza.Lunghezza THEN
+			Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+		ELSE
+			Lunghezza := Dimensioni_Pinza.Lunghezza;
+		END_IF
+		Larghezza :=  Mission^.YDim;
+									
+	WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:
+		IF ModuleAX_K^.Ax^.Status.ActPosition >= Dimensioni_Pinza.Lunghezza THEN
+			Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+		ELSE
+			Lunghezza := Dimensioni_Pinza.Lunghezza;
+		END_IF
+		Larghezza :=  Mission^.YDim;
+					
+	WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:
+		IF ModuleAX_K^.Ax^.Status.ActPosition >= Dimensioni_Pinza.Lunghezza THEN
+			Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+		ELSE
+			Lunghezza := Dimensioni_Pinza.Lunghezza;
+		END_IF
+		Larghezza :=  Mission^.YDim;
+				
+	WAMANAGER_CICLO_PRELIEVO_PACCO_RUN:
+		IF Mission^.JPickLT = 0 AND Mission^.JPickVO = 0 THEN // se longitudinale ( PARALLELO A X) e in verticale
+			Larghezza :=  Mission^.ZDim;
+			IF Mission^.XDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := Mission^.XDim + PickPlaceParameters^.OffsetKPickPack;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSIF  Mission^.JPickLT = 0 AND  Mission^.JPickVO = 1 THEN	// se longitudinale ( PARALLELO A X) e in orrizzontale
+			Larghezza :=  Mission^.YDim;
+			IF Mission^.XDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := Mission^.XDim + PickPlaceParameters^.OffsetKPickPack;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSIF  Mission^.JPickLT = 1 AND  Mission^.JPickVO = 0 THEN	// se trasversale ( PARALLELO A Y) e in verticale
+			Larghezza :=  Mission^.XDim;
+			IF Mission^.ZDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := Mission^.ZDim + PickPlaceParameters^.OffsetKPickPack;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSIF  Mission^.JPickLT = 1 AND  Mission^.JPickVO = 1 THEN	// se trasversale ( PARALLELO A Y) e in orrizzontale
+			Larghezza :=  Mission^.XDim;
+			IF Mission^.YDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSE
+			Larghezza := Dimensioni_Pinza.Larghezza;
+			Lunghezza := ModuleAX_K^.AxisPar^.MaxPosition;
+		END_IF
+		
+	WAMANAGER_CICLO_DEPOSITO_PACCO_RUN:
+		IF Mission^.JPickLT = 0 AND Mission^.JPickVO = 0 THEN // se longitudinale ( PARALLELO A X) e in verticale
+			Larghezza :=  Mission^.ZDim;
+			IF Mission^.XDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := Mission^.XDim + PickPlaceParameters^.OffsetKPickPack;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSIF  Mission^.JPickLT = 0 AND  Mission^.JPickVO = 1 THEN	// se longitudinale ( PARALLELO A X) e in orrizzontale
+			Larghezza :=  Mission^.YDim;
+			IF Mission^.XDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := Mission^.XDim + PickPlaceParameters^.OffsetKPickPack;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSIF  Mission^.JPickLT = 1 AND  Mission^.JPickVO = 0 THEN	// se trasversale ( PARALLELO A Y) e in verticale
+			Larghezza :=  Mission^.XDim;
+			IF Mission^.ZDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := Mission^.ZDim + PickPlaceParameters^.OffsetKPickPack;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSIF  Mission^.JPickLT = 1 AND  Mission^.JPickVO = 1 THEN	// se trasversale ( PARALLELO A Y) e in orrizzontale
+			Larghezza :=  Mission^.XDim;
+			IF Mission^.YDim + PickPlaceParameters^.OffsetKPickPack >= Dimensioni_Pinza.Lunghezza THEN
+				Lunghezza := ModuleAX_K^.Ax^.Status.ActPosition;
+			ELSE
+				Lunghezza := Dimensioni_Pinza.Lunghezza;
+			END_IF
+		ELSE
+			Larghezza := Dimensioni_Pinza.Larghezza;
+			Lunghezza := ModuleAX_K^.AxisPar^.MaxPosition;
+		END_IF
+					
+END_CASE
+(************************************ Ingombri Pinza ******************************************)
+
+(* Valuto l' ingombro superficiale massimo *)
+IngombroSuperficialePinzaMAX := SQRT((Larghezza * Larghezza) + (Lunghezza * Lunghezza));
+
+(* Valuto l' ingombro Verticale massimo *)
+IngombroVerticalePinzaMAX := Dimensione_Z_ElementoInPresaX_Ingombro;
+
+(* Ingombro ottimizzato della pinza REAL-TIME *)
+IngombroOttimizzatoX := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos))));
+IngombroOttimizzatoY := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos))));
+
+(* Abilitazione dell'uso degli ingombri ottimizzati *)
+IF AbilitaCalcoloIngombroOttimizzato THEN
+	IngombroX := IngombroOttimizzatoX;
+	IngombroY := IngombroOttimizzatoY;
+ELSE
+	IngombroX := IngombroSuperficialePinzaMAX;
+	IngombroY := IngombroSuperficialePinzaMAX;
+END_IF
+
+IngombroSuperficialePinzaMAX_Global := IngombroSuperficialePinzaMAX;
+IngombroXPinzaOttimizzato_Global 	:= IngombroX;
+IngombroYPinzaOttimizzato_Global 	:= IngombroY;
+(**********************************************************************************************)
+(**********************************************************************************************)
+
+(* Quota di Fuori-Ingombro della X rispetto le colonne, valutando l'ingombro effettivo della pinza *)
+IF ModuleAX_X^.Ax^.AxRef^.Status.PositiveDirection THEN //Direzione POSITIVA 
+	IF (ModuleAX_X^.Ax^.Status.ActPosition - IngombroX/ 2)-50 >= (WorkFootprint^[6].X + WorkFootprint^[6].XDim) THEN
+		QuotaX_ConsensoRotazionePinza_RaggiuntaTMP := TRUE;
+	ELSE
+		QuotaX_ConsensoRotazionePinza_RaggiuntaTMP := FALSE;
+	END_IF
+ELSIF ModuleAX_X^.Ax^.AxRef^.Status.NegativeDirection (*OR WorkArea^[Mission^.PPick].X >= WorkArea^[Mission^.PPlace].X*) THEN //Direzione NEGATIVA 
+	IF (ModuleAX_X^.Ax^.Status.ActPosition + IngombroX/ 2)+50 >(WorkFootprint^[6].X)(* OR WorkArea^[Mission^.PPick].X >= WorkArea^[Mission^.PPlace].X *)THEN
+		QuotaX_ConsensoRotazionePinza_RaggiuntaTMP := TRUE;
+	ELSE
+		QuotaX_ConsensoRotazionePinza_RaggiuntaTMP := FALSE;
+	END_IF
+ELSIF WorkAreaManager^.State = WAMANAGER_CICLO_PRELIEVO_PACCO_RUN AND Mission^.TPick = TPICK_PACK AND (ModuleAX_X^.Ax^.AxRef^.NcToPlc.ActPos >= WorkPickPoint^[Mission^.PPick].Xh - 10 AND ModuleAX_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkPickPoint^[Mission^.PPick].Xh +10) THEN
+	ConsensoTraslazioneY_TraColonneTMP := TRUE;
+ELSE 
+	QuotaX_ConsensoRotazionePinza_RaggiuntaTMP := FALSE;
+END_IF
+
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP: 
+		CalcolaIngombro := TRUE;
+	
+	WAMANAGER_CICLO_RIPOSO_INIT: 
+		CalcolaIngombro := TRUE;
+		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN //Se l'angolo attuale di rotazione della pinza è INFERIORE alla posizione di destinazione
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick) DO //Valuto tutti i gradi di rotazione in direzione CRESCENTE fino all'angolo di destinazione
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				ELSIF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) >= REAL_TO_INT(Mission^.JPick) THEN //Se l'angolo attuale di rotazione della pinza è MAGGIORE alla posizione di destinazione
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick) BY -1 DO //Valuto tutti i gradi di rotazione in direzione DECRESCENTE fino all'angolo di destinazione
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore: verso stabilito guardando il pallettizzatore con la linea alle spalle *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna DX
+						QuotaFuoriIngombro_Attuale_Y := WorkFootprint^[6].Y + IngombroY/2 + OffsetSicurezza_Y;
+						Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSIF (ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza >= Ingombro colonna SX
+						QuotaFuoriIngombro_Attuale_Y := WorkFootprint^[5].Y - IngombroY/2 - OffsetSicurezza_Y;
+						Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+						QuotaFuoriIngombro_Attuale_Y := ModuleAX_Y^.Ax^.Status.ActPosition;
+						Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna DX
+						QuotaFuoriIngombro_Prelievo_Y := WorkFootprint^[6].Y + IngombroOttimizzatoY_InPuntoDiPrelievo/2 + OffsetSicurezza_Y; 
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSIF (Mission^.YPick + IngombroOttimizzatoY_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza >= Ingombro colonna SX
+						QuotaFuoriIngombro_Prelievo_Y := WorkFootprint^[5].Y - IngombroOttimizzatoY_InPuntoDiPrelievo/2 - OffsetSicurezza_Y;
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+						QuotaFuoriIngombro_Prelievo_Y := Mission^.YPick;
+						Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPlace - IngombroOttimizzatoY_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna DX
+						QuotaFuoriIngombro_Deposito_Y := WorkFootprint^[6].Y + IngombroOttimizzatoY_InPuntoDiPrelievo/2 + OffsetSicurezza_Y;
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSIF (Mission^.YPlace + IngombroOttimizzatoY_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza >= Ingombro colonna SX
+						QuotaFuoriIngombro_Deposito_Y := WorkFootprint^[5].Y - IngombroOttimizzatoY_InPuntoDiPrelievo/2 - OffsetSicurezza_Y;
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+						QuotaFuoriIngombro_Deposito_Y := Mission^.YPlace;
+						Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna DX
+						Pinza_InIngombroColonne_Transito := TRUE;
+					ELSIF (Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza >= Ingombro colonna SX
+						Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+						Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSIF (ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+						Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSIF (Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+						Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSIF (Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+						Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Transito := TRUE;
+					ELSIF (Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza + Metà ingombro + Offset sicurezza <= Ingombro colonna 
+						Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+						Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+								
+	WAMANAGER_CICLO_RIPOSO_END: 
+		CalcolaIngombro := TRUE;
+			
+	WAMANAGER_CICLO_PALL_INIT:
+		CalcolaIngombro := TRUE;
+	
+	WAMANAGER_CICLO_PRELIEVO_PALL_RUN:
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := FALSE; 
+			IF WorkArea^[Mission^.PPick].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) AND 	//se la piazzola di prelievo ha quota maggiore rispetto le colonne centrali
+				ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)  THEN //Sono già nella campata positiva
+					AreaInLavoroPositiva := TRUE;
+			ELSIF WorkArea^[Mission^.PPick].X <= WorkFootprint^[5].X AND 	//se la piazzola di prelievo ha quota maggiore della piazzola di deposito e
+				ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X  THEN //Sono già nella campata negativa
+					AreaInLavoroNegativa := TRUE;
+			ELSE
+				AreaInLavoroPositiva := FALSE;
+				AreaInLavoroNegativa := FALSE;
+				AreaInLavoroPositivaNegativa := TRUE;
+			END_IF
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF AreaInLavoroPositivaNegativa THEN
+				FuoriIngombroYNecessarioTMP := TRUE;
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+			
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) THEN 
+				FuoriIngombroYNecessarioTMP := TRUE;
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+			
+			IF (AsseXInFinestraDiDestinazione AND AsseYInFinestraDiDestinazione AND AsseJInFinestraDiDestinazione) THEN //Se sono in finestra di DESTINAZIONE con tutti gli assi non devo andare fuori-ingombro con la Y
+				FuoriIngombroYNecessarioTMP := FALSE;
+			ELSE
+				FuoriIngombroYNecessarioTMP := TRUE;
+			END_IF
+			
+			
+		END_IF
+		
+	WAMANAGER_CICLO_PRELIEVO_PALL_END:
+		CalcolaIngombro := TRUE;					
+		
+	WAMANAGER_CICLO_DEPOSITO_PALL_RUN:
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := FALSE; 
+			IF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) AND 	//se la piazzola di prelievo ha quota maggiore rispetto le colonne centrali
+				WorkArea^[Mission^.PPlace].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)  THEN //la piazzola di deposito è nella campata positiva
+					AreaInLavoroPositiva := TRUE;
+			ELSIF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X AND 	//se la piazzola di prelievo ha quota maggiore della piazzola di deposito e
+				WorkArea^[Mission^.PPlace].X <= WorkFootprint^[5].X  THEN //la piazzola di deposito è nella campata negativa
+					AreaInLavoroNegativa := TRUE;
+			ELSE
+				AreaInLavoroPositiva := FALSE;
+				AreaInLavoroNegativa := FALSE;
+				AreaInLavoroPositivaNegativa := TRUE;
+			END_IF
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) AND AreaInLavoroPositivaNegativa THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+		
+	WAMANAGER_CICLO_DEPOSITO_PALL_END:
+		CalcolaIngombro := TRUE;	
+	
+	WAMANAGER_CICLO_FALDA_VUOTI_INIT:
+		CalcolaIngombro := TRUE;	
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_RUN:
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := FALSE; 
+			IF WorkArea^[Mission^.PPick].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) AND 	//se la piazzola di prelievo ha quota maggiore rispetto le colonne centrali
+				ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)  THEN //Sono già nella campata positiva
+					AreaInLavoroPositiva := TRUE;
+			ELSIF WorkArea^[Mission^.PPick].X <= WorkFootprint^[5].X AND 	//se la piazzola di prelievo ha quota maggiore della piazzola di deposito e
+				ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X  THEN //Sono già nella campata negativa
+					AreaInLavoroNegativa := TRUE;
+			ELSE
+				AreaInLavoroPositiva := FALSE;
+				AreaInLavoroNegativa := FALSE;
+				AreaInLavoroPositivaNegativa := TRUE;
+			END_IF
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) AND AreaInLavoroPositivaNegativa THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+				
+	WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_END:
+		CalcolaIngombro := TRUE;	
+		
+	WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_RUN:
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := FALSE; 
+			IF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) AND 	//se la piazzola di prelievo ha quota maggiore rispetto le colonne centrali
+				WorkArea^[Mission^.PPlace].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)  THEN //la piazzola di deposito è nella campata positiva
+					AreaInLavoroPositiva := TRUE;
+			ELSIF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X AND 	//se la piazzola di prelievo ha quota maggiore della piazzola di deposito e
+				WorkArea^[Mission^.PPlace].X <= WorkFootprint^[5].X  THEN //la piazzola di deposito è nella campata negativa
+					AreaInLavoroNegativa := TRUE;
+			ELSE
+				AreaInLavoroPositiva := FALSE;
+				AreaInLavoroNegativa := FALSE;
+				AreaInLavoroPositivaNegativa := TRUE;
+			END_IF
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) AND AreaInLavoroPositivaNegativa THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+								
+	WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_END:
+		CalcolaIngombro := TRUE;	
+	
+	WAMANAGER_CICLO_FALDA_INIT:
+		CalcolaIngombro := TRUE;	
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF		
+																
+	WAMANAGER_CICLO_PRELIEVO_FALDA_END:
+		CalcolaIngombro := TRUE;	
+			
+	WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+			
+			IF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) AND 	//se la piazzola di prelievo ha quota maggiore rispetto le colonne centrali
+				WorkArea^[Mission^.PPlace].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)  THEN //la piazzola di deposito è nella campata positiva
+					AreaInLavoroPositiva := TRUE;
+			ELSIF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X AND 	//se la piazzola di prelievo ha quota maggiore della piazzola di deposito e
+				WorkArea^[Mission^.PPlace].X <= WorkFootprint^[5].X  THEN //la piazzola di deposito è nella campata negativa
+					AreaInLavoroNegativa := TRUE;
+			ELSE
+				AreaInLavoroPositiva := FALSE;
+				AreaInLavoroNegativa := FALSE;
+				AreaInLavoroPositivaNegativa := TRUE;
+			END_IF
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+			
+	WAMANAGER_CICLO_DEPOSITO_FALDA_END:
+		CalcolaIngombro := TRUE;	
+
+	WAMANAGER_CICLO_PACCO_INIT:
+		CalcolaIngombro := TRUE;	
+	
+	WAMANAGER_CICLO_PRELIEVO_PACCO_RUN:
+		
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := TRUE; 
+			CASE Mission^.JPickVO OF
+				(* Verticale *)
+				0:	
+					IF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X AND 
+						WorkPickPoint^[Mission^.PPick].Xv <= WorkFootprint^[5].X THEN
+							AreaInLavoroNegativa := TRUE;
+					ELSIF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= WorkFootprint^[5].X AND 
+						WorkPickPoint^[Mission^.PPick].Xv >= WorkFootprint^[5].X THEN
+							AreaInLavoroPositiva := TRUE;
+					ELSE
+						AreaInLavoroPositiva := FALSE;
+						AreaInLavoroNegativa := FALSE;
+						AreaInLavoroPositivaNegativa := TRUE;
+					END_IF
+					
+				(* Orrizontale *)
+				1: 
+					IF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X AND 
+						WorkPickPoint^[Mission^.PPick].Xh <= WorkFootprint^[5].X THEN
+							AreaInLavoroNegativa := TRUE;
+					ELSIF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) AND 
+						WorkPickPoint^[Mission^.PPick].Xh >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) THEN
+							AreaInLavoroPositiva := TRUE;
+					ELSE
+						AreaInLavoroPositiva := FALSE;
+						AreaInLavoroNegativa := FALSE;
+						AreaInLavoroPositivaNegativa := TRUE;
+					END_IF
+			END_CASE
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+	WAMANAGER_CICLO_PRELIEVO_PACCO_END:
+		CalcolaIngombro := TRUE;	
+		
+	WAMANAGER_CICLO_DEPOSITO_PACCO_RUN:
+	
+		IF CalcolaIngombro THEN
+			CalcolaIngombro := FALSE;
+			(* Definisco il tipo di area in cui si trova a lavorare il pallettizzatore *)
+			AreaInLavoroPositiva := FALSE;
+			AreaInLavoroNegativa := FALSE;
+			AreaInLavoroPositivaNegativa := FALSE; 
+			
+			IF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim) AND 	//se la piazzola di prelievo ha quota maggiore rispetto le colonne centrali
+				WorkArea^[Mission^.PPlace].X >= (WorkFootprint^[5].X + WorkFootprint^[5].XDim)  THEN //la piazzola di deposito è nella campata positiva
+					AreaInLavoroPositiva := TRUE;
+			ELSIF ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos <= WorkFootprint^[5].X AND 	//se la piazzola di prelievo ha quota maggiore della piazzola di deposito e
+				WorkArea^[Mission^.PPlace].X <= WorkFootprint^[5].X  THEN //la piazzola di deposito è nella campata negativa
+					AreaInLavoroNegativa := TRUE;
+			ELSE
+				AreaInLavoroPositiva := FALSE;
+				AreaInLavoroNegativa := FALSE;
+				AreaInLavoroPositivaNegativa := TRUE;
+			END_IF
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di prelievo *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			IngombroOttimizzatoY_InPuntoDiPrelievo := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPick))));
+			(**************************************************************************************************************************************************)
+			(* Ingombro ottimizzato della pinza sul punto di deposito *)
+			(**************************************************************************************************************************************************)
+			IngombroOttimizzatoX_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+			IngombroOttimizzatoY_InPuntoDiDeposito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Mission^.JPlace))));
+						
+			(**************************************************************************************************************************************************)
+			(**************************************************************************************************************************************************)
+						
+			(* Valuto la direzione della X *)
+			DirezioneXPositiva := TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick);
+			DirezioneXNegativa := NOT DirezioneXPositiva;
+				
+			(* Valuto se gli assi sono in finestra di prelievo *)
+			AsseXInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiRiposo := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			(* Valuto se gli assi sono in finestra di destinazione *)
+			AsseXInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_X^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.XPick,FinestraDiControllo:=10);
+			AsseYInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_Y^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.YPick,FinestraDiControllo:=10);
+			AsseJInFinestraDiDestinazione := TFAsseInFinestra(Posizione_Attuale:=ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos,Posizione_Finale:=Mission^.JPick,FinestraDiControllo:=5);
+			
+			(**************************************************************************************************************************************************)
+			(* Ingombro MASSIMO della pinza durante il transito *)
+			(**************************************************************************************************************************************************)
+			//Calcolo ingombro attuale
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione X
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos)))); //Ingombro Attuale direzione Y		
+			IF NOT AsseJInFinestraDiDestinazione THEN
+				IF REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) <= REAL_TO_INT(Mission^.JPick) THEN
+					FOR Angolo := REAL_TO_INT(ModuleAx_J^.Ax^.AxRef^.NcToPlc.ActPos) TO REAL_TO_INT(Mission^.JPick)  DO
+						IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+						END_IF
+						IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+							IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+						END_IF
+					END_FOR
+				END_IF
+			END_IF
+		
+			(* Valutazione colonne in base al verso del pallettizzatore *)
+			CASE VERSO_PALLETTIZZATORE OF
+				PALLETTIZZATORE_DX:	// Colonna 6:DX, 5:SX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[6].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[5].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+						
+				PALLETTIZZATORE_SX: // Colonna 6:SX, 5:DX
+					(* Valuto la posizione attuale *)
+					IF (ModuleAX_Y^.Ax^.Status.ActPosition - IngombroY/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(ModuleAX_Y^.Ax^.Status.ActPosition + IngombroY/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Attuale := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Attuale := FALSE;
+					END_IF
+					(* Valuto la posizione futura - Missione di prelievo *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiPrelievo/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiPrelievo/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione futura - Missione di Deposito *)
+					IF (Mission^.YPick - IngombroOttimizzatoX_InPuntoDiDeposito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoX_InPuntoDiDeposito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Destinazione := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Destinazione := FALSE;
+					END_IF
+					
+					(* Valuto la posizione attuale Y e la posizione di destinazione Y e l'ingombro massimo che posso avere durante il transito *)
+					IF (Mission^.YPick - IngombroOttimizzatoY_InTransito/2 - OffsetSicurezza_Y <= WorkFootprint^[5].Y) OR //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+						(Mission^.YPick + IngombroOttimizzatoY_InTransito/2 + OffsetSicurezza_Y >= WorkFootprint^[6].Y) THEN //Posizione Pinza - Metà ingombro - Offset sicurezza <= Ingombro colonna 
+							Pinza_InIngombroColonne_Transito := TRUE;
+					ELSE
+							Pinza_InIngombroColonne_Transito := FALSE;
+					END_IF
+			END_CASE		
+			(* Se sono in ingombro nella posizione attuale o nella posizione di destinazione, devo andare fuori-ingombro con la Y *)
+			IF (Pinza_InIngombroColonne_Attuale OR Pinza_InIngombroColonne_Destinazione OR Pinza_InIngombroColonne_Transito) THEN 
+				IF (AsseXInFinestraDiRiposo AND AsseYInFinestraDiRiposo AND AsseJInFinestraDiRiposo) THEN //Se sono in finestra di riposo con tutti gli assi non devo andare fuori-ingombro con la Y
+					FuoriIngombroYNecessarioTMP := FALSE;
+				ELSE
+					FuoriIngombroYNecessarioTMP := TRUE;
+				END_IF
+			ELSE
+				FuoriIngombroYNecessarioTMP := FALSE;
+			END_IF
+		END_IF
+		
+	WAMANAGER_CICLO_DEPOSITO_PACCO_END:
+		CalcolaIngombro := TRUE;	
+	
+END_CASE
+
+TFCalcoliFuoriIngombriColonne := TRUE;
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcoliFuoriIngombriColonne_old">
+      <LineId Id="10693" Count="0" />
+      <LineId Id="12211" Count="0" />
+      <LineId Id="12210" Count="0" />
+      <LineId Id="10694" Count="1" />
+      <LineId Id="13083" Count="2" />
+      <LineId Id="10696" Count="0" />
+      <LineId Id="13080" Count="2" />
+      <LineId Id="10704" Count="0" />
+      <LineId Id="12832" Count="1" />
+      <LineId Id="12837" Count="5" />
+      <LineId Id="12851" Count="5" />
+      <LineId Id="12834" Count="0" />
+      <LineId Id="12902" Count="1" />
+      <LineId Id="13050" Count="3" />
+      <LineId Id="12939" Count="0" />
+      <LineId Id="12857" Count="0" />
+      <LineId Id="12864" Count="0" />
+      <LineId Id="13054" Count="3" />
+      <LineId Id="12865" Count="0" />
+      <LineId Id="13070" Count="0" />
+      <LineId Id="12869" Count="1" />
+      <LineId Id="13074" Count="4" />
+      <LineId Id="12871" Count="1" />
+      <LineId Id="12875" Count="0" />
+      <LineId Id="13058" Count="3" />
+      <LineId Id="12876" Count="0" />
+      <LineId Id="13071" Count="0" />
+      <LineId Id="12877" Count="0" />
+      <LineId Id="12882" Count="0" />
+      <LineId Id="13062" Count="3" />
+      <LineId Id="12883" Count="0" />
+      <LineId Id="13072" Count="0" />
+      <LineId Id="12884" Count="0" />
+      <LineId Id="12888" Count="0" />
+      <LineId Id="13066" Count="3" />
+      <LineId Id="12889" Count="0" />
+      <LineId Id="13073" Count="0" />
+      <LineId Id="12890" Count="0" />
+      <LineId Id="12895" Count="0" />
+      <LineId Id="12908" Count="30" />
+      <LineId Id="12896" Count="0" />
+      <LineId Id="12898" Count="1" />
+      <LineId Id="13019" Count="30" />
+      <LineId Id="12900" Count="1" />
+      <LineId Id="12858" Count="0" />
+      <LineId Id="10726" Count="0" />
+      <LineId Id="13086" Count="0" />
+      <LineId Id="10729" Count="1" />
+      <LineId Id="10733" Count="2" />
+      <LineId Id="12171" Count="0" />
+      <LineId Id="12170" Count="0" />
+      <LineId Id="10740" Count="16" />
+      <LineId Id="10932" Count="0" />
+      <LineId Id="10934" Count="17" />
+      <LineId Id="10960" Count="2" />
+      <LineId Id="13133" Count="0" />
+      <LineId Id="10963" Count="1" />
+      <LineId Id="13131" Count="0" />
+      <LineId Id="10965" Count="1" />
+      <LineId Id="13128" Count="0" />
+      <LineId Id="13132" Count="0" />
+      <LineId Id="12283" Count="0" />
+      <LineId Id="11917" Count="1" />
+      <LineId Id="13087" Count="0" />
+      <LineId Id="12784" Count="0" />
+      <LineId Id="12655" Count="0" />
+      <LineId Id="12525" Count="0" />
+      <LineId Id="12657" Count="0" />
+      <LineId Id="12526" Count="1" />
+      <LineId Id="12650" Count="0" />
+      <LineId Id="12528" Count="0" />
+      <LineId Id="12652" Count="0" />
+      <LineId Id="12529" Count="1" />
+      <LineId Id="12825" Count="0" />
+      <LineId Id="12648" Count="1" />
+      <LineId Id="12625" Count="0" />
+      <LineId Id="12347" Count="0" />
+      <LineId Id="11935" Count="0" />
+      <LineId Id="12346" Count="0" />
+      <LineId Id="12607" Count="0" />
+      <LineId Id="12381" Count="3" />
+      <LineId Id="12418" Count="0" />
+      <LineId Id="12420" Count="1" />
+      <LineId Id="12419" Count="0" />
+      <LineId Id="12357" Count="0" />
+      <LineId Id="13101" Count="15" />
+      <LineId Id="14958" Count="0" />
+      <LineId Id="14960" Count="6" />
+      <LineId Id="14959" Count="0" />
+      <LineId Id="13099" Count="0" />
+      <LineId Id="13117" Count="0" />
+      <LineId Id="13098" Count="0" />
+      <LineId Id="12226" Count="1" />
+      <LineId Id="12229" Count="0" />
+      <LineId Id="12231" Count="1" />
+      <LineId Id="14982" Count="0" />
+      <LineId Id="14975" Count="0" />
+      <LineId Id="12233" Count="0" />
+      <LineId Id="14985" Count="0" />
+      <LineId Id="12234" Count="1" />
+      <LineId Id="14986" Count="0" />
+      <LineId Id="12236" Count="1" />
+      <LineId Id="14976" Count="0" />
+      <LineId Id="12239" Count="1" />
+      <LineId Id="14987" Count="0" />
+      <LineId Id="14974" Count="0" />
+      <LineId Id="12241" Count="0" />
+      <LineId Id="14988" Count="0" />
+      <LineId Id="12242" Count="1" />
+      <LineId Id="14990" Count="0" />
+      <LineId Id="12244" Count="1" />
+      <LineId Id="13118" Count="0" />
+      <LineId Id="13120" Count="1" />
+      <LineId Id="14993" Count="0" />
+      <LineId Id="14973" Count="0" />
+      <LineId Id="13122" Count="0" />
+      <LineId Id="14994" Count="0" />
+      <LineId Id="13123" Count="1" />
+      <LineId Id="14992" Count="0" />
+      <LineId Id="13125" Count="0" />
+      <LineId Id="13119" Count="0" />
+      <LineId Id="13126" Count="1" />
+      <LineId Id="12628" Count="0" />
+      <LineId Id="14971" Count="1" />
+      <LineId Id="12633" Count="2" />
+      <LineId Id="12629" Count="0" />
+      <LineId Id="12626" Count="0" />
+      <LineId Id="12255" Count="0" />
+      <LineId Id="12257" Count="1" />
+      <LineId Id="14978" Count="0" />
+      <LineId Id="12259" Count="4" />
+      <LineId Id="12265" Count="1" />
+      <LineId Id="14977" Count="0" />
+      <LineId Id="12267" Count="3" />
+      <LineId Id="12279" Count="0" />
+      <LineId Id="13134" Count="0" />
+      <LineId Id="13144" Count="1" />
+      <LineId Id="14980" Count="0" />
+      <LineId Id="14979" Count="0" />
+      <LineId Id="13147" Count="2" />
+      <LineId Id="13142" Count="1" />
+      <LineId Id="13136" Count="1" />
+      <LineId Id="14981" Count="0" />
+      <LineId Id="13138" Count="3" />
+      <LineId Id="13135" Count="0" />
+      <LineId Id="12281" Count="0" />
+      <LineId Id="12391" Count="1" />
+      <LineId Id="12412" Count="0" />
+      <LineId Id="12410" Count="0" />
+      <LineId Id="12415" Count="2" />
+      <LineId Id="12394" Count="1" />
+      <LineId Id="12389" Count="0" />
+      <LineId Id="13130" Count="0" />
+      <LineId Id="11051" Count="0" />
+      <LineId Id="11053" Count="0" />
+      <LineId Id="13284" Count="0" />
+      <LineId Id="11054" Count="1" />
+      <LineId Id="13285" Count="0" />
+      <LineId Id="11056" Count="1" />
+      <LineId Id="14479" Count="35" />
+      <LineId Id="14519" Count="90" />
+      <LineId Id="14856" Count="3" />
+      <LineId Id="14854" Count="1" />
+      <LineId Id="14610" Count="0" />
+      <LineId Id="14851" Count="1" />
+      <LineId Id="14846" Count="2" />
+      <LineId Id="14611" Count="4" />
+      <LineId Id="14853" Count="0" />
+      <LineId Id="14618" Count="0" />
+      <LineId Id="13283" Count="0" />
+      <LineId Id="14619" Count="0" />
+      <LineId Id="13153" Count="0" />
+      <LineId Id="13286" Count="0" />
+      <LineId Id="11072" Count="1" />
+      <LineId Id="13301" Count="5" />
+      <LineId Id="14329" Count="9" />
+      <LineId Id="13307" Count="0" />
+      <LineId Id="14327" Count="0" />
+      <LineId Id="13308" Count="121" />
+      <LineId Id="11205" Count="0" />
+      <LineId Id="13430" Count="0" />
+      <LineId Id="11206" Count="0" />
+      <LineId Id="13287" Count="0" />
+      <LineId Id="11207" Count="1" />
+      <LineId Id="13289" Count="0" />
+      <LineId Id="11209" Count="1" />
+      <LineId Id="14620" Count="139" />
+      <LineId Id="11277" Count="2" />
+      <LineId Id="13290" Count="0" />
+      <LineId Id="11280" Count="1" />
+      <LineId Id="14339" Count="139" />
+      <LineId Id="11346" Count="2" />
+      <LineId Id="13291" Count="0" />
+      <LineId Id="11349" Count="0" />
+      <LineId Id="13293" Count="1" />
+      <LineId Id="11351" Count="1" />
+      <LineId Id="13690" Count="128" />
+      <LineId Id="13689" Count="0" />
+      <LineId Id="11422" Count="1" />
+      <LineId Id="13296" Count="0" />
+      <LineId Id="11424" Count="1" />
+      <LineId Id="13819" Count="5" />
+      <LineId Id="14799" Count="0" />
+      <LineId Id="14823" Count="9" />
+      <LineId Id="14800" Count="0" />
+      <LineId Id="13825" Count="122" />
+      <LineId Id="11490" Count="2" />
+      <LineId Id="13297" Count="0" />
+      <LineId Id="11493" Count="1" />
+      <LineId Id="13298" Count="0" />
+      <LineId Id="11495" Count="1" />
+      <LineId Id="14223" Count="0" />
+      <LineId Id="14209" Count="0" />
+      <LineId Id="13949" Count="4" />
+      <LineId Id="14252" Count="0" />
+      <LineId Id="14268" Count="2" />
+      <LineId Id="14782" Count="0" />
+      <LineId Id="14271" Count="1" />
+      <LineId Id="14783" Count="0" />
+      <LineId Id="14273" Count="0" />
+      <LineId Id="14796" Count="2" />
+      <LineId Id="14795" Count="0" />
+      <LineId Id="14274" Count="3" />
+      <LineId Id="14784" Count="5" />
+      <LineId Id="14792" Count="2" />
+      <LineId Id="14790" Count="0" />
+      <LineId Id="14267" Count="0" />
+      <LineId Id="14251" Count="0" />
+      <LineId Id="13954" Count="122" />
+      <LineId Id="11570" Count="0" />
+      <LineId Id="11576" Count="0" />
+      <LineId Id="13299" Count="0" />
+      <LineId Id="11577" Count="1" />
+      <LineId Id="14206" Count="0" />
+      <LineId Id="14077" Count="1" />
+      <LineId Id="14282" Count="3" />
+      <LineId Id="14288" Count="0" />
+      <LineId Id="14833" Count="9" />
+      <LineId Id="14293" Count="1" />
+      <LineId Id="14084" Count="121" />
+      <LineId Id="11648" Count="2" />
+      <LineId Id="13300" Count="0" />
+      <LineId Id="11651" Count="7" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

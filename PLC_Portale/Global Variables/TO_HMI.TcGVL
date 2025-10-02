@@ -1,0 +1,86 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TO_HMI" Id="{3e4210d6-fc20-4c13-b2c2-4c5baffb4cfb}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL	
+	AutoMan									: BOOL;
+
+	HMI_Stato_Postazione : ARRAY[1..MAXAREA] OF StatoPostazioneHMI;
+
+	//Stato sicurezze
+	HMI_Status_FungiPal_OK 			: BOOL; //Stato funghi pallettizzatore
+	HMI_Status_FungoGenerale_OK 	: BOOL; //Stato funghi generali
+	HMI_Status_Funghi_OK			: BOOL; //Cumulativo Funghi
+		    
+	HMI_Status_BarrierDXPal_OK 			: BOOL; //Stato barriera DX
+	HMI_Status_BarrierSXPal_OK 			: BOOL; //Stato barriera SX
+	HMI_Status_BarrierCentroDXPal_OK	: BOOL; //Stato barriera CENTRO-DX
+	HMI_Status_BarrierCentroSXPal_OK	: BOOL; //Stato barriera CENTRO-SX
+	HMI_Status_StateBarrierKarv_OK    	: BOOL; //Stato barriera KARV
+	HMI_Status_BarrieraPall_OK			: BOOL; //Stato COMULATIVO BARRIERE	
+	
+	HMI_WorkAreaProductionList : ARRAY [1..MAXAREA] OF TFMachinePalletizer_ListaProduzione_WAM_HMI;//Variabile per visuallizzare su HMI lo stato della lista di produzione
+	
+	// VARIABILI PER VISUALIZZAZIONE I/O SU HMI PREMIUM
+	HMI_AP200_2 : ARRAY[1..16] OF BOOL;
+	HMI_AP200_3 : ARRAY[1..4] OF BOOL;
+	HMI_AP200_4 : ARRAY[1..4] OF BOOL;
+	HMI_AP200_5 : ARRAY[1..16] OF BOOL;
+	HMI_AP200_6	: ARRAY[1..4] OF BOOL;
+	HMI_AP200_7	: ARRAY[1..4] OF BOOL;
+	HMI_AP200_8 : ARRAY[1..16] OF BOOL;
+	HMI_AP200_9	: ARRAY[1..4] OF BOOL;
+	HMI_AP200_10: ARRAY[1..4] OF BOOL;
+	HMI_AP201_2	: ARRAY[1..4] OF BOOL;
+	HMI_AP201_4 : ARRAY[1..16] OF BOOL;
+	HMI_AP201_5	: ARRAY[1..4] OF BOOL;
+	HMI_AP201_6 : ARRAY[1..16] OF BOOL;
+	HMI_AP201_3 : ARRAY[1..16] OF BOOL;
+	HMI_AP202_2	: ARRAY[1..4] OF BOOL;
+	HMI_AP202_3	: ARRAY[1..4] OF BOOL;
+	HMI_AP202_5	: ARRAY[1..4] OF BOOL;
+	HMI_AP202_6	: ARRAY[1..4] OF BOOL;
+	
+	//CIABATTA 515
+	HMI_DepressioneOVEM_SX1 	: REAL; //Valore porta 1
+	//
+	HMI_LetturaFTCPinza0_1 		: REAL; //Valore porta 3
+	HMI_LetturaFTCPinza180_1	: REAL; //Valore porta 4
+	HMI_DepressioneOVEM_SX2 	: REAL; //Valore porta 5
+	//CIABATTA 516	
+	HMI_DepressioneOVEM_DX1 	: REAL; //Valore porta 1
+	HMI_DepressioneOVEM_DX2 	: REAL; //Valore porta 2
+	HMI_LetturaFTCPinza0_2		: REAL; //Valore porta 3
+	HMI_LetturaFTCPinza180_2 	: REAL; //Valore porta 4
+	HMI_K516_51 				: BOOL;//Valore porta 5
+	HMI_K516_52 				: BOOL;//Valore porta 5
+	HMI_K516_61 				: BOOL;//Valore porta 6 pin 4
+	HMI_K516_62 				: BOOL;//Valore porta 6 pin 2
+	HMI_K516_71 				: BOOL;//Valore porta 7 pin 4
+	HMI_K516_72 				: BOOL;//Valore porta 7 pin 2
+	HMI_K516_81 				: BOOL;//Valore porta 8 pin 4
+	HMI_K516_82 				: BOOL;//Valore porta 8 pin 2
+	//CIABATTA 517	
+	HMI_K517_11  				: BOOL;//Valore porta 1
+	HMI_K517_12  				: BOOL;//Valore porta 1
+	HMI_K517_21  				: BOOL;//Valore porta 2
+	HMI_K517_22  				: BOOL;//Valore porta 2
+	HMI_K517_31  				: BOOL;//Valore porta 3
+	HMI_K517_32  				: BOOL;//Valore porta 3
+	HMI_K517_41  				: BOOL;//Valore porta 4
+	HMI_K517_42  				: BOOL;//Valore porta 4
+	HMI_K517_51 				: BOOL;//Valore porta 5
+	HMI_K517_52 				: BOOL;//Valore porta 5
+	HMI_K517_61 				: BOOL;//Valore porta 6 pin 4
+	HMI_K517_62 				: BOOL;//Valore porta 6 pin 2
+	HMI_K517_71 				: BOOL;//Valore porta 7 pin 4
+	HMI_K517_72 				: BOOL;//Valore porta 7 pin 2
+	HMI_K517_81 				: BOOL;//Valore porta 8 pin 4
+	HMI_K517_82 				: BOOL;//Valore porta 8 pin 2
+
+	
+	Control1: INT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

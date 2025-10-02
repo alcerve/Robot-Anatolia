@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="LGV_Data" Id="{60367932-e56a-42a8-81e7-08654778c62a}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+
+	LGV_Stato_Pallettizzatore 	: LGV_Stato_Pallettizzatore;
+	LGV_Stato_Postazione 		:  ARRAY [1..MAXAREA] OF LGV_Stato_Postazione;
+	LGV_Stato_Formatura 		:  ARRAY [1..MAXFORMING] OF LGV_Stato_Formatura; 
+	LGV_PostazioniPresenti 		: UINT;	//Indica il numero di postazioni presenti nel pallettizzatore (=MAXAREA)
+
+	LGV_TipologiaSupervisore : INT := 0; //Indica la tipologia di protocollo utilizzata:0=Falomnet STANDARD,1=TECNOFERRARI
+	(* Gestione Richieste Ingresso *)
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+	(* Input *)
+	I_LGV_CMD11_RichiestaIngresso		: BOOL; 	// Chiamata ingresso DA LGV,TRUE= La postazione è nello stato di chiamata navetta
+	I_LGV_CMD11_InIngombro				: BOOL; 	// LGV in ingombro nella postazione
+	(* Output *)
+	O_LGV_CMD11_ChiamataDaMacchina	: BOOL; 	// Chiamata ingresso a LGV,TRUE=La una postazione è nello stato di chiamata navetta
+	O_LGV_CMD11_OkIngressoMacchina 	: BOOL; 	// TRUE = OK Ingresso Nella Postazione 
+		
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	(* Input/Output *)
+	I_LGV_Stato_Operazione : ARRAY [1..MAXAREA] OF INT; // Indica lo stato dell'operazione svolta dalla navetta: 0=Dato ricevuto e azzerato da PLC,1= Prelievo, 2= Deposito Concluso,
+	O_LGV_Comando_Operazione  : ARRAY [1..MAXAREA] OF INT; // Indica il tipo di operazione che deve svolgere la navetta: 0=Nessuna operazione,1= Richieasta Prelievo, 2= Richiesta Deposito Vuoti,
+
+	(* Input *)
+	I_LGV_RichiestaIngresso		: ARRAY [1..MAXAREA] OF BOOL; 	// Chiamata ingresso DA LGV,TRUE= La postazione è nello stato di chiamata navetta
+	I_LGV_InIngombro			: ARRAY [1..MAXAREA] OF BOOL; 	// LGV in ingombro nella postazione
+    
+	(* Output *)
+	O_LGV_ChiamataDaPostazione		: ARRAY [1..MAXAREA] OF BOOL; 	// Chiamata ingresso a LGV,TRUE=La una postazione è nello stato di chiamata navetta
+	O_LGV_OkIngressoInPostazione 	: ARRAY [1..MAXAREA] OF BOOL; 	// TRUE = OK Ingresso Nella Postazione 
+	
+	(* Configurazione segnali *)
+	I_LGV_SegnaliCablati   : BOOL;		// LGV Seleziona la Tipologia di gestione segnali: TRUE=Segnali Cablati,FALSE=Segnali Software
+
+	(* Segnali cablati *)
+	I_LGV_RichiestaIngresso_HW	AT %I* : ARRAY [1..MAXAREA] OF BOOL; 	// Chiamata ingresso a LGV,TRUE=La postazione è nello stato di chiamata navetta
+	I_LGV_InIngombro_HW			AT %I* : ARRAY [1..MAXAREA] OF BOOL;	// LGV in ingombro
+	O_LGV_OKIngresso_HW			AT %I* : ARRAY [1..MAXAREA] OF BOOL; 	// TRUE = OK Ingresso Nella Postazione 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	O_LGV_ProductDataRequest : ARRAY [1..MAXAREA] OF TFMachinePalletizer_DataElement;//Dati per richiesta a supervisore materiale
+
+	MachinePalletizerLGV : ARRAY [1..MAXAREA] OF GateAccessLGV; 	//FB di gestione richiesta ingresso veicolo
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

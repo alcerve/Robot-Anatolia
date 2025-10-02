@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_OffsetAllDirection" Id="{480f43fc-d192-43b3-8c2d-225696036b95}">
+    <Declaration><![CDATA[TYPE ST_OffsetAllDirection :
+STRUCT
+	X90 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione X, utilizzato per PALLET o CASSE *)
+	Y90 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione Y, utilizzato per PALLET o CASSE *)
+	Z90 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione Z, utilizzato per PALLET o CASSE *)
+	J90 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione J, utilizzato per PALLET o CASSE *)
+	
+	X0 	: REAL := 0.0;	(* (mm) OFFSET di deposito direzione X, utilizzato per CAVALLETTI *)
+	Y0 	: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Y, utilizzato per CAVALLETTI *)
+	Z0 	: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Z, utilizzato per CAVALLETTI *)
+	J0 	: REAL := 0.0;	(* (mm) OFFSET di deposito direzione J, utilizzato per CAVALLETTI *)
+	
+	X180 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione X, utilizzato per CAVALLETTI *)
+	Y180 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione Y, utilizzato per CAVALLETTI *)
+	Z180 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione Z, utilizzato per CAVALLETTI *)
+	J180 : REAL := 0.0;	(* (mm) OFFSET di deposito direzione J, utilizzato per CAVALLETTI *)
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

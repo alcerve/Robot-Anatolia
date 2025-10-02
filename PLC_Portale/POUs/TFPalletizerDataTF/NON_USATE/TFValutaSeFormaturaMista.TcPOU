@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFValutaSeFormaturaMista" Id="{8b2995f7-e97f-40b9-b893-c68bd4b503a8}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFValutaSeFormaturaMista : BOOL // Valuta se la formatura avente il codice del pacco sul ribaltino è di tipo mista oppure no
+VAR_INPUT
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming; //Struttura formature
+	//f : INT;	// Indice formatura
+END_VAR
+VAR
+	DepositoVerticale : INT;
+	DepositoOrrizzontale : INT;
+	p : INT;
+	f : INT;	// Indice formatura
+END_VAR
+// Valuta se la formatura avente il codice del pacco sul ribaltino è di tipo mista oppure no]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Valuta se la formatura avente il codice del pacco sul ribaltino è di tipo mista oppure no
+TFValutaSeFormaturaMista := FALSE;
+FOR f := 1 TO MAXFORMING DO
+	IF Forming^[f].Enable = 1 THEN					// se la formatura è abilitata
+		FOR p := 1 TO MAXFORMINGPACK DO				// scorro tutti i pacchi
+			IF Forming^[f].PackXN[p].Grip = 0 THEN 	// se il prelievo del pacco è verticale
+				DepositoVerticale := DepositoVerticale + 1;	
+			ELSIF Forming^[f].PackXN[p].Grip = 1 THEN // se il prelievo del pacco è orrizzontale	
+				DepositoOrrizzontale := DepositoOrrizzontale +1;
+			END_IF
+			IF DepositoOrrizzontale > 0 AND DepositoVerticale > 0 THEN	// Se ho sia prelievo orrizzontale che verticale -> La Formatura è di tipo MISTO
+				TFValutaSeFormaturaMista := TRUE;
+				RETURN;
+			END_IF
+		END_FOR
+	END_IF
+END_FOR
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFValutaSeFormaturaMista">
+      <LineId Id="53" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

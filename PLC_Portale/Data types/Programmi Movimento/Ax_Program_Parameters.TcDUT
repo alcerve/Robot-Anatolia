@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Ax_Program_Parameters" Id="{58a3bf6c-4128-460d-a286-3ea128ebdf90}">
+    <Declaration><![CDATA[TYPE Ax_Program_Parameters :
+STRUCT
+	Vel_Vuoto 			: REAL := 50; 		// Velocita di percorrenza tratto
+	Acc_Vuoto 			: REAL := 50; 		// Accelerazione di percorrenza tratto
+	Dec_Vuoto 			: REAL := 50; 		// Accelerazione di percorrenza tratto
+	Jerk_Vuoto			: REAL := 100; 		// Jerk di percorrenza tratto
+	Vel_Carico 			: REAL := 50; 		// Velocita di percorrenza tratto
+	Acc_Carico 			: REAL := 50; 		// Accelerazione di percorrenza tratto
+	Dec_Carico 			: REAL := 50; 		// Accelerazione di percorrenza tratto
+	Jerk_Carico			: REAL := 100; 		// Jerk di percorrenza tratto
+	Vel_Ridotta			: REAL := 5;		// Velocità ridotta per le fasi di approccio
+	Torque				: REAL := 100;		// Coppia 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFDimensionElement" Id="{7c257adb-ec3b-485a-b074-278788d9ec89}">
+    <Declaration><![CDATA[TYPE TFDimensionElement :
+STRUCT
+	(* Dimensioni *)
+	XDim		: REAL							:= 0.0;	(* (mm) Dimensione X *)
+	YDim		: REAL							:= 0.0;	(* (mm) Dimensione Y *)
+	ZDim		: REAL							:= 0.0;	(* (mm) Dimensione Z *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

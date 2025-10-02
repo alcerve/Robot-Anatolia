@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_DataElement" Id="{eb49cff8-3f52-4cd4-a7dc-9da9bf9553dd}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_DataElement :
+STRUCT
+	WorkingID 			: STRING	:= ''; (* Identifica l'ID univoco della lavorazione da eseguire *)
+	
+	Codice				: STRING	:= '';	(* Codice Elemento *)
+	Scelta				: STRING	:= '';	(* Scelta Elemento *)
+	Tono				: STRING	:= '';	(* Tono Elemento *)
+	Calibro				: STRING	:= '';	(* Calibro Elemento *)
+	Quantity  			: UINT 		:= 0;	(* Quantità *)
+	ArticleDescription 	: STRING(50) := '';(* Descrizione Articolo *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

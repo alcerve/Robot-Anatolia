@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_MachinePalletizerMachineState" Id="{18f1b985-9f8b-4b01-ae7d-82317cf287f0}">
+    <Declaration><![CDATA[TYPE ST_MachinePalletizerMachineState :
+STRUCT
+	(* Comando in esecuzione *)
+	Cmd : UDINT;
+	(* Stato del comando in esecuzione *)
+	CmdCase : UDINT;
+	(* Errore generico della Macchina *)
+	Error : UDINT;
+	(* Errore specifico della Macchina *)
+	ErrorExtra : UDINT;
+	(* Macchina con potenza attiva *)
+	PowerActive : BOOL;
+	(* Macchina con Home eseguito *)
+	Homed : BOOL;
+	(* Macchina in automatico *)
+	Auto : BOOL;
+	(* Macchina in automatico e con ciclo di lavoro attivo -> sta lavorando *)
+	Working : BOOL;
+	(* Macchina accesso manuale in area segreta attivo *)
+	ManAccesActive : BOOL;
+	(* Macchina in Emergenza *)
+	EmergencyOK : BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

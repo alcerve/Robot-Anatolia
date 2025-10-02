@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_PinzaVentose_OUT" Id="{6e664223-4f6d-46ca-91f1-e826fe8bd996}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_PinzaVentose_OUT :
+STRUCT
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

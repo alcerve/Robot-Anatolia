@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Es_Ingombro_PorPosicion" Id="{1db465b5-e6cb-421c-9379-3b49def9f16c}">
+    <Declaration><![CDATA[TYPE Es_Ingombro_PorPosicion :
+STRUCT
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

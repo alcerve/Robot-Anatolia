@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFGetNearestWA" Id="{1a845c6e-bbfc-4348-bd3b-6d3d6b0f2a94}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFGetNearestWA : ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaSort
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkPickPoint : TFMachinePalletizer_WorkPickPointSlab;
+END_VAR
+VAR
+	DistanceFromWA : ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaSort;
+	WAS : TFMachinePalletizer_WorkAreaSort;
+	i : INT;
+	j : INT;
+	k : INT;
+	c : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+FOR i:=1 TO MAXAREA DO
+	DistanceFromWA[i].Distance:= 0;
+	DistanceFromWA[i].cwa:= 0;
+END_FOR
+
+FOR j:=1 TO MAXAREA DO
+	IF WorkArea^[j].X > 0 THEN
+		DistanceFromWA[j].Distance := ABS(WorkPickPoint.X - WorkArea^[j].X); 
+		DistanceFromWA[j].cwa := j;
+	END_IF
+END_FOR
+
+(* Bubble Sort *)
+FOR k:=1 TO MAXAREA DO
+	FOR c:=1 TO MAXAREA DO
+		IF DistanceFromWA[MAXAREA-c].Distance > DistanceFromWA[MAXAREA-c+1].Distance THEN
+			WAS := DistanceFromWA[MAXAREA-c];
+			DistanceFromWA[MAXAREA-c] := DistanceFromWA[MAXAREA-c+1];
+			DistanceFromWA[MAXAREA-c+1] := WAS;
+		END_IF
+	END_FOR
+END_FOR
+TFGetNearestWA := DistanceFromWA;]]></ST>
+    </Implementation>
+    <LineIds Name="TFGetNearestWA">
+      <LineId Id="14" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="28" Count="1" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

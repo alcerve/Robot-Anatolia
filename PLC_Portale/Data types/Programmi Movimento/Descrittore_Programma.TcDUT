@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="Descrittore_Programma" Id="{93d2d343-e7e6-4887-93b3-98ecefaea846}">
+    <Declaration><![CDATA[TYPE Descrittore_Programma :
+STRUCT
+	ID					: UINT := 9999; 	// Equivalente al n° di programma per riuscirlo a identificare
+	Stato 				: UINT := 0; 		// 0=Non eseguito 1= Da Eseguire 2=In Esecuzione 3=Terminato 4=Interrotto 5=Annullato 6=Trasferito
+	Quota_Destinazione 	: LREAL := 0; 		// Valore della posizione da raggiungere
+	Velocita 			: REAL := 0; 		// Velocita di percorrenza tratto
+	Accelerazione 		: REAL := 0; 		// Accelerazione di percorrenza tratto
+	Decelerazione 		: REAL := 0; 		// Accelerazione di percorrenza tratto
+	Jerk				: REAL := 0; 		// Jerk di percorrenza tratto
+	Torque				: REAL := 0; 		// Coppia 
+	DisabilitaTasteggio : BOOL := TRUE; 	// Controllo dei tastatori : TRUE= Tastatori abilitati, si genera errore in caso di tasteggio; FALSE = non si genera l'errore(utilizzato per i cicli falda e pallett)
+	ControlloCoppiaAbilitato : BOOL := FALSE; //Modalita di funzionamento con controllo di coppia
+	InnestoDiretto  : BOOL := FALSE; 		// Se TRUE, il programma corrente sovrascrive il programma in esecuzione
+	InterpolaAsse	: INT := 0;				// 0: Nessuna Interpolazione,1: Interpolazione Asse,2: Interpolazione asse virtuale*)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

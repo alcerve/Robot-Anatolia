@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="LGV_Stato_Pallettizzatore" Id="{5c07c85e-ce72-4646-a12b-afc7296d0a2f}">
+    <Declaration><![CDATA[TYPE LGV_Stato_Pallettizzatore :
+STRUCT
+	(* Stato del Pallettizzatore *)
+	Automatico 	: BOOL; //Identifica lo stato di AUTOMATICO del Pallettizzatore
+	Errore 		: BOOL; //Identifica lo stato di ERRORE del Pallettizzatore
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_PickPlaceParameters" Id="{ff8b7b1c-0d09-4314-8b30-7a5fed46a8d5}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_PickPlaceParameters :
+STRUCT
+
+	OffsetZPlaceLayer			: REAL;	(* Offset quota Z per rilascio falda *)
+			
+	XPickApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio X in prelievo *)
+	YPickApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio Y in prelievo *)
+	ZPickApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio Z in prelievo *)
+	JPickApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio J in prelievo *)
+	//KPickApproach	: LREAL	:= 0.0;		(* (mm) Offset di Approccio in prelievo *)
+	//WPickApproach	: LREAL	:= 0.0;		(* (mm) Offset di Approccio in prelievo *)
+	
+	XPlaceApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio X in deposito *)
+	YPlaceApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio Y in deposito *)
+	ZPlaceApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio Z in deposito *)
+	JPlaceApproach	: LREAL	:= 100.0;		(* (mm) Offset di Approccio in deposito *)
+	//KPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio in deposito *)
+	//WPlaceApproach	: LREAL	:= 0.0;		(* (mm) Punto di Approccio in deposito  *)
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

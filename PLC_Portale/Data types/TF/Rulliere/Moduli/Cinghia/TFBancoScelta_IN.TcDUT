@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFBancoScelta_IN" Id="{4f6bec02-ce71-4201-ac2e-cc99871c5985}">
+    <Declaration><![CDATA[TYPE TFBancoScelta_IN :
+STRUCT
+	
+	FTC_Presenza1 			: BOOL; // Fotocellula Presenza 1 "INGRESSO"
+	FTC_Presenza1Enable 	: BOOL; // Fotocellula Presenza 1 Abilitata
+	
+	FTC_Presenza2		 	: BOOL; // Fotocellula Presenza 2 "MEDIANA"
+	FTC_Presenza2Enable 	: BOOL; // Fotocellula Presenza 2 Abilitata 
+	
+	FTC_Presenza3		 	: BOOL; // Fotocellula Presenza 3 "USCITA"
+	FTC_Presenza3Enable		: BOOL; // Fotocellula Presenza 3 Abilitata 
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

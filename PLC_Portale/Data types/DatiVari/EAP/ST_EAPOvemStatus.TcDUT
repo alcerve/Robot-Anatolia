@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_EAPOvemStatus" Id="{473f96c2-1ba0-465c-92f0-ba3df107239b}">
+    <Declaration><![CDATA[TYPE ST_EAPOvemStatus : 
+	STRUCT
+		(*  Dispositivo Inizializzato *)
+		Initialized : BOOL;
+		(*  Aspirazione Attivata  *)
+		Aspirazione_ON : BOOL;
+		(*  Aspirazione Disattivata *)
+		Aspirazione_OFF : BOOL;
+		(*  Soffio Attivato *)
+		Soffio_ON : BOOL;
+		(*  Soffio Disattivato *)
+		Soffio_OFF : BOOL;
+		(*  Depressione raggiunta, data SOLO con controllo mediante comparazione interna(soglia e filtri e temporali) *)
+		DepressioneSoglia_OK : BOOL;
+		(* Depressione raggiunta riguardante la soglia 1 SOLO CON SOGLIE OVEM *)
+		DepressioneSoglia1_OK : BOOL;
+		(* Depressione raggiunta riguardante la soglia 2 SOLO CON SOGLIE OVEM *)
+		DepressioneSoglia2_OK : BOOL;
+		(* [mbar] Depressione Attuale *)
+		ValoreDepressioneIstantanea : REAL;
+		(* [mbar] Depressione Mediata su n°campioni *)
+		ValoreDepressioneMediata : REAL;
+		(* E' presente un errore nel modulo *)
+		Error : BOOL;
+		(*  Codice Errore (0=NO Errore,1=ErrMANCANZACOMUNICAZIONE,2=ErrDEVICEERROR) *)
+		ErrorID : UINT;
+		(*  Comando completato *)
+		CommandDone : BOOL;
+		(*  Errore dispositivo Resettato *)
+		ErrorResetDone : BOOL;
+		(*  Nessun comando attivo *)
+		NoCommand_ON : BOOL;
+		(*  Il dispositivo Presenta un errore *)
+		DeviceError : BOOL;
+		(*  Il dispositivo è disponibile/Comunica correttamente *)
+		DeviceDisponibile : BOOL;
+		(*  indica che è necessario effettuare la manutenzione sul dispositivo *)
+		ManutenzioneNecessaria : BOOL;
+		(*  indica che è il dispositivo è danneggiato *)
+		GuastoDispositivo : BOOL;
+		(* Indica il codice del guasto...consultare il manuale OVEM pag.24 *)
+		IDGuastoDispositivo : UINT;
+		(* Indica che il master non sta comunicando con il PLC *)
+		ErrorMasterComunication : BOOL;
+		(* Indica Chel'alimentazione dell'aria è OK	 *)
+		AriaOK : BOOL;
+	END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

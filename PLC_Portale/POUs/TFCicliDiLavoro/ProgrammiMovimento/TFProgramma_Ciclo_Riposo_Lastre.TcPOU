@@ -1,0 +1,192 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFProgramma_Ciclo_Riposo_Lastre" Id="{14583675-e6d8-4895-9ee2-881d630874d4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFProgramma_Ciclo_Riposo_Lastre
+VAR_INPUT
+	X_Par : Ax_Program_Parameters; // Parametri degli assi
+	Y_Par : Ax_Program_Parameters; // Parametri degli assi
+	Z_Par : Ax_Program_Parameters; // Parametri degli assi
+	//K_Par : Ax_Program_Parameters; // Parametri degli assi
+	J_Par : Ax_Program_Parameters; // Parametri degli assi
+	
+	(*X*)
+	Quota_Riposo_X 	: LREAL;
+	Quota_Fuori_Ingombro_X : LREAL;
+	(*Y*)
+	Quota_Riposo_Y	: LREAL;
+	Quota_Fuori_Ingombro_Y : LREAL;
+	(*Z*)
+	Quota_Riposo_Z	: LREAL;
+	Quota_Fuori_Ingombro_Z : LREAL;
+
+	(*J*)
+	Quota_Riposo_J	: LREAL;
+	Quota_Fuori_Ingombro_J : LREAL;
+END_VAR
+VAR_OUTPUT
+	Inizializzato : BOOL;
+END_VAR
+VAR
+	;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* CICLO DI RIPOSO *)
+Inizializzato := FALSE;
+(*************************************************************************************************************************************)
+(******************************************************  ASSE X **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 0 Asse X : Traslazione a quota di riposo*)
+Programma_X[0].ID 					:= 0;
+Programma_X[0].Quota_Destinazione	:= Quota_Riposo_X;
+Programma_X[0].Velocita				:= X_Par.Vel_Vuoto;
+Programma_X[0].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[0].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[0].Jerk					:= X_Par.Jerk_Vuoto;
+
+(* Programma 6 Asse X : Traslazione a quota di FUORI INGOMBRO*)
+Programma_X[6].ID 					:= 6;
+Programma_X[6].Quota_Destinazione	:= Quota_Fuori_Ingombro_X;
+Programma_X[6].Velocita				:= X_Par.Vel_Vuoto;
+Programma_X[6].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[6].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[6].Jerk					:= X_Par.Jerk_Vuoto;
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE Y **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 0 Asse Y : Traslazione a quota di riposo*)
+Programma_Y[0].ID 					:= 0;
+Programma_Y[0].Quota_Destinazione	:= Quota_Riposo_Y;
+Programma_Y[0].Velocita				:= Y_Par.Vel_Vuoto;
+Programma_Y[0].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[0].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[0].Jerk					:= Y_Par.Jerk_Vuoto;
+
+(* Programma 6 Asse Y : Traslazione a quota di FUORI INGOMBRO*)
+Programma_Y[6].ID 					:= 6;
+Programma_Y[6].Quota_Destinazione	:= Quota_Fuori_Ingombro_Y;
+Programma_Y[6].Velocita				:= Y_Par.Vel_Vuoto;
+Programma_Y[6].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[6].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[6].Jerk					:= Y_Par.Jerk_Vuoto;
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE Z **********************************************************************)
+(*************************************************************************************************************************************)
+
+(* Programma 0 Asse Z : Traslazione a quota di riposo*)
+Programma_Z[0].ID 					:= 0;
+Programma_Z[0].Quota_Destinazione	:= Quota_Riposo_Z;
+Programma_Z[0].Velocita				:= Z_Par.Vel_Vuoto;
+Programma_Z[0].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[0].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[0].Jerk					:= Z_Par.Jerk_Vuoto;
+Programma_Z[0].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 6 Asse Z : Traslazione a quota di FUORI INGOMBRO*)
+Programma_Z[6].ID 					:= 6;
+Programma_Z[6].Quota_Destinazione	:= Quota_Fuori_Ingombro_Z;
+Programma_Z[6].Velocita				:= Z_Par.Vel_Vuoto;
+Programma_Z[6].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[6].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[6].Jerk					:= Z_Par.Jerk_Vuoto;
+Programma_Z[6].DisabilitaTasteggio	:= TRUE;
+
+(*
+(*************************************************************************************************************************************)
+(******************************************************  ASSE K **********************************************************************)
+(*************************************************************************************************************************************)
+
+(* Programma 0 Asse K : Traslazione a quota di ripos *)
+Programma_K[0].ID 					:= 0;
+Programma_K[0].Quota_Destinazione	:= Quota_Riposo_K;
+Programma_K[0].Velocita				:= K_Par.Vel_Vuoto;
+Programma_K[0].Accelerazione		:= K_Par.Acc_Vuoto;
+Programma_K[0].Decelerazione		:= K_Par.Dec_Vuoto;
+Programma_K[0].Jerk					:= K_Par.Jerk_Vuoto;
+Programma_K[0].Torque				:= 100;
+Programma_K[0].ControlloCoppiaAbilitato := FALSE;
+Programma_K[0].Controllo_Tastatori	:= TRUE;
+*)
+(*************************************************************************************************************************************)
+(******************************************************  ASSE J **********************************************************************)
+(*************************************************************************************************************************************)
+
+(* Programma 0 Asse J : Traslazione a quota di riposo *)
+Programma_J[0].ID 					:= 0;
+Programma_J[0].Quota_Destinazione	:= Quota_Riposo_J;
+Programma_J[0].Velocita				:= J_Par.Vel_Vuoto;
+Programma_J[0].Accelerazione		:= J_Par.Acc_Vuoto;
+Programma_J[0].Decelerazione		:= J_Par.Dec_Vuoto;
+Programma_J[0].Jerk					:= J_Par.Jerk_Vuoto;
+
+(* Programma 6 Asse Z : Traslazione a quota di FUORI INGOMBRO*)
+Programma_J[6].ID 					:= 6;
+Programma_J[6].Quota_Destinazione	:= Quota_Fuori_Ingombro_J;
+Programma_J[6].Velocita				:= J_Par.Vel_Vuoto;
+Programma_J[6].Accelerazione		:= J_Par.Acc_Vuoto;
+Programma_J[6].Decelerazione		:= J_Par.Dec_Vuoto;
+Programma_J[6].Jerk					:= J_Par.Jerk_Vuoto;
+Programma_J[6].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 6 Asse J : Traslazione a quota di FUORI INGOMBRO*)
+Programma_J[J_PosFuoriIngombro].ID 					:= TO_UINT(J_PosFuoriIngombro);
+Programma_J[J_PosFuoriIngombro].Quota_Destinazione	:= Quota_Fuori_Ingombro_J;
+Programma_J[J_PosFuoriIngombro].Velocita			:= J_Par.Vel_Vuoto;
+Programma_J[J_PosFuoriIngombro].Accelerazione		:= J_Par.Acc_Vuoto;
+Programma_J[J_PosFuoriIngombro].Decelerazione		:= J_Par.Dec_Vuoto;
+Programma_J[J_PosFuoriIngombro].Jerk				:= J_Par.Jerk_Vuoto;
+Programma_J[J_PosFuoriIngombro].DisabilitaTasteggio	:= TRUE;
+
+Inizializzato := TRUE;
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFProgramma_Ciclo_Riposo_Lastre">
+      <LineId Id="366" Count="1" />
+      <LineId Id="10" Count="2" />
+      <LineId Id="687" Count="0" />
+      <LineId Id="35" Count="4" />
+      <LineId Id="497" Count="0" />
+      <LineId Id="1016" Count="6" />
+      <LineId Id="505" Count="0" />
+      <LineId Id="1024" Count="0" />
+      <LineId Id="42" Count="2" />
+      <LineId Id="690" Count="0" />
+      <LineId Id="67" Count="3" />
+      <LineId Id="486" Count="0" />
+      <LineId Id="382" Count="0" />
+      <LineId Id="953" Count="6" />
+      <LineId Id="952" Count="0" />
+      <LineId Id="950" Count="0" />
+      <LineId Id="584" Count="2" />
+      <LineId Id="635" Count="0" />
+      <LineId Id="693" Count="0" />
+      <LineId Id="637" Count="0" />
+      <LineId Id="676" Count="0" />
+      <LineId Id="639" Count="3" />
+      <LineId Id="887" Count="8" />
+      <LineId Id="879" Count="0" />
+      <LineId Id="636" Count="0" />
+      <LineId Id="319" Count="0" />
+      <LineId Id="322" Count="3" />
+      <LineId Id="701" Count="0" />
+      <LineId Id="326" Count="4" />
+      <LineId Id="320" Count="0" />
+      <LineId Id="923" Count="0" />
+      <LineId Id="922" Count="0" />
+      <LineId Id="340" Count="0" />
+      <LineId Id="987" Count="0" />
+      <LineId Id="341" Count="2" />
+      <LineId Id="733" Count="7" />
+      <LineId Id="1025" Count="0" />
+      <LineId Id="1027" Count="6" />
+      <LineId Id="1026" Count="0" />
+      <LineId Id="1062" Count="0" />
+      <LineId Id="1068" Count="7" />
+      <LineId Id="1063" Count="0" />
+      <LineId Id="374" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

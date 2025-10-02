@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerGetFormingFromCode" Id="{76479c64-953d-4791-a02c-2b610cd7bb02}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerGetFormingFromCode : INT
+VAR_INPUT
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+	FCode : INT;
+END_VAR
+VAR
+	pp : INT;
+	pf : INT;
+	PCode : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Per Tutte le Formature Attive *)
+FOR pf:=1 TO MAXFORMING DO
+	IF Forming^[pf].Enable = 1 THEN
+		(* Per tutti i codici di Pallettizzazione *)
+		FOR pp:=1 TO MAXFORMINGCODE DO
+			IF Forming^[pf].Code[pp] = FCode THEN
+				TFPalletizerGetFormingFromCode := pf;
+				RETURN;
+			END_IF
+		END_FOR
+	END_IF
+END_FOR
+TFPalletizerGetFormingFromCode := 0;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerGetFormingFromCode">
+      <LineId Id="48" Count="3" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="73" Count="3" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_ElementZone" Id="{b5fd2b0a-c5fc-458f-9dcd-60a46e7bf25d}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+TYPE e_ElementZone :
+(
+	NULL				:= -1,
+	RullCarico 			:= 0,
+	RullCarico2 		:= 1,
+	RullCentrIngresso 	:= 2,
+	RullCentrIngresso2 	:= 3,
+	RullMobile 			:= 4,
+	RullMobile2 		:= 5,
+	RullP1 				:= 6,
+	RullP1_2 			:= 7,
+	RullP2 				:= 8,
+	RullP2_2 			:= 9,
+	RullSC1 			:= 10,
+	RullSC1_2 			:= 11,
+	RullSC2 			:= 12,
+	RullSC2_2 			:= 13	
+	
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

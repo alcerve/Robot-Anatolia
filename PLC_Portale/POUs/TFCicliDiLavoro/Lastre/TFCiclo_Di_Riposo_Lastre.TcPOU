@@ -1,0 +1,579 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCiclo_Di_Riposo_Lastre" Id="{c9e2f4b4-b199-496f-a3b9-6bdc919e5071}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCiclo_Di_Riposo_Lastre
+VAR_INPUT
+	Ciclo 		: POINTER TO Stato_Ciclo_Lavoro;
+	Programma  : POINTER TO TFProgramma_Ciclo_Riposo_Lastre;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	StartInterpolazioneAssi : POINTER TO BOOL;
+	ModulePinza : POINTER TO TFModulePalletizer_Pinza;
+	QuotaPassModePuntoIntermedio : ARRAY [1..3] OF REAL;
+	AbilitazioneGlobalePassMode	: BOOL;
+	InterrompiCiclo : BOOL;
+	Abilita_Ciclo_Step : BOOL;
+	Command_Step : BOOL;
+	AbilitazioneAnticipoDinamicoMovimenti : BOOL;
+END_VAR
+VAR_OUTPUT
+	STEPDone	: BOOL;
+	Errore : uint;
+END_VAR
+VAR
+	StepInto : BOOL;
+	PinzaVerticale				: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Set della variabile che mi permette di fare lo STEP nel ciclo *)
+StepInto := (Abilita_Ciclo_Step AND Command_Step) OR NOT Abilita_Ciclo_Step;
+
+(* Reset Anticipo Dinamico se non ho l'abilitazione *)
+IF NOT AbilitazioneAnticipoDinamicoMovimenti  OR NOT HMI_DisabilitaAnticipiGLOBALE THEN
+	QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaY_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaJ_Raggiunta := FALSE;
+END_IF
+
+PinzaVerticale := ModuleAX_J^.Ax^.Status.ActPosition > 95 OR ModuleAX_J^.Ax^.Status.ActPosition < 85;
+
+IF NOT InterrompiCiclo THEN
+	IF Ciclo^.Stato = TERMINATO OR Ciclo^.Stato = ANNULLATO OR Ciclo^.Stato = INTERROTTO THEN
+		 Ciclo^.Passo := 0;
+	END_IF
+	 Ciclo^.Stato := IN_ESECUZIONE;
+	CASE  Ciclo^.Passo OF
+	(* Case 0 *)
+			0:   Ciclo^.Stato := IN_ESECUZIONE;
+				 Ciclo^.Passo := 10;
+				 Programma_Z[Z_PosFuoriIngombroRiposo].Stato 			:= NON_ESEGUITO;
+				 Programma_Y[Y_PosFuoriIngombroRiposo].Stato			:= NON_ESEGUITO;
+				 Programma_J[J_PosFuoriIngombro].Stato					:= NON_ESEGUITO;
+				 Programma_X[X_PosDiRiposo].Stato 						:= NON_ESEGUITO;
+				 Programma_Z[Z_PosDiRiposo].Stato						:= NON_ESEGUITO;
+				 Programma_J[J_PosDiRiposo].Stato						:= NON_ESEGUITO;
+				 
+				 ProgrammaToModule_X.Stato := NON_ESEGUITO;
+				 ProgrammaToModule_Y.Stato := NON_ESEGUITO;
+				 ProgrammaToModule_Z.Stato := NON_ESEGUITO;
+				 ProgrammaToModule_J.Stato := NON_ESEGUITO;
+
+				 STEPDone := FALSE;
+		
+			(* Case 10 - Spengo aspirazione *)
+			10:	IF ModulePinza^.CmdNext.Code = '' THEN
+					TFParametersArrayClear(ADR(ParametersArray));
+					TFCommandSend(CmdUNLOAD,ParametersArray,ModulePinza^.Cmd);
+					ModulePinza^.IN.RichiestaRicalibrazioneOvemEsterna := TRUE; //Ricalibrazione automatica OVEM
+					Ciclo^.Passo := 11;
+				END_IF
+				
+			11: IF TFStateCodeGet(ModulePinza^.State) = StateUNLOAD_END THEN
+					Ciclo^.Passo := 20;
+				END_IF		
+				
+			(* Case 20 - PROGRAMMA[0] ASSE Z -> TRASLAZIONE A QUOTA DI FUORI INGOMBRO *)	
+			(*
+			19:	 Ciclo^.Stato := IN_ESECUZIONE;
+				IF StepInto THEN
+					Programma_Z[Z_PosFuoriIngombroRiposo].Stato 			:= DA_ESEGUIRE;
+					Programma_Z[Z_PosFuoriIngombroRiposo].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+					ProgrammaToModule_Z 									:= Programma_Z[Z_PosFuoriIngombroRiposo];
+					Ciclo^.Passo := 20;
+					STEPDone := FALSE;
+				END_IF
+				*)
+			(* Case 20 - PROGRAMMA[106] ASSE Z -> TRASLAZIONE A QUOTA DI FUORI INGOMBRO *)	
+			20:	
+				IF StepInto THEN
+					IF PinzaVerticale AND NOT AsseXInFinestraDiPrelievo THEN
+						Programma_Z[Z_PosFuoriIngombroRiposo].Stato 			:= DA_ESEGUIRE;
+						//Programma_Z[Z_PosFuoriIngombroRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE (* INTERPOLAZIONE_ASSE*);
+						Programma_Z[Z_PosFuoriIngombroRiposo].InterpolaAsse 	:= No_INTERPOLAZIONE_ASSE (* INTERPOLAZIONE_ASSE*);
+						ProgrammaToModule_Z 									:= Programma_Z[Z_PosFuoriIngombroRiposo];
+
+						Programma_Y[Y_PosFuoriIngombroRiposo].Stato 			:= DA_ESEGUIRE;
+						Programma_Y[Y_PosFuoriIngombroRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE (* INTERPOLAZIONE_ASSE*);
+						ProgrammaToModule_Y 										:= Programma_Y[Y_PosFuoriIngombroRiposo];
+
+						Programma_J[J_PosFuoriIngombro].Stato 			:= DA_ESEGUIRE;
+						Programma_J[J_PosFuoriIngombro].InterpolaAsse 	:= INTERPOLAZIONE_ASSE (* INTERPOLAZIONE_ASSE*);
+						ProgrammaToModule_J 							:= Programma_J[J_PosFuoriIngombro];
+
+						StartInterpolazioneAssi^ 	:= TRUE; //Abilito l'interpolazione degli assi
+					ELSE
+						Programma_Z[Z_PosFuoriIngombroRiposo].Stato 			:= DA_ESEGUIRE;
+						//Programma_Z[Z_PosFuoriIngombroRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+						Programma_Z[Z_PosFuoriIngombroRiposo].InterpolaAsse 	:= No_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Z 									:= Programma_Z[Z_PosFuoriIngombroRiposo];
+					END_IF
+					Ciclo^.Passo := 21;
+					STEPDone := FALSE;
+				END_IF
+				
+			(* Case 21 - Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione*)
+			21: IF (Programma_Z[Z_PosFuoriIngombroRiposo].Stato = TERMINATO OR
+					Asse_Z_InFinestraDiPassMode OR 
+					QuotaAnticipoDinamicaZ_Raggiunta)  AND 
+					((PinzaVerticale AND NOT AsseXInFinestraDiPrelievo AND 
+					(Programma_Y[Y_PosFuoriIngombroRiposo].Stato = TERMINATO OR 
+					Asse_Y_InFinestraDiPassMode) AND 
+					(Programma_J[J_PosFuoriIngombro].Stato = TERMINATO OR 
+					Asse_J_InFinestraDiPassMode)) OR NOT PinzaVerticale OR AsseXInFinestraDiPrelievo) THEN
+						Ciclo^.Passo := 24;
+						STEPDone := TRUE;
+				ELSIF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 21;										
+				END_IF
+				
+		(*	22: IF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO THEN
+					 Ciclo^.Passo := 22;
+				ELSIF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = TERMINATO OR 
+						Asse_Z_InFinestraDiPassMode OR 
+						QuotaAnticipoDinamicaZ_Raggiunta THEN
+							IF StepInto THEN
+								Programma_J[J_PosFuoriIngombro].Stato 			:= DA_ESEGUIRE;
+								Programma_J[J_PosFuoriIngombro].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+								ProgrammaToModule_J		 						:= Programma_J[J_PosFuoriIngombro];
+								Ciclo^.Passo := 23;
+								STEPDone := FALSE;
+							END_IF									
+				END_IF		
+			23: IF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+					 Ciclo^.Passo := 23;
+				ELSIF (Programma_Z[Z_PosFuoriIngombroRiposo].Stato = TERMINATO) AND// OR Asse_Z_InFinestraDiPassMode OR QuotaAnticipoDinamicaZ_Raggiunta) AND 
+					(Programma_J[J_PosFuoriIngombro].Stato = TERMINATO OR Asse_J_InFinestraDiPassMode OR QuotaAnticipoDinamicaJ_Raggiunta) THEN
+						Ciclo^.Passo := 24;
+						STEPDone := TRUE;										
+				END_IF	
+							
+				
+			(* Case 24 - Scelgo in quale direzione devo muovermi per primo a seconda della disposizione delle postazioni *)	
+			24:	
+				CASE ASSE_DISPOSIZIONE_POSTAZIONI OF
+					
+					LUNGO_X:
+							Ciclo^.Passo := 25;
+				
+					LUNGO_Y:	
+							Ciclo^.Passo := 50;
+			
+				END_CASE
+				
+			(* Case 25 - Vado a quota di fuori ingombro con Y *)
+			25:	IF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 25;										
+				ELSE
+					IF StepInto THEN
+						Programma_Y[Y_PosFuoriIngombroRiposo].Stato 			:= DA_ESEGUIRE;
+						Programma_Y[Y_PosFuoriIngombroRiposo].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Y 									:= Programma_Y[Y_PosFuoriIngombroRiposo];
+						Ciclo^.Passo := 26;
+						STEPDone := FALSE;
+					END_IF
+				END_IF*)
+
+	
+			(* Case 24 - Vado a quota di fuori ingombro y e j  *)
+			24:
+				IF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					((PinzaVerticale AND NOT AsseXInFinestraDiPrelievo)AND(Programma_Y[Y_PosFuoriIngombroRiposo].Stato = INTERROTTO OR
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO)) THEN
+						Ciclo^.Passo := 24;										
+				ELSE
+					IF StepInto THEN
+						IF (NOT PinzaVerticale AND NOT AsseXInFinestraDiPrelievo) THEN
+							Programma_Y[Y_PosFuoriIngombroRiposo].Stato 			:= DA_ESEGUIRE;
+							Programma_Y[Y_PosFuoriIngombroRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_Y 										:= Programma_Y[Y_PosFuoriIngombroRiposo];
+	
+							Programma_J[J_PosFuoriIngombro].Stato 			:= DA_ESEGUIRE;
+							Programma_J[J_PosFuoriIngombro].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_J 							:= Programma_J[J_PosFuoriIngombro];
+						END_IF
+						IF NOT FuoriIngombroYNecessario THEN
+							Programma_X[X_PosDiRiposo].Stato 			:= DA_ESEGUIRE;
+							Programma_X[X_PosDiRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_X 										:= Programma_X[X_PosDiRiposo];
+							Ciclo^.Passo := 31;
+						ELSE
+							Ciclo^.Passo := 25;
+						END_IF
+						StartInterpolazioneAssi^ 	:= TRUE; //Abilito l'interpolazione degli assi
+						STEPDone 					:= FALSE;
+					END_IF
+				END_IF
+				
+			(* Case 25 - *)
+			25: IF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR  
+					(Programma_X[X_PosDiRiposo].Stato = INTERROTTO AND NOT FuoriIngombroYNecessario) OR
+					Programma_Y[Y_PosFuoriIngombroRiposo].Stato = INTERROTTO OR
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 25;
+				ELSIF (Programma_Y[Y_PosFuoriIngombroRiposo].Stato = TERMINATO OR 
+					Asse_Y_InFinestraDiPassMode) AND 
+					(Programma_J[J_PosFuoriIngombro].Stato = TERMINATO OR 
+					Asse_J_InFinestraDiPassMode) THEN	
+						Ciclo^.Passo := 30;
+						STEPDone := TRUE;									
+				END_IF
+					
+			(* Case 26 - Check se a quota di fuori ingombro con Y *)		
+			26:	IF Programma_Y[Y_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 26;
+				ELSE	
+					IF Programma_Y[Y_PosFuoriIngombroRiposo].Stato = TERMINATO OR 
+						Asse_Y_InFinestraDiPassMode THEN
+							Ciclo^.Passo := 30;
+							STEPDone := TRUE;							
+					END_IF
+				END_IF
+										
+			(* Case 30 - PROGRAMMA[0] ASSE X  -> TRASLAZIONE A QUOTA DI RIPOSO  *)	
+			30:	IF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_Y[Y_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 30;										
+				ELSE
+					IF StepInto THEN
+						Programma_X[X_PosDiRiposo].Stato := DA_ESEGUIRE;
+						Programma_X[X_PosDiRiposo].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_X := Programma_X[X_PosDiRiposo];
+					
+						Ciclo^.Passo := 31;
+						STEPDone := FALSE;
+					END_IF
+				END_IF			
+				
+			(* Case 31 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			31: 
+				IF Programma_X[X_PosDiRiposo].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroRiposo].Stato = INTERROTTO OR
+					Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 31;
+				ELSE	
+					IF (Programma_X[X_PosDiRiposo].Stato = TERMINATO OR Asse_X_InFinestraDiPassMode OR QuotaAnticipoDinamicaX_Raggiunta) THEN 
+						Ciclo^.Passo := 32;
+						STEPDone := TRUE;							
+					END_IF
+				END_IF
+				
+			(* Case 32 - Vado a quota di riposo con Y,Z,J *)
+			32:
+				IF Programma_X[X_PosDiRiposo].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroRiposo].Stato = INTERROTTO OR
+					Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 32;										
+				ELSE
+					IF StepInto THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						Programma_Y[Y_PosDiRiposo].Stato := DA_ESEGUIRE;
+						Programma_Y[Y_PosDiRiposo].InterpolaAsse := INTERPOLAZIONE_ASSE;
+					
+						Programma_Z[Z_PosDiRiposo].Stato := DA_ESEGUIRE;
+						//Programma_Z[Z_PosDiRiposo].InterpolaAsse := INTERPOLAZIONE_ASSE;
+						Programma_Z[Z_PosDiRiposo].InterpolaAsse := NO_INTERPOLAZIONE_ASSE;
+						
+						Programma_J[J_PosDiRiposo].Stato := DA_ESEGUIRE;
+						Programma_J[J_PosDiRiposo].InterpolaAsse := INTERPOLAZIONE_ASSE;
+						
+						ProgrammaToModule_Y := Programma_Y[Y_PosDiRiposo];
+						ProgrammaToModule_Z := Programma_Z[Z_PosDiRiposo];
+						ProgrammaToModule_J := Programma_J[J_PosDiRiposo];
+						
+						StartInterpolazioneAssi^ := TRUE; //Abilito l'interpolazione degli assi
+												
+						Ciclo^.Passo := 90;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+												
+			(* Case 50 - Vado a quota di RIPOSO con X *)
+			50:	IF Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 50;										
+				ELSE
+					IF StepInto THEN
+						Programma_X[X_PosDiRiposo].Stato 				:= DA_ESEGUIRE;
+						Programma_X[X_PosDiRiposo].InterpolaAsse 		:= NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_X 							:= Programma_X[X_PosDiRiposo];
+						Ciclo^.Passo := 51;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+					
+			(* Case 51 - Check se a quota di fuori RIPOSO con X *)		
+			51:	IF Programma_X[X_PosDiRiposo].Stato = INTERROTTO OR 
+					Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 51;
+				ELSE	
+					IF Programma_X[X_PosDiRiposo].Stato = TERMINATO OR Asse_X_InFinestraDiPassMode OR QuotaAnticipoDinamicaX_Raggiunta THEN
+						Ciclo^.Passo := 52;
+						STEPDone := TRUE;							
+					END_IF
+				END_IF
+												
+			(* Case 52 - Vado a quota di riposo con Y,Z,J *)
+			52:
+				IF Programma_X[X_PosDiRiposo].Stato = INTERROTTO OR
+					Programma_Z[Z_PosFuoriIngombroRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 52;										
+				ELSE
+					IF StepInto THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						Programma_Y[Y_PosDiRiposo].Stato 			:= DA_ESEGUIRE;
+						Programma_Y[Y_PosDiRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+					
+						//Programma_Z[Z_PosDiRiposo].Stato 			:= DA_ESEGUIRE;
+						//Programma_Z[Z_PosDiRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+						
+						Programma_J[J_PosDiRiposo].Stato 			:= DA_ESEGUIRE;
+						Programma_J[J_PosDiRiposo].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+						
+						ProgrammaToModule_Y := Programma_Y[Y_PosDiRiposo];
+						//ProgrammaToModule_Z := Programma_Z[Z_PosDiRiposo];
+						ProgrammaToModule_J := Programma_J[J_PosDiRiposo];
+						
+						StartInterpolazioneAssi^ := TRUE; //Abilito l'interpolazione degli assi
+												
+						Ciclo^.Passo := 53;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+
+			(* Case 53 - Vado a quota di riposo con Z *)
+			53:
+				IF Programma_X[X_PosDiRiposo].Stato = INTERROTTO OR
+					Programma_Y[Y_PosDiRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosDiRiposo].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 53;										
+				ELSE
+					IF StepInto THEN
+						IF Programma_Y[Y_PosDiRiposo].Stato = TERMINATO (*OR Asse_Y_InFinestraDiPassMode)*) AND 
+							Programma_J[J_PosDiRiposo].Stato = TERMINATO (*OR Asse_J_InFinestraDiPassMode)*) THEN
+					
+								Programma_Z[Z_PosDiRiposo].Stato 			:= DA_ESEGUIRE;
+								Programma_Z[Z_PosDiRiposo].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+								
+								ProgrammaToModule_Z := Programma_Z[Z_PosDiRiposo];
+								
+								StartInterpolazioneAssi^ := FALSE; //Abilito l'interpolazione degli assi
+														
+								Ciclo^.Passo := 90;
+								STEPDone := FALSE;
+						END_IF
+					END_IF
+				END_IF
+
+			(* Case 90 - Attesa completamento posizionamento di tutti gli assi *)
+			90: 
+				IF Programma_Y[Y_PosDiRiposo].Stato = TERMINATO (*OR Asse_Y_InFinestraDiPassMode)*) AND 
+					Programma_J[J_PosDiRiposo].Stato = TERMINATO (*OR Asse_J_InFinestraDiPassMode)*) AND
+					Programma_X[X_PosDiRiposo].Stato = TERMINATO (*OR Asse_X_InFinestraDiPassMode)*) AND 
+					Programma_Z[Z_PosDiRiposo].Stato = TERMINATO (*OR Asse_Z_InFinestraDiPassMode)*) THEN
+						Ciclo^.Passo := 1000;
+						STEPDone := TRUE;
+				ELSIF Programma_Y[Y_PosDiRiposo].Stato = INTERROTTO OR 
+					Programma_J[J_PosDiRiposo].Stato = INTERROTTO OR 
+					Programma_X[X_PosDiRiposo].Stato = INTERROTTO OR
+					Programma_Z[Z_PosDiRiposo].Stato = TERMINATO THEN
+
+						Ciclo^.Passo := 90;									
+				END_IF
+				
+			(* Case 1000 *)
+			1000:
+				 Ciclo^.Stato := TERMINATO;
+				 Ciclo^.Passo := 1000;
+	ELSE;
+	END_CASE;
+ELSE								//Se il ciclo deve essere interrotto, setto il suo nuovo stato
+	 Ciclo^.Stato := INTERROTTO;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFCiclo_Di_Riposo_Lastre">
+      <LineId Id="1027" Count="1" />
+      <LineId Id="1026" Count="0" />
+      <LineId Id="1020" Count="4" />
+      <LineId Id="1138" Count="0" />
+      <LineId Id="1014" Count="0" />
+      <LineId Id="1624" Count="0" />
+      <LineId Id="1626" Count="0" />
+      <LineId Id="207" Count="0" />
+      <LineId Id="330" Count="0" />
+      <LineId Id="333" Count="2" />
+      <LineId Id="161" Count="1" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="1709" Count="4" />
+      <LineId Id="1716" Count="0" />
+      <LineId Id="1723" Count="4" />
+      <LineId Id="1729" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="777" Count="3" />
+      <LineId Id="1521" Count="0" />
+      <LineId Id="1810" Count="0" />
+      <LineId Id="782" Count="0" />
+      <LineId Id="1811" Count="0" />
+      <LineId Id="1814" Count="1" />
+      <LineId Id="1812" Count="0" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="1755" Count="0" />
+      <LineId Id="517" Count="0" />
+      <LineId Id="487" Count="0" />
+      <LineId Id="748" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="232" Count="0" />
+      <LineId Id="492" Count="1" />
+      <LineId Id="1516" Count="0" />
+      <LineId Id="1622" Count="0" />
+      <LineId Id="1597" Count="4" />
+      <LineId Id="1783" Count="0" />
+      <LineId Id="1602" Count="13" />
+      <LineId Id="1782" Count="0" />
+      <LineId Id="1616" Count="4" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="1621" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="1627" Count="11" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="1148" Count="0" />
+      <LineId Id="1151" Count="4" />
+      <LineId Id="1163" Count="5" />
+      <LineId Id="1156" Count="0" />
+      <LineId Id="1158" Count="0" />
+      <LineId Id="1170" Count="0" />
+      <LineId Id="1182" Count="0" />
+      <LineId Id="1171" Count="1" />
+      <LineId Id="1185" Count="0" />
+      <LineId Id="1184" Count="0" />
+      <LineId Id="1183" Count="0" />
+      <LineId Id="1169" Count="0" />
+      <LineId Id="1150" Count="0" />
+      <LineId Id="1016" Count="0" />
+      <LineId Id="972" Count="1" />
+      <LineId Id="1139" Count="0" />
+      <LineId Id="1147" Count="0" />
+      <LineId Id="1140" Count="0" />
+      <LineId Id="1142" Count="0" />
+      <LineId Id="1144" Count="0" />
+      <LineId Id="1143" Count="0" />
+      <LineId Id="1145" Count="1" />
+      <LineId Id="1141" Count="0" />
+      <LineId Id="975" Count="0" />
+      <LineId Id="807" Count="1" />
+      <LineId Id="1210" Count="0" />
+      <LineId Id="817" Count="2" />
+      <LineId Id="809" Count="0" />
+      <LineId Id="814" Count="0" />
+      <LineId Id="812" Count="0" />
+      <LineId Id="845" Count="1" />
+      <LineId Id="820" Count="0" />
+      <LineId Id="850" Count="0" />
+      <LineId Id="1640" Count="1" />
+      <LineId Id="1683" Count="0" />
+      <LineId Id="1642" Count="40" />
+      <LineId Id="1639" Count="0" />
+      <LineId Id="844" Count="0" />
+      <LineId Id="822" Count="0" />
+      <LineId Id="824" Count="0" />
+      <LineId Id="828" Count="0" />
+      <LineId Id="1211" Count="0" />
+      <LineId Id="829" Count="1" />
+      <LineId Id="833" Count="0" />
+      <LineId Id="1053" Count="0" />
+      <LineId Id="840" Count="2" />
+      <LineId Id="823" Count="0" />
+      <LineId Id="80" Count="1" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="1015" Count="0" />
+      <LineId Id="1212" Count="0" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="519" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="621" Count="0" />
+      <LineId Id="582" Count="0" />
+      <LineId Id="1224" Count="0" />
+      <LineId Id="753" Count="0" />
+      <LineId Id="296" Count="0" />
+      <LineId Id="244" Count="0" />
+      <LineId Id="520" Count="0" />
+      <LineId Id="698" Count="3" />
+      <LineId Id="742" Count="0" />
+      <LineId Id="1226" Count="0" />
+      <LineId Id="703" Count="1" />
+      <LineId Id="707" Count="1" />
+      <LineId Id="747" Count="0" />
+      <LineId Id="713" Count="3" />
+      <LineId Id="883" Count="0" />
+      <LineId Id="887" Count="1" />
+      <LineId Id="1416" Count="3" />
+      <LineId Id="890" Count="1" />
+      <LineId Id="1081" Count="0" />
+      <LineId Id="893" Count="0" />
+      <LineId Id="1213" Count="0" />
+      <LineId Id="1219" Count="1" />
+      <LineId Id="1239" Count="0" />
+      <LineId Id="1781" Count="0" />
+      <LineId Id="1240" Count="1" />
+      <LineId Id="1244" Count="0" />
+      <LineId Id="1223" Count="0" />
+      <LineId Id="1216" Count="0" />
+      <LineId Id="896" Count="1" />
+      <LineId Id="1242" Count="1" />
+      <LineId Id="1253" Count="0" />
+      <LineId Id="1255" Count="0" />
+      <LineId Id="1231" Count="0" />
+      <LineId Id="898" Count="2" />
+      <LineId Id="1386" Count="0" />
+      <LineId Id="1258" Count="20" />
+      <LineId Id="1280" Count="4" />
+      <LineId Id="1318" Count="2" />
+      <LineId Id="1322" Count="5" />
+      <LineId Id="1420" Count="11" />
+      <LineId Id="1340" Count="6" />
+      <LineId Id="1458" Count="0" />
+      <LineId Id="1462" Count="7" />
+      <LineId Id="1489" Count="1" />
+      <LineId Id="1473" Count="3" />
+      <LineId Id="1481" Count="1" />
+      <LineId Id="1484" Count="3" />
+      <LineId Id="1492" Count="0" />
+      <LineId Id="1488" Count="0" />
+      <LineId Id="1459" Count="0" />
+      <LineId Id="1257" Count="0" />
+      <LineId Id="404" Count="0" />
+      <LineId Id="444" Count="0" />
+      <LineId Id="1390" Count="0" />
+      <LineId Id="1111" Count="0" />
+      <LineId Id="406" Count="0" />
+      <LineId Id="1113" Count="0" />
+      <LineId Id="408" Count="1" />
+      <LineId Id="1245" Count="0" />
+      <LineId Id="1249" Count="0" />
+      <LineId Id="1251" Count="0" />
+      <LineId Id="1432" Count="1" />
+      <LineId Id="410" Count="0" />
+      <LineId Id="359" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="196" Count="1" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="851" Count="0" />
+      <LineId Id="208" Count="2" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

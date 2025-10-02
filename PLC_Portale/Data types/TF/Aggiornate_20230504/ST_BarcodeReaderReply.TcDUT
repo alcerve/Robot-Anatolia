@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_BarcodeReaderReply" Id="{259675ec-4ec7-4cb5-93ab-6dcccf3bd849}">
+    <Declaration><![CDATA[//Struttura utilizzata per la lettura dei dati del barcode della Keyence
+TYPE ST_BarcodeReaderReply :
+STRUCT
+	StateComunication 	: UINT;					//Se = 0 comunicazione ok, altrimenti comunicazione interrotta
+	Error 				: BOOL;                 //Barcode in errore           
+	Busy 				: BOOL;                 //Barcode pronto per nuovo comando
+	ReadComplete 		: BOOL;                 //Lettura completata 
+	ResultDataAvailable : BOOL;                 //Dato disponibile da Barcode
+	GeneralErrorCode 	: UINT;                 //Errore generico da Barcode
+	ResultDataSize 		: INT;                  //Dimensione dato letto
+	ResultData 			: ARRAY [0..127] OF BYTE; //Dato letto        
+	MatchingLevel		: INT;					  //Livello di qualità del dato letto
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

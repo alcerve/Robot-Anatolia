@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_FormingPack_OLD" Id="{b7dbd240-799e-43ac-a1a9-c8864c71a57d}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_FormingPack_OLD :
+STRUCT
+	
+	JP			: INT							:= -1;	(* READ	- Tipo di presa (1 = Longitudinale (x), 0 = Trasversale (Y se Verticale, Z se Orizzontale), -1 = dato non valido) *)
+	Grip		: INT							:= -1;	(* READ	- Tipo di presa (0 = Verticale, 1 = Orizzontale, -1 = dato non valido) *)
+	Trajectory	: INT							:= -1;	(* READ	- Tipo di percorso (0, 1, 2, 3, …) (-1 dato non valido) *)
+	Layer		: INT							:= -1;	(* READ	- Tipo di falda dopo il pacco (0 = assente, 1 = tipo 1, 2 = tipo 2,  …. , -1 dato non valido *)
+	
+	X			: REAL							:= 0.0;	(* READ	- (mm) Destination - Coordinata X *)
+	Y			: REAL							:= 0.0;	(* READ	- (mm) Destination - Coordinata Y *)
+	Z			: REAL							:= 0.0;	(* READ	- (mm) Destination - Coordinata Z *)
+	J			: REAL							:= 0.0;	(* READ	- (°)  Destination - Coordinata J *)
+	
+END_STRUCT
+END_TYPE
+
+(*
+//Trajectory :	
+ 1= standard deposito in diagonale
+ 2= standard deposito in diagonale specchiato rispetto x
+ 3=	standard deposito in diagonale specchiato rispetto y
+ 4= standard deposito in diagonale specchiato rispetto x e y
+
+
+Layer : quando devo mettere la falda
+
+
+
+
+
+
+*)]]></Declaration>
+  </DUT>
+</TcPlcObject>

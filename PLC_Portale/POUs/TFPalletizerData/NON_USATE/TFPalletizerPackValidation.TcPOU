@@ -1,0 +1,123 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerPackValidation" Id="{766694d9-2ec8-4d75-ad9a-2c2aa2fc2e96}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerPackValidation : INT
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	AxisPar : POINTER TO Ax_Palletizer_Parameters;
+END_VAR
+VAR
+	wpp : INT;
+	i : INT;
+	PackOffset : REAL;
+	CodeAssignedToWA : BOOL; // TRUE se i codice è assegnato ad almeno una WA
+	fcode : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerPackValidation := 0; 
+PackOffset := 50.0;
+
+IF  Mission^.KPick >= AxisPar^.MaxPosition OR Mission^.KPick <= AxisPar^.MinPosition// OR
+	(*Mission^.KPlace > AxisPar^.K.MaxPosition OR Mission^.KPlace < AxisPar^.K.MinPosition*) THEN
+		TFPalletizerPackValidation := ErrCONFIGURAZIONEPINZASABGLIATA; // Configurazione Pinza non adatta al prelievo o al deposito
+		RETURN;	
+END_IF
+
+FOR wpp:=1 TO MAXPICKPOINT DO
+	(* Verifico disponibilità Pacco *)
+	IF WorkPickPointState^[wpp].State = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+		fcode := TFPalletizerGetFormingFromCode(Forming,WorkPickPointState^[wpp].Code);
+		CASE TIPO_RIBALTINO OF
+			RIBALTINO_DOPO_SQUADRO:
+				IF fcode = 0 THEN
+					TFPalletizerPackValidation := ErrPACKCODENOTVALID; // Codice non associato a formatura
+					RETURN;			
+				ELSIF (WorkPickPointState^[wpp].XDim < Forming^[fcode].PX - PackOffset OR
+					WorkPickPointState^[wpp].XDim > Forming^[fcode].PX + PackOffset) OR
+					(WorkPickPointState^[wpp].YDim < Forming^[fcode].PY - PackOffset  OR
+					WorkPickPointState^[wpp].YDim > Forming^[fcode].PY + PackOffset) OR
+					(WorkPickPointState^[wpp].ZDim < Forming^[fcode].PZ - PackOffset OR
+					WorkPickPointState^[wpp].ZDim > Forming^[fcode].PZ + PackOffset)THEN
+						TFPalletizerPackValidation := ErrPACKDIMENSIONNOTVALID; // Grandezze pacco errate
+						RETURN;
+				END_IF
+
+			RIBALTINO_DIRETTO:
+				IF fcode = 0 THEN
+					TFPalletizerPackValidation := ErrPACKCODENOTVALID; // Codice non associato a formatura
+					RETURN;			
+				ELSIF (WorkPickPointState^[wpp].XDim < Forming^[fcode].PY - PackOffset OR
+					WorkPickPointState^[wpp].XDim > Forming^[fcode].PY + PackOffset) OR
+					(WorkPickPointState^[wpp].YDim < Forming^[fcode].PX - PackOffset  OR
+					WorkPickPointState^[wpp].YDim > Forming^[fcode].PX + PackOffset) OR
+					(WorkPickPointState^[wpp].ZDim < Forming^[fcode].PZ - PackOffset OR
+					WorkPickPointState^[wpp].ZDim > Forming^[fcode].PZ + PackOffset)THEN
+						TFPalletizerPackValidation := ErrPACKDIMENSIONNOTVALID; // Grandezze pacco errate
+						RETURN;
+				END_IF	
+		END_CASE
+		
+	END_IF
+END_FOR	
+
+(*FOR wpp:=1 TO MAXPICKPOINT DO
+	(* Verifico disponibilità Pacco *)
+	IF WorkPickPointState^[wpp].State = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+		(* Verifico se il codice è assegnato a qualche workarea e se la formatura è attiva *)
+		FOR i:=1 TO MAXAREA DO
+			IF WorkPickPointState^[wpp].Code = WorkArea^[i].Code AND WorkArea^[i].Typology = TYPOLOGY_PALLET THEN
+				//CodeAssignedToWA := TRUE;
+				IF WorkArea^[i].Enable = 1 AND Forming^[WorkAreaState^[i].F].Enable = 0 THEN
+					TFPalletizerPackValidation := 1;//codice assegnato a workarea con formatura disabilitata
+					//RETURN;
+				ELSIF  WorkArea^[i].Enable = 0 AND Forming^[WorkAreaState^[i].F].Enable = 1 THEN
+					TFPalletizerPackValidation := 2;//codice assegnato a workarea disabilitata
+					//RETURN;
+				ELSIF WorkArea^[i].Enable = 0 AND  Forming^[WorkAreaState^[i].F].Enable = 0 THEN
+					TFPalletizerPackValidation := 3;//codice assegnato a workarea disabilitata e con formatura disabilitata
+					//RETURN;
+				ELSE
+					TFPalletizerPackValidation := 0;
+					//RETURN;
+				END_IF
+			END_IF
+		END_FOR	
+	END_IF
+	//TFPalletizerPackValidation := 4; // Codice pacco non assegnato a nessuna workarea
+END_FOR
+RETURN;*)
+TFPalletizerPackValidation := 0;]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerPackValidation">
+      <LineId Id="102" Count="0" />
+      <LineId Id="158" Count="2" />
+      <LineId Id="162" Count="1" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="95" Count="2" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="267" Count="10" />
+      <LineId Id="266" Count="0" />
+      <LineId Id="265" Count="0" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="279" Count="10" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="214" Count="9" />
+      <LineId Id="243" Count="0" />
+      <LineId Id="225" Count="14" />
+      <LineId Id="164" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

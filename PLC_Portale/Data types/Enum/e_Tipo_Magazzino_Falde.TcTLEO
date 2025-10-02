@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Tipo_Magazzino_Falde" Id="{26c1fc94-ade3-466c-b12e-2668dbcd11dd}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Tipologia di Magazzino Falde
+TYPE e_Tipo_Magazzino_Falde :
+(
+	NOT_DEFINED				:= -1,
+	(* Magazzino Falde Per Pallettizzatore PACCHI*)
+	//MAGAZZINO_FALDE_CENTRO_FISSO 		:= 1, //LA Y DI PRELIEVO RIMANE COSTANTE PER OGNI FORMATO
+	//MAGAZZINO_FALDE_CENTRO_VARIABILE  	:= 2, //LA Y DI PRELIEVO SI ADATTA AL FORMATO DELLA FALDA
+	
+	(* Magazzino Falde per Pallettizzatore LASTRE*)
+	MAGAZZINO_FALDE_IN_WA		 := 10, 	(* Identifica che il magazzino delle falde è una WorkArea *) 
+	MAGAZZINO_FALDE_IN_PP		 := 20	 	(* Identifica che il magazzino delle falde è un Pick-Point, quindi elemento statico non asservito da LGV *) 
+
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MAGAZZINO_FALDE_IN_WA"</v>
+              <v n="TextDefault">"10"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"MAGAZZINO_FALDE_IN_PP"</v>
+              <v n="TextDefault">"20"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{cbecee0d-ca94-450f-ae2d-6b75cc608559}</v>
+          <v n="GuidReInit">{a680b6d5-365f-4f9a-b794-78cd9d85587c}</v>
+          <v n="GuidExitX">{39a57900-d708-48db-91d5-5f5baa554339}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

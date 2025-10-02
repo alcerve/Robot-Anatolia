@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFModulePalletizerRobot_IN" Id="{1cf9531d-e7cc-46d2-8343-7106e493e94a}">
+    <Declaration><![CDATA[TYPE TFModulePalletizerRobot_IN :
+STRUCT
+	
+	PX_Touch 			: BOOL;
+	PX_TouchEmergency 	: BOOL;
+	PX_SuctionCupsUp	: BOOL;
+	PX_StackLayer		: BOOL;
+	PX_StackPallet		: BOOL;
+	PX_GripPresence		: BOOL;
+	
+	Y_BeltSafety		: BOOL;
+	Z_BeltSafety		: BOOL;
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

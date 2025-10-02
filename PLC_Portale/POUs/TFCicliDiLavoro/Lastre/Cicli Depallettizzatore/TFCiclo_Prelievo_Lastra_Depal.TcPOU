@@ -1,0 +1,701 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCiclo_Prelievo_Lastra_Depal" Id="{b2823c76-ae07-43bb-9db6-b9699f33dfa7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCiclo_Prelievo_Lastra_Depal
+VAR_INPUT
+	Ciclo 		: POINTER TO Stato_Ciclo_Lavoro;
+	Programma : POINTER TO TFProgramma_Ciclo_Lastra;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;
+	ModulePinza : POINTER TO TFModulePalletizer_Pinza;
+	StartInterpolazioneAssi : POINTER TO BOOL;
+	QuotaPassModePuntoIntermedio : ARRAY [1..3] OF REAL;
+	AbilitazioneGlobalePassMode	: BOOL;
+	InterrompiCiclo : BOOL;
+	Abilita_Ciclo_Step : BOOL;
+	Command_Step : BOOL;
+	AbilitazioneAnticipoDinamicoMovimenti : BOOL;
+	PrelievoPezzoOrizzontale : BOOL;//indica che il prelievo del pezzo è orizzontale, sono su pallet o cassa
+	NumeroTentativiPresa : UINT := 2;//Numero dei tentativi da effettuare prima di eliminare l'elemento
+END_VAR
+VAR_OUTPUT
+	STEPDone	: BOOL;
+	SupportoVuoto : BOOL;
+	Errore : UINT;
+END_VAR
+VAR
+	StepInto : BOOL;
+	NumeroTentativiPresaAttuali : UINT;
+	TimerAttesaCadutaLastra : REAL;
+	i: UINT;
+	RichiestaEspulsionePerPolistirolo: BOOL;
+	PipickOld : uint;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+TFTimerCall(ADR(TimerAttesaCadutaLastra),TimeBase);
+(* Set della variabile che mi permette di fare lo STEP nel ciclo *)
+StepInto := (Abilita_Ciclo_Step AND Command_Step) OR NOT Abilita_Ciclo_Step;
+
+(* Reset Anticipo Dinamico se non ho l'abilitazione *)
+IF NOT AbilitazioneAnticipoDinamicoMovimenti  OR NOT HMI_DisabilitaAnticipiGLOBALE THEN
+	QuotaAnticipoDinamicaX_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaY_Raggiunta := FALSE;
+	QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+END_IF
+
+IF NOT InterrompiCiclo THEN
+	IF Ciclo^.Stato = TERMINATO OR Ciclo^.Stato = ANNULLATO THEN
+		Ciclo^.Passo := 0;
+		Errore := 0;
+	ELSIF Ciclo^.Stato = INTERROTTO THEN
+		Ciclo^.Passo := 999;
+	END_IF
+	Errore := 0;
+	Ciclo^.Stato := IN_ESECUZIONE;
+	CASE Ciclo^.Passo OF
+			(* Case 0 *)
+			0:  Ciclo^.Stato := IN_ESECUZIONE;
+				Ciclo^.Passo := 10;
+				STEPDone := FALSE;
+				SupportoVuoto := FALSE;
+				NumeroTentativiPresaAttuali := 0;
+				IF Mission.PPick <> PipickOld THEN
+					idxTasteg := 0;
+					MemoriaQuoteTasteggio := MemoriaQuoteTasteggioVuoto;
+					RichiestaEspulsionePerPolistirolo := FALSE;
+				END_IF
+				PipickOld := Mission.PPick;
+				
+			(* Case 10 - Spengo aspirazione *)
+			10:	IF ModulePinza^.CmdNext.Code = '' THEN
+					TFParametersArrayClear(ADR(ParametersArray));
+					TFCommandSend(CmdUNLOAD,ParametersArray,ModulePinza^.Cmd);
+					Ciclo^.Passo := 11;
+				END_IF
+
+			(* Case 11 - Attesa Aspirazione spenta *)
+			11:
+				IF TFStateCodeGet(ModulePinza^.State) = StateUNLOAD_END THEN
+					Ciclo^.Passo := 20;
+				END_IF
+						
+			(* Case 20 - PROGRAMMA[106] ASSE Z -> TRASLAZIONE A QUOTA DI FUORI INGOMBRO *)	
+			20:	
+				IF StepInto THEN
+					Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato 			:= DA_ESEGUIRE;
+					Programma_Z[Z_PosFuoriIngombroVuotoLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+					ProgrammaToModule_Z 										:= Programma_Z[Z_PosFuoriIngombroVuotoLastra];
+					Ciclo^.Passo := 21;
+					STEPDone := FALSE;
+				END_IF
+				
+			(* Case 21 - Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione*)
+			21: 
+				IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = TERMINATO OR
+					Asse_Z_InFinestraDiPassMode OR 
+					QuotaAnticipoDinamicaZ_Raggiunta THEN
+					Ciclo^.Passo := 22;
+					STEPDone := TRUE;
+				ELSIF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 21;										
+				END_IF
+				
+			(* Case 22 - Vado a quota di fuori ingombro con X *)
+			22: IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO THEN
+					Ciclo^.Passo := 22;
+				ELSE
+					IF StepInto THEN	
+						IF FuoriIngombroXNecessario THEN
+							Programma_X[X_PosFuoriIngombroVuotoLastra].Stato 			:= DA_ESEGUIRE;
+							Programma_X[X_PosFuoriIngombroVuotoLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_X 										:= Programma_X[X_PosFuoriIngombroVuotoLastra];
+							Ciclo^.Passo := 23;
+						ELSE
+							Ciclo^.Passo := 24;
+						END_IF
+						STEPDone := FALSE;
+					END_IF									
+				END_IF
+
+			(* Case 23 - Attendo x fuori ingombro *)
+			23:
+				IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 23;
+				ELSIF (Programma_X[X_PosFuoriIngombroVuotoLastra].Stato = TERMINATO OR 
+					Asse_X_InFinestraDiPassMode) THEN	
+						Ciclo^.Passo := 24;
+						STEPDone := TRUE;									
+				END_IF
+		
+				
+			(* Case 24 - Vado a quota di fuori ingombro y e j  *)
+			24:
+				IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR 
+					Programma_X[X_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 24;										
+				ELSE
+					IF StepInto THEN
+						Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_Y[Y_PosFuoriIngombroVuotoLastra].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Y 										:= Programma_Y[Y_PosFuoriIngombroVuotoLastra];
+
+						Programma_J[J_PosStartApproccioPrelLastra].Stato 			:= DA_ESEGUIRE;
+						//Programma_J[J_PosStartApproccioPrelLastra].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+						Programma_J[J_PosStartApproccioPrelLastra].InterpolaAsse 	:= No_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_J 										:= Programma_J[J_PosStartApproccioPrelLastra];
+
+						IF NOT FuoriIngombroYNecessario THEN
+							Programma_X[X_PosStartLentaPrelievoLastra].Stato 			:= DA_ESEGUIRE;
+							Programma_X[X_PosStartLentaPrelievoLastra].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_X 										:= Programma_X[X_PosStartLentaPrelievoLastra];
+							Ciclo^.Passo := 41;
+						ELSE
+							Ciclo^.Passo := 25;
+						END_IF
+						StartInterpolazioneAssi^ 	:= TRUE; //Abilito l'interpolazione degli assi
+						STEPDone 					:= FALSE;
+					END_IF
+				END_IF
+				
+			(* Case 25 - *)
+			25: IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR  
+					(Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO and not FuoriIngombroYNecessario) OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 25;
+				ELSIF (Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = TERMINATO OR 
+					Asse_Y_InFinestraDiPassMode) AND 
+					(Programma_J[J_PosStartApproccioPrelLastra].Stato = TERMINATO OR 
+					Asse_J_InFinestraDiPassMode) THEN	
+						Ciclo^.Passo := 40;
+						STEPDone := TRUE;									
+				END_IF
+				
+				
+			(* Case 40 - PROGRAMMA[] ASSE  -> X TRASLAZIONE A QUOTA DI START LENTA PRELIEVO LASTRA *)	
+			40:	
+				IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 40;										
+				ELSE
+					IF StepInto THEN
+						Programma_X[X_PosStartLentaPrelievoLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_X[X_PosStartLentaPrelievoLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_X 										:= Programma_X[X_PosStartLentaPrelievoLastra];
+												
+						StartInterpolazioneAssi^ := FALSE; //Abilito l'interpolazione degli assi
+						Ciclo^.Passo := 41;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+			
+			(* Case 41 -   *)	
+			41:	
+				IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 41;										
+				ELSE
+					STEPDone := TRUE;
+					IF StepInto THEN
+						Ciclo^.Passo := 42;
+						STEPDone := FALSE;
+					END_IF
+				END_IF
+				
+			(* Case 42 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			42: 
+				IF Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 42;	
+				ELSIF (Programma_X[X_PosStartLentaPrelievoLastra].Stato 	= TERMINATO OR Asse_X_InFinestraDiPassMode) AND
+					(Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato		= TERMINATO OR Asse_Y_InFinestraDiPassMode) AND
+					Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato 		= TERMINATO AND// OR Asse_Z_InFinestraDiPassMode AND
+					(Programma_J[J_PosStartApproccioPrelLastra].Stato 		= TERMINATO OR Asse_J_InFinestraDiPassMode) THEN
+						Ciclo^.Passo := 50;
+						STEPDone := TRUE;							
+				END_IF
+							
+			(* Case 50 - PROGRAMMA[101] ASSE Z -> TRASLAZIONE A QUOTA AMMESSA IN VELOCE DI PRELIEVO PACCO  *)
+			50:
+				IF StepInto THEN
+					Programma_Z[Z_PosStartLentaPrelievoLastra].Stato 			:= DA_ESEGUIRE;
+					Programma_Z[Z_PosStartLentaPrelievoLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+					ProgrammaToModule_Z 										:= Programma_Z[Z_PosStartLentaPrelievoLastra];
+					Ciclo^.Passo := 51;
+					STEPDone := FALSE;
+				END_IF
+
+			(* Case 51 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
+			51: 
+				IF Programma_Z[Z_PosStartLentaPrelievoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 51;									
+				ELSE
+					IF Programma_X[X_PosStartLentaPrelievoLastra].Stato 	= TERMINATO AND
+						Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato	= TERMINATO AND
+						Programma_J[J_PosStartApproccioPrelLastra].Stato 	= TERMINATO AND
+							(Programma_Z[Z_PosStartLentaPrelievoLastra].Stato = TERMINATO )THEN//OR Asse_Z_InFinestraDiPassMode) THEN
+							Ciclo^.Passo := 90;
+							STEPDone := TRUE;
+					END_IF	
+				END_IF
+				
+			52:
+				IF Programma_Z[Z_PosStartLentaPrelievoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 52;									
+				ELSE
+					IF Programma_X[X_PosStartLentaPrelievoLastra].Stato 	= TERMINATO AND
+						Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato	= TERMINATO AND
+						Programma_J[J_PosStartApproccioPrelLastra].Stato 	= TERMINATO AND
+							(Programma_Z[Z_PosStartLentaPrelievoLastra].Stato = TERMINATO )THEN
+							IF StepInto THEN
+								Programma_Z[Z_PosPrelievoInLentaLastra].Stato 			:= DA_ESEGUIRE;
+								Programma_Z[Z_PosPrelievoInLentaLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+								ProgrammaToModule_Z 									:= Programma_Z[Z_PosPrelievoInLentaLastra];
+								Ciclo^.Passo := 53;
+								STEPDone := FALSE;
+							END_IF
+					END_IF	
+				END_IF			
+						
+			53:
+				IF Programma_Z[Z_PosPrelievoInLentaLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 53;									
+				ELSE
+					IF Programma_X[X_PosStartLentaPrelievoLastra].Stato 	= TERMINATO AND
+						Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato	= TERMINATO AND
+						Programma_J[J_PosStartApproccioPrelLastra].Stato 	= TERMINATO AND
+							(Programma_Z[Z_PosPrelievoInLentaLastra].Stato = TERMINATO )THEN
+							Ciclo^.Passo := 90;
+							STEPDone := TRUE;
+					END_IF	
+				END_IF
+
+			(* Case 90 - PROGRAMMA[] ASSE Y -> TRASLAZIONE IN Y FINO ALLA QUOTA AMMESSA IN VELOCE E ATTIVAZIONE ASPIRAZIONE *)
+			90:
+				IF Programma_Z[Z_PosStartLentaPrelievoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 90; 									
+				ELSE
+					IF StepInto THEN
+						Programma_Y[Y_PosStartLentaPrelievoLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_Y[Y_PosStartLentaPrelievoLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Y 										:= Programma_Y[Y_PosStartLentaPrelievoLastra];
+						TFParametersArrayClear(ADR(ParametersArray));
+						ParametersArray.Parameters[0] := BOOL_TO_STRING(NOT PrelievoPezzoOrizzontale);//SE TRUE: pezzo prelevato da cavallina, altrimenti prelievo orizzontale
+						TFCommandSend(CmdPRELOAD,ParametersArray,ModulePinza^.Cmd);//LANCIO COMANDO ASPIRAZIONE PINZA
+						Ciclo^.Passo := 91;
+						STEPDone := FALSE;
+					END_IF
+				END_IF	
+	
+			(* Case 91 -  Attesa completamento dei comandi *)
+			91: 
+				IF Programma_Y[Y_PosStartLentaPrelievoLastra].Stato = INTERROTTO OR 
+					TFStateCodeGet(ModulePinza^.State) = StateERROR THEN
+						Ciclo^.Passo := 91; 										
+				ELSE
+					IF (Programma_Y[Y_PosStartLentaPrelievoLastra].Stato = TERMINATO OR Asse_Y_InFinestraDiPassMode) AND
+						TFStateCodeGet(ModulePinza^.State) = StatePRELOAD_END THEN
+							Ciclo^.Passo := 100;
+							STEPDone := FALSE;
+					END_IF	
+				END_IF
+				
+			(* Case 100 - Lancio Tasteggio J *)
+			100:
+				IF StepInto THEN
+					IF HMI_AbilitaTasteggioRotazionePinza THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						TFCommandSend(CmdTASTEGGIO,ParametersArray,ModuleAx_J^.Cmd);//LANCIO COMANDO per tateggio inclinazione pinza
+					END_IF
+					//!!!!!!!!!!!!!!!NB!!!!!!!!!!!	ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+					Ciclo^.Passo := 101;
+					STEPDone := FALSE;
+				END_IF
+
+			(* Case 101 -  Attesa completamento del comando DI TASTEGGIO DELLA J*)
+			101: 
+				IF TFStateCodeGet(ModulePinza^.State) = StateError THEN
+					Ciclo^.Passo := 101;																
+				ELSE
+					IF (TFStateCodeGet(ModuleAX_J^.State) >= StateTASTEGGIO_RUN + 10 AND TFStateCodeGet(ModuleAX_J^.State) <= StateTASTEGGIO_END) OR NOT HMI_AbilitaTasteggioRotazionePinza THEN		
+						IF PrelievoPezzoOrizzontale THEN
+							Ciclo^.Passo := 150;
+						ELSE
+							Ciclo^.Passo := 110;	
+						END_IF
+
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+			
+			(* Case 110 - Tasteggio in direzione Y *)
+			110:
+				IF Programma_Z[Z_PosStartLentaPrelievoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO OR
+					TFStateCodeGet(ModulePinza^.State) = StateError THEN
+					Ciclo^.Passo := 110;																
+				ELSE
+					IF StepInto THEN
+							
+						Programma_Y[Y_PosPrelievoInLentaLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_Y[Y_PosPrelievoInLentaLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Y 									:= Programma_Y[Y_PosPrelievoInLentaLastra];
+						StartInterpolazioneAssi^ := FALSE; 
+						Ciclo^.Passo := 115;
+						STEPDone := FALSE;
+					END_IF
+				END_IF	
+
+			(* Case 115 -  Attesa completamento del comando di tasteggio IN Y *)
+			115: 
+				IF TFStateCodeGet(ModulePinza^.State) = StateError OR 
+					Programma_Y[Y_PosPrelievoInLentaLastra].Stato = INTERROTTO	THEN
+						Ciclo^.Passo := 115;																
+				ELSE
+					IF Programma_Y[Y_PosPrelievoInLentaLastra].Stato = TERMINATO THEN//Pezzo in presa
+							Ciclo^.Passo := 116;//dichiaro il ciclo terminato
+							ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+							STEPDone := TRUE;
+					END_IF	
+				END_IF
+
+			(* Case 116 - DISTACCO LASTRA *)
+			116: 
+					IF StepInto THEN
+						Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_Z[Z_PosDistaccoLastraInLentaLastra].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Z 											:= Programma_Z[Z_PosDistaccoLastraInLentaLastra];
+
+						Programma_Y[Y_PosDistaccoLastraInLentaLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_Y[Y_PosDistaccoLastraInLentaLastra].InterpolaAsse 	:= INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Y 											:= Programma_Y[Y_PosDistaccoLastraInLentaLastra];
+
+						//TFParametersArrayClear(ADR(ParametersArray));
+						//TFCommandSend(CmdCheckPresence,ParametersArray,ModulePinza^.Cmd);
+					
+						StartInterpolazioneAssi^ := TRUE; //Abilito l'interpolazione degli assi
+						Ciclo^.Passo := 117;
+						STEPDone := FALSE;
+					END_IF	
+
+			(* Case 117 -  Attesa completamento del comando *)
+			117: 
+				IF Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosDistaccoLastraInLentaLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 117;																
+				ELSE
+					IF Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato = TERMINATO AND 
+						Programma_Y[Y_PosDistaccoLastraInLentaLastra].Stato = TERMINATO THEN //AND 
+						//TFStateCodeGet(ModulePinza^.State) = StateCHECKPRESENCE_END THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						TFCommandSend(CmdCheckPresence,ParametersArray,ModulePinza^.Cmd);
+						Ciclo^.Passo := 118;//1000;//CICLO TERMINATO
+					END_IF
+				END_IF
+
+			(* Case 118 -  Attesa completamento del comando *)
+			118:
+				IF TFStateCodeGet(ModulePinza^.State) = StateCHECKPRESENCE_END THEN
+					IF	ModulePinza^.StatoPinza.ElementoPrelevato THEN
+						IF StepInto THEN
+							Ciclo^.Passo := 1000;//CICLO TERMINATO
+							ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+							STEPDone := FALSE;
+							SupportoVuoto := FALSE;
+						END_IF
+					ELSIF NOT ModulePinza^.StatoPinza.ElementoPrelevato THEN
+						IF NumeroTentativiPresaAttuali >= NumeroTentativiPresa THEN
+							SupportoVuoto := TRUE;
+							IF StepInto THEN
+								Ciclo^.Passo := 1000;//CICLO TERMINATO
+								ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+								STEPDone := FALSE;
+							END_IF
+						ELSE
+							SupportoVuoto := FALSE;
+							Ciclo^.Passo := 50;//torno a fare prelievo     52??
+							NumeroTentativiPresaAttuali := NumeroTentativiPresaAttuali+1;
+						END_IF
+					END_IF
+				ELSIF TFStateCodeGet(ModulePinza^.State) = StateERROR THEN
+					Ciclo^.Passo := 118;
+				END_IF	
+				
+			(* Case 150 - Tasteggio in direzione Z *)
+			150: 
+				IF Programma_Z[Z_PosStartLentaPrelievoLastra].Stato = INTERROTTO OR
+					Programma_Y[Y_PosPrelievoInLentaLastra].Stato = INTERROTTO OR
+					Programma_J[J_PosStartApproccioPrelLastra].Stato = INTERROTTO OR
+					Programma_X[X_PosStartLentaPrelievoLastra].Stato = INTERROTTO THEN
+						Ciclo^.Passo := 150;									
+				ELSE
+					
+					IF StepInto THEN
+						Programma_Z[Z_PosPrelievoInLentaLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_Z[Z_PosPrelievoInLentaLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Z 									:= Programma_Z[Z_PosPrelievoInLentaLastra];
+	
+						Ciclo^.Passo := 155;
+						STEPDone := FALSE;
+					END_IF	
+				END_IF
+		
+			(* Case 155 -  Attesa completamento del comando del tasteggio IN Z *)
+			155: 
+				IF TFStateCodeGet(ModulePinza^.State) = StateError OR 
+					Programma_Z[Z_PosPrelievoInLentaLastra].Stato = INTERROTTO	THEN
+						Ciclo^.Passo := 155;																
+				ELSE
+					IF Programma_Z[Z_PosPrelievoInLentaLastra].Stato = TERMINATO THEN//Pezzo in presa
+						Ciclo^.Passo := 156;//VADO A ESEGUIRE IL DISTACCO LASTRA
+						ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+						//TFParametersArrayClear(ADR(ParametersArray));
+						//TFCommandSend(CmdCheckPresence,ParametersArray,ModulePinza^.Cmd);
+						IF NumeroTentativiPresaAttuali = 0 THEN
+							Programma_Z[Z_PosDistaccoLastraInLentaLastra].Quota_Destinazione := ModuleAX_Z^.QuotaAsseLetturaTasteggio + OffsetDistacco.Lastra.Z;
+						ELSE
+							Programma_Z[Z_PosDistaccoLastraInLentaLastra].Quota_Destinazione := ModuleAX_Z^.QuotaAsseLetturaTasteggio + OffsetDistacco.Lastra.Z+100;
+						END_IF
+						//
+						
+						RichiestaEspulsionePerPolistirolo := FALSE;
+						IF ModuleAX_Z^.QuotaAsseLetturaTasteggio <= (WorkArea[Mission.PPick].Z + 1100) THEN
+							idxTasteg := idxTasteg+1;
+							IF idxTasteg > 10 THEN
+								idxTasteg := 1;
+								MemoriaQuoteTasteggio := MemoriaQuoteTasteggioVuoto;
+							END_IF
+							MemoriaQuoteTasteggio[idxTasteg] := ModuleAX_Z^.QuotaAsseLetturaTasteggio;
+							IF (idxTasteg >= HMI_NumeroTentativiPolistiroloSuPallet)THEN
+								FOR i := 1 TO HMI_NumeroTentativiPolistiroloSuPallet DO
+									IF ModuleAX_Z^.QuotaAsseLetturaTasteggio <= MemoriaQuoteTasteggio[i]+2 THEN
+										RichiestaEspulsionePerPolistirolo := TRUE;
+										//Errore := ErrMalfunzionamentoSensoriPresenzaPinza;
+										idxTasteg := 0;
+										MemoriaQuoteTasteggio := MemoriaQuoteTasteggioVuoto;
+									END_IF
+								END_FOR
+							END_IF
+						ELSE
+							idxTasteg := 0;
+							MemoriaQuoteTasteggio := MemoriaQuoteTasteggioVuoto;
+						END_IF
+						
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+
+			(* Case 156 - Sfogliatura J *)
+			156: 
+					IF StepInto THEN
+						Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato 			:= DA_ESEGUIRE;
+						Programma_Z[Z_PosDistaccoLastraInLentaLastra].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+						ProgrammaToModule_Z 											:= Programma_Z[Z_PosDistaccoLastraInLentaLastra];
+						IF HMI_AbilitaSfogliaturaJ THEN
+							Programma_J[J_PosSfogliatura].Stato 			:= DA_ESEGUIRE;
+							Programma_J[J_PosSfogliatura].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+							ProgrammaToModule_J 							:= Programma_J[J_PosSfogliatura];
+						END_IF			
+						TFTimerSet(ADR(TimerAttesaCadutaLastra),HMI_TempoAttesaPartenzaDopoPrelievo, TRUE);			
+						Ciclo^.Passo := 157;
+						STEPDone := FALSE;
+					END_IF	
+					
+			157:
+				IF Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato = INTERROTTO OR Programma_Z[J_PosSfogliatura].Stato = INTERROTTO	THEN
+					Ciclo^.Passo := 157;																
+				ELSE	
+					IF Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato = TERMINATO AND TFTimerDone(ADR(TimerAttesaCadutaLastra)) THEN
+						TFParametersArrayClear(ADR(ParametersArray));
+						TFCommandSend(CmdCheckPresence,ParametersArray,ModulePinza^.Cmd);
+						Ciclo^.Passo := 158;	
+					END_IF
+				END_IF	
+					
+
+			(* Case 158 -  Attesa completamento del comando *)
+			158: 
+				IF Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato = INTERROTTO OR Programma_Z[J_PosSfogliatura].Stato = INTERROTTO	THEN
+						Ciclo^.Passo := 158;																
+				ELSE
+					//TFTimerSet(ADR(TimerAttesaCadutaLastra),HMI_TempoAttesaPartenzaDopoPrelievo, (Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato <> TERMINATO));
+					IF Programma_Z[Z_PosDistaccoLastraInLentaLastra].Stato = TERMINATO AND TFTimerDone(ADR(TimerAttesaCadutaLastra)) AND
+						TFStateCodeGet(ModulePinza^.State) = StateCHECKPRESENCE_END AND (Programma_J[J_PosSfogliatura].Stato = TERMINATO OR NOT HMI_AbilitaSfogliaturaJ) THEN
+						IF ModulePinza^.StatoPinza.ElementoPrelevato AND NOT RichiestaEspulsionePerPolistirolo THEN
+							Ciclo^.Passo := 1000;//CICLO TERMINATO
+								
+							ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+							STEPDone := FALSE;
+							SupportoVuoto := FALSE;
+							IF //((ModulePinza^.StatoPinza.LatoSxPiastrellaInPresa or ModulePinza^.StatoPinza.LatoDxPiastrellaInPresa) //AND 
+								//(ModulePinza^.StatoPinza.LatoDxFaldaInPresa OR ModulePinza^.StatoPinza.LatoSxFaldaInPresa)) OR 
+								(ModulePinza^.StatoPinza.LatoSxPiastrellaInPresa AND WorkAreaState[Mission.PPick].TransportState.Supporto.Tipologia = PALLET_STANDARD AND WorkAreaState[Mission.PPick].TransportState.Supporto.XDim < 1400 )OR
+								(ModulePinza^.StatoPinza.LatoSxPiastrellaInPresa AND ModulePinza^.StatoPinza.LatoDxPiastrellaInPresa) THEN
+									idxTasteg := 0;
+									MemoriaQuoteTasteggio := MemoriaQuoteTasteggioVuoto;
+							END_IF		
+						ELSIF NOT ModulePinza^.StatoPinza.ElementoPrelevato OR (RichiestaEspulsionePerPolistirolo AND ModuleAX_Z^.QuotaAsseLetturaTasteggio <= (WorkArea[Mission.PPick].Z + HMI_AltezzaControlloPolistirolo)) THEN
+							IF NumeroTentativiPresaAttuali >= NumeroTentativiPresa OR RichiestaEspulsionePerPolistirolo THEN
+								idxTasteg := 0;
+								MemoriaQuoteTasteggio := MemoriaQuoteTasteggioVuoto;
+								SupportoVuoto := TRUE;
+								RichiestaEspulsionePerPolistirolo := FALSE;
+								IF StepInto THEN
+									Ciclo^.Passo := 1000;//CICLO TERMINATO
+									ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+									STEPDone := FALSE;
+								END_IF
+							ELSE
+								SupportoVuoto := FALSE;
+								Ciclo^.Passo := 150;//torno a fare prelievo
+								NumeroTentativiPresaAttuali := NumeroTentativiPresaAttuali+1;
+							END_IF
+						ELSIF RichiestaEspulsionePerPolistirolo THEN
+							idxTasteg := 0;
+							MemoriaQuoteTasteggio := MemoriaQuoteTasteggioVuoto;
+							RichiestaEspulsionePerPolistirolo := FALSE;
+							Errore := ErrMalfunzionamentoSensoriPresenzaPinza;
+						END_IF	
+					END_IF
+				END_IF	
+
+			(* Case 159 - SFOGLIO J *)
+			159: 
+				IF StepInto THEN
+					
+					Programma_J[J_PosSfogliatura].Stato 			:= DA_ESEGUIRE;
+					Programma_J[J_PosSfogliatura].InterpolaAsse 	:= NO_INTERPOLAZIONE_ASSE;
+					ProgrammaToModule_J 							:= Programma_J[J_PosSfogliatura];
+	
+					Ciclo^.Passo := 159;
+					STEPDone := FALSE;
+				END_IF	
+
+			(* Case 160 - FINE SFOGLIO J *)
+			160:
+				IF Programma_Z[J_PosSfogliatura].Stato = INTERROTTO	THEN
+						Ciclo^.Passo := 160;																
+				ELSE
+					IF Programma_Z[J_PosSfogliatura].Stato = TERMINATO THEN//Pezzo in presa
+						Ciclo^.Passo 		:= 1000;//termino ciclo
+						ModuleAx_J^.IN_Stop := TRUE; //Fermo Comando di tasteggio
+						STEPDone := TRUE;
+					END_IF	
+				END_IF
+
+			(* Case 1000 *)
+			1000:
+				STEPDone := TRUE;
+				Ciclo^.Stato := TERMINATO;
+				Ciclo^.Passo := 1000;
+				
+			(* Case 9999 - Ciclo NON annullato o NON terminato*)
+			9999:
+				Ciclo^.Stato := INTERROTTO;
+				Ciclo^.Passo := 9999;
+	ELSE						
+		;	
+	END_CASE;
+ELSE								//Se il ciclo deve essere interrotto, setto il suo nuovo stato
+	Ciclo^.Stato := INTERROTTO;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFCiclo_Prelievo_Lastra_Depal">
+      <LineId Id="3803" Count="1" />
+      <LineId Id="3280" Count="8" />
+      <LineId Id="4136" Count="0" />
+      <LineId Id="3290" Count="2" />
+      <LineId Id="3981" Count="0" />
+      <LineId Id="3293" Count="2" />
+      <LineId Id="3983" Count="0" />
+      <LineId Id="3296" Count="7" />
+      <LineId Id="4066" Count="0" />
+      <LineId Id="4064" Count="1" />
+      <LineId Id="4069" Count="0" />
+      <LineId Id="4067" Count="0" />
+      <LineId Id="4070" Count="0" />
+      <LineId Id="3304" Count="75" />
+      <LineId Id="4169" Count="0" />
+      <LineId Id="3380" Count="323" />
+      <LineId Id="3705" Count="4" />
+      <LineId Id="3875" Count="0" />
+      <LineId Id="3710" Count="0" />
+      <LineId Id="3876" Count="2" />
+      <LineId Id="3930" Count="0" />
+      <LineId Id="3909" Count="0" />
+      <LineId Id="3927" Count="0" />
+      <LineId Id="3934" Count="0" />
+      <LineId Id="3917" Count="0" />
+      <LineId Id="3937" Count="2" />
+      <LineId Id="3936" Count="0" />
+      <LineId Id="3945" Count="0" />
+      <LineId Id="3940" Count="0" />
+      <LineId Id="3935" Count="0" />
+      <LineId Id="3918" Count="0" />
+      <LineId Id="3923" Count="0" />
+      <LineId Id="3980" Count="0" />
+      <LineId Id="3931" Count="0" />
+      <LineId Id="3943" Count="0" />
+      <LineId Id="3924" Count="0" />
+      <LineId Id="3919" Count="0" />
+      <LineId Id="3926" Count="0" />
+      <LineId Id="3941" Count="1" />
+      <LineId Id="3944" Count="0" />
+      <LineId Id="3922" Count="0" />
+      <LineId Id="3912" Count="0" />
+      <LineId Id="3711" Count="10" />
+      <LineId Id="3723" Count="3" />
+      <LineId Id="4103" Count="0" />
+      <LineId Id="3727" Count="2" />
+      <LineId Id="3833" Count="1" />
+      <LineId Id="3837" Count="1" />
+      <LineId Id="3836" Count="0" />
+      <LineId Id="3840" Count="0" />
+      <LineId Id="3844" Count="2" />
+      <LineId Id="3843" Count="0" />
+      <LineId Id="3839" Count="0" />
+      <LineId Id="3835" Count="0" />
+      <LineId Id="3730" Count="5" />
+      <LineId Id="3801" Count="0" />
+      <LineId Id="3736" Count="7" />
+      <LineId Id="3948" Count="0" />
+      <LineId Id="3984" Count="0" />
+      <LineId Id="4029" Count="0" />
+      <LineId Id="3990" Count="0" />
+      <LineId Id="3946" Count="1" />
+      <LineId Id="3744" Count="2" />
+      <LineId Id="4062" Count="1" />
+      <LineId Id="3747" Count="0" />
+      <LineId Id="3933" Count="0" />
+      <LineId Id="3748" Count="9" />
+      <LineId Id="4023" Count="3" />
+      <LineId Id="4022" Count="0" />
+      <LineId Id="3758" Count="42" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

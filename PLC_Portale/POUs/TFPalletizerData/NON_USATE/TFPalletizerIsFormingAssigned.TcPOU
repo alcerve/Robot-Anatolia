@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerIsFormingAssigned" Id="{eec1639c-d5da-437a-93ab-cb23a694558d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerIsFormingAssigned : BOOL(*Funzione che restituisce valore VERO se non ci sono piazzole presenti con codice di formatura il codice di lavorazione indicati come Input*)
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	FCode : INT;
+	PCode : INT;
+END_VAR
+VAR
+	wa : INT;
+	n : INT;
+END_VAR
+(*Funzione che restituisce valore VERO se non ci sono piazzole presenti con codice di formatura il codice di lavorazione indicati come Input*)]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Funzione che restituisce valore VERO se non ci sono piazzole presenti con codice di formatura il codice di lavorazione indicati come Input*)
+TFPalletizerIsFormingAssigned := FALSE; 
+
+FOR wa:=1 TO MAXAREA DO
+	IF WorkArea^[wa].Enable = 1 THEN
+		(* Verifico se il codice è già stato assegnato *)
+		IF WorkAreaState^[wa].F = FCode THEN
+			IF WorkArea^[wa].Code = PCode OR WorkArea^[wa].Code = 0 THEN
+				(* Verifico se la piazzola è in lavorazione *)
+				(* Se è in lavorazione allora è inutile assegnarne un'altra con lo stesso codice *)
+				IF WorkAreaState^[wa].State < WORKAREA_STATE_OCCUPIED_WORKED AND 
+					WorkAreaState^[wa].State > WORKAREA_STATE_FREE_DISABLED THEN
+					TFPalletizerIsFormingAssigned := TRUE;
+					RETURN;
+				END_IF
+			END_IF
+		END_IF
+	END_IF
+END_FOR
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerIsFormingAssigned">
+      <LineId Id="137" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="89" Count="3" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="93" Count="1" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="96" Count="1" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="98" Count="1" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

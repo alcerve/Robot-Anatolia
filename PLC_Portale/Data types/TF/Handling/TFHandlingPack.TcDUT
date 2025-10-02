@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFHandlingPack" Id="{19cb80b0-3dc1-4506-b550-91e5cc6b447e}">
+    <Declaration><![CDATA[TYPE TFHandlingPack :
+STRUCT
+	
+	ID			: UDINT;				(* Unic ID *)
+	PC			: UINT;					(* Production Code *)
+	PP      	: BOOL; 				(* Pack Presence *)
+
+	X 			: REAL;					(* X dimension *)
+	Y 			: REAL;					(* Y dimension *)
+	Z 			: REAL;					(* Z dimension *)
+	
+	S1			: UINT;					(* Strapper Number, 	0=No, 1..8=N° of Straps *)
+	S1P			: ARRAY [1..8] OF REAL;	(* Strapper Position, 	1..8 Straps Position on X *)
+	S1E			: UINT;					(* Strapper Execution,  0=Null, 1..8=N° of Straps in Execution *)
+	S1D			: UINT;					(* Strapper Done,  		0=Null, 1..8=N° of Straps Done *)
+	S1S			: UINT;					(* Strapper State, 		0=Nop, 1=To Be Worked, 2=Working, 3=Worked *)
+	
+	S2			: UINT;					(* Strapper Number, 	0=No, 1..8=N° of Straps *)
+	S2P			: ARRAY [1..8] OF REAL;	(* Strapper Position, 	1..8 Straps Position on X *)
+	S2E			: UINT;					(* Strapper Execution,  0=Null, 1..8=N° of Straps in Execution *)
+	S2D			: UINT;					(* Strapper Done,  		0=Null, 1..8=N° of Straps Done *)
+	S2S			: UINT;					(* Strapper State, 		0=Nop, 1=To Be Worked, 2=Working, 3=Worked *)
+	
+	C1 			: UINT;                	(* Coupling Number, 	0=No, 1..8=N° of Packs *)
+	C1D			: UINT;					(* Coupling Done,		0=Null, 1..8=N° of Packs Done *)
+	
+	LB			: BOOL;					(* Label Done,         	TRUE etichetta applicata, FALSE etichetta non applicata *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

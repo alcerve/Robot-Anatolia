@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Disposizione_FTC_WA" Id="{49f39eaa-f69a-407e-8595-f4e6aa9d84f0}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Disposizione Fotocellula Di Presenza in WA
+TYPE e_Disposizione_FTC_WA :
+(
+	NOT_DEFINED			:= -1,
+	FTC_PRESENZA_ANGOLO_DX	 := 1,	(* Identifica che la fotocellula di presenza della WorkArea è disposta nell'angolo a DX della WorkArea stessa *)
+	FTC_PRESENZA_CENTRALE	 := 2,	(* Identifica che la fotocellula di presenza della WorkArea è disposta sulla mediana della WorkArea stessa *)	
+	FTC_PRESENZA_ANGOLO_SX	 := 3	(* Identifica che la fotocellula di presenza della WorkArea è disposta nell'angolo a SX della WorkArea stessa *)
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FTC_PRESENZA_ANGOLO_DX"</v>
+              <v n="TextDefault">"1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FTC_PRESENZA_CENTRALE"</v>
+              <v n="TextDefault">"2"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"FTC_PRESENZA_ANGOLO_SX"</v>
+              <v n="TextDefault">"3"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{d1cd8aef-bc60-4ccd-999a-1709e416e214}</v>
+          <v n="GuidReInit">{2e75bb8c-4128-406c-a4ba-f83362e3bca3}</v>
+          <v n="GuidExitX">{703c363f-75a9-4e51-8ffd-12bb204e7fec}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

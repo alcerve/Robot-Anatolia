@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoloIngombroOttimizzatoPinza" Id="{726aacbd-b7f4-4f3d-975e-1f94822d589d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCalcoloIngombroOttimizzatoPinza (* Calcola l'ingombro massimo assunto dalla pinza nelle direzioni X e Y durante il ciclo di lavoro *)
+VAR_INPUT
+	Quota_RotazioneAttuale : LREAL; //Angolo di rotazione attuale
+	Quota_RotazioneDestinazione : LREAL;	//Angolo di rotazione destinazione
+	IngombroSuperficialePinzaMAX : LREAL;	//Ingombro superficiale MASSIMO della pinza
+	Larghezza : LREAL;	//Larghezza MASSIMA assunta dalla pinza
+	Lunghezza: LREAL;	//Lunghezza MASSIMA assunta dall pinza
+END_VAR
+VAR_OUTPUT
+	IngombroOttimizzatoY_InTransito : LREAL; //Ingombro MASSIMO in direzione Y
+	IngombroOttimizzatoX_InTransito : LREAL; //Ingombro MASSIMO in direzione X
+END_VAR
+VAR
+	Angolo : INT; //Angolo di appoggio per eseguire i calcoli
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Fisso le quote al valore massimo *)
+IngombroOttimizzatoY_InTransito := Dimensioni_Pinza.Lunghezza;
+IngombroOttimizzatoX_InTransito := Dimensioni_Pinza.Lunghezza;
+(* Fisso le quote al valore ottimale consideranto il valore massimo assunto durante tutta la rotazione della pinza durante il ciclo di lavoro *)
+IF LREAL_TO_INT(Quota_RotazioneAttuale) <= LREAL_TO_INT(Quota_RotazioneDestinazione) THEN //Se l'angolo attuale di rotazione della pinza è INFERIORE alla posizione di destinazione
+	FOR Angolo := LREAL_TO_INT(Quota_RotazioneAttuale) TO LREAL_TO_INT(Quota_RotazioneDestinazione) DO //Valuto tutti i gradi di rotazione in direzione CRESCENTE fino all'angolo di destinazione
+		IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+		END_IF
+		IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+		END_IF
+	END_FOR
+	ELSIF LREAL_TO_INT(Quota_RotazioneAttuale) >= LREAL_TO_INT(Quota_RotazioneDestinazione) THEN //Se l'angolo attuale di rotazione della pinza è MAGGIORE alla posizione di destinazione
+	FOR Angolo := LREAL_TO_INT(Quota_RotazioneAttuale) TO LREAL_TO_INT(Quota_RotazioneDestinazione) BY -1 DO //Valuto tutti i gradi di rotazione in direzione DECRESCENTE fino all'angolo di destinazione
+		IF IngombroOttimizzatoX_InTransito < ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+			IngombroOttimizzatoX_InTransito := ABS(IngombroSuperficialePinzaMAX * SIN(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) ;
+		END_IF
+		IF IngombroOttimizzatoY_InTransito < ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo)))) THEN
+			IngombroOttimizzatoY_InTransito := ABS(IngombroSuperficialePinzaMAX * COS(deg_to_rad((ATAN(Larghezza/Lunghezza)*1/0.017+ Angolo))));
+		END_IF
+	END_FOR
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcoloIngombroOttimizzatoPinza">
+      <LineId Id="41" Count="0" />
+      <LineId Id="38" Count="2" />
+      <LineId Id="10" Count="17" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

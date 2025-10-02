@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="Errori_WAManager" Id="{9a59d98c-06f1-4e53-9ffa-788808207005}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+	(* CLASSE 5000 *)
+	ErrWAM_PickPoint_NoMagazzinoFalde 				: 	UINT := 5000; 	(* Il Pick Point che doveva essere un magazzino Falde, non è un magazzino falde *)
+	ErrWAM_WorkArea_NoMagazzinoFalde 				: 	UINT := 5001; 	(* La WorkArea che doveva essere un magazzino Falde, non è un magazzino falde *)
+	ErrWAM_TipologiaMagazzinoFaldaNONRiconosciuta 	: 	UINT := 5002;	(* La tipologia di magazzino falde impostata per l'impianto non è riconosciuta, 
+																			definire se la tipologia di magazzino falde è di tipo PickPoint o WorkArea*)
+	ErrWAM_TipologiaFaldaNONRiconosciuta			: 	UINT := 5003;	(* La tipologia di falda indicata non è presente nelle tipologia previste, 
+																			definire una tipologia prevista (CARTONE,POLISTIROLO) *)
+	ErrWAM_FaldeDepositateInEccesso					: 	UINT := 5004;	(* E' stato depositato un numero di falde superiore a quello previsto, RIMUOVERE manualmente la Falda Appena depositata e riprendere il ciclo Automatico*)																	
+	ErrWAM_FaldaDepositataInWASbagliata				: 	UINT := 5005;	(* E' stato depositata una falda in una WA sbagliata, problema nella missione: non è stata calcolata correttamente o WAManager con Baco*)																	
+
+	ErrWAM_TipologiaPalletNONRiconosciuta			: 	UINT := 5006;	(* E' stato depositata una falda in una WA sbagliata, problema nella missione: non è stata calcolata correttamente o WAManager con Baco*)																	
+
+	ErrWAM_FTC_PostazioneNONDefinita				: 	UINT := 5007; 	(* La configurazione della FTC nella postazione non ha una definizione valida *)
+	
+	
+	
+	ErrWAM_FTCWA_ON_PrenzaLogicaOFF					: 	UINT := 5020; 	(* La FTC di presenza nella postazione è oscurata in modo anomalo senza che la macchina abbia la presenza LOGICA dell'elemento *)
+	ErrWAM_FTCWA_OFF_PrenzaLogicaON				: 	UINT := 5021; 	(* La FTC di presenza nella postazione è spenta ma ho la presenza LOGICA dell'elemento *)
+
+	//ErrWAM_FTCWA_ON_PrenzaLogicaOFF_bit				: 	ARRAY[1..MAXAREA] OF BOOL := FALSE; (* La FTC di presenza nella postazione è oscurata in modo anomalo senza che la macchina abbia la presenza LOGICA dell'elemento i-esimo *)
+
+	ErrWAM_FTC_ON_PresenzaLastraPareggiatore		: UINT := 5022;		(* La FTC di presenza della lastra nella tavola di pareggiatura è oscurata in modo anomalo senza che la macchina abbia la presenza LOGICA dell'elemento *)
+	ErrWAM_FTC_OFF_PresenzaLastraPareggiatore		: UINT := 5023; 	(* La FTC di presenza della lastra nella tavola di pareggiatura NON è oscurata e la macchina HA la presenza LOGICA dell'elemento,controllare FTC o eliminare LASTRA *)
+
+
+	ErrWA_AnomaliaGestioneDepLastraDopoDepFalda 	: UINT := 5024; (* Dopo il deposito della falda, lo stato della pinza non mi permette di proseguire a causa di qualche condizione che non va, controllare lo stato della pinza e nel caso depositare la lastra a mano *)
+	
+	
+	ErrWA_SupportoInPrelivoNonPrevisto				: UINT := 5025;  (* Il supporto sulla postazione in prelievo non è previsto *)
+	ErrWA_SupportoInDepositoErrato					: UINT := 5026;  (* Il supporto sulla postazione di deposito non coincide col supporto richiesto dalla lista di lavoro *)
+	ErrWA_NumPezzInPrelErrato						: UINT := 5027; (* Numero dei pezzi in prelievo < di 1, genero errore per evitare eccezioni *) 
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

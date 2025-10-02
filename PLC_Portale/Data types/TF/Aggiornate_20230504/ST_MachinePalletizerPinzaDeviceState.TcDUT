@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_MachinePalletizerPinzaDeviceState" Id="{6e71ec20-a285-429b-98a9-aecec0896bd7}">
+    <Declaration><![CDATA[TYPE ST_MachinePalletizerPinzaDeviceState :
+STRUCT
+	CilindroApertura 			: TF_CylinderState;//Stato del Cilindro Apertura/chiusura pinza 
+	CilindroSbloccoRotazione 	: TF_CylinderState;//Stato del Cilindro Apertura/chiusura pinza 
+	AspirazioneFaldaDX 			: TF_CylinderState;//Stato del Cilindro di gestione Aspirazione Falda DX
+	AspirazioneFaldaSX 			: TF_CylinderState;//Stato del Cilindro di gestione Aspirazione Falda DX
+	AspirazioneDX 				: Ovem_Status;//Stato Vacuostato DX
+	AspirazioneSX				: Ovem_Status;//Stato Vacuostato SX
+	//CilindroTasteggio 			: TF_CylinderState1;//Stato del Cilindro Tasteggio Pinza 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

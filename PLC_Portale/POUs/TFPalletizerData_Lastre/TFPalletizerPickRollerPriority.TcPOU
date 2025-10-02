@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerPickRollerPriority" Id="{9eb9d089-0bdf-4384-82b3-bfbb894d467f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerPickRollerPriority : uINT (*Restituisce il numero del Pick-Point Sul quale deve può essere effettuato il prelievo*)
+VAR_INPUT
+	WorkArea 					: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState 				: POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	LastRequetsID : string;	(* Codice univoco ultimo prodotto scaricato *)
+	Abilita_Priorita_Impostata_Da_Rulliere : BOOL;	(* Se TRUE la priorità del prelievo è gestita della rulliere *)
+	//Priorita_Avanzata_Abilitata	: BOOL;					(* Se TRUE la priorità del prelievo è gestita in modo ottimale, 
+	//												 	cerco di completare la postazione più completa *) 		
+	
+END_VAR
+VAR
+	wpp : UINT;
+	pc : INT;
+	WPP_Ordinati_Per_Priorita : ARRAY[1..MAXAREA] OF UINT;
+	Indice_WPP_Ordinati : ARRAY[1..MAXAREA] OF UINT;
+	Indice_Tmp : UINT;
+	i	: UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Ordinamento in ordine decrescente di Priorità.. in questo modo si cerca la disponibilità sulla rulliera con priorià più alta *)
+IF Abilita_Priorita_Impostata_Da_Rulliere THEN
+	FOR i := 1 TO MAXAREAPRESENT DO
+		WPP_Ordinati_Per_Priorita[i] := INT_TO_UINT(WorkAreaState^[i].TransportState.Priority);
+		Indice_WPP_Ordinati[i] := i;
+	END_FOR	
+	FOR wpp:= 1 TO MAXAREAPRESENT DO 
+		IF WPP_Ordinati_Per_Priorita[wpp] <= WPP_Ordinati_Per_Priorita[wpp+1] THEN
+			Indice_Tmp := Indice_WPP_Ordinati[wpp];
+			Indice_WPP_Ordinati[wpp] := wpp + 1;
+ 			Indice_WPP_Ordinati[wpp+1] := Indice_Tmp;
+			wpp := 1;
+		END_IF
+	END_FOR
+END_IF
+(* Per tutte le WorkPickPoint Attive *)
+FOR wpp := 1 TO MAXAREAPRESENT DO
+	IF WorkArea^[Indice_WPP_Ordinati[wpp]].Enable = 1 THEN
+		(* Verifico disponibilità Lastra *)
+		IF WorkAreaState^[Indice_WPP_Ordinati[wpp]].TransportState.State = WORKPICKPOINT_STATE_AUTO THEN
+			IF WorkAreaState^[Indice_WPP_Ordinati[wpp]].TransportState.ProdPresence = WORKPICKPOINT_PRODOTTO_PRESENTE THEN
+				(* Verifico se il codice è giusto *)
+				IF WorkAreaState^[Indice_WPP_Ordinati[wpp]].TransportState.DataElement.WorkingID = LastRequetsID AND LastRequetsID <> '' THEN
+					TFPalletizerPickRollerPriority := (Indice_WPP_Ordinati[wpp]);
+					RETURN;
+				ELSE
+					;//Proseguo
+				END_IF
+			END_IF
+		END_IF
+	END_IF
+END_FOR
+TFPalletizerPickRollerPriority := 1;//Nel caso non abbia trovato nulla metto la postazione 1 come postazione di Default]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerPickRollerPriority">
+      <LineId Id="50" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="116" Count="2" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="121" Count="2" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="51" Count="3" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="160" Count="1" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="62" Count="1" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

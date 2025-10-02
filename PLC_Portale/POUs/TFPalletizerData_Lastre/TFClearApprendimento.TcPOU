@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFClearApprendimento" Id="{0236d6ed-ea2f-4f43-a863-6e38fa18c1fb}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFClearApprendimento : BOOL //Funzione che pulisce la struttura dell'apprendimento
+VAR_INPUT
+	Apprendimento : POINTER TO TFMachinePalletizer_CoordinateApprendimento;
+END_VAR
+VAR
+	i : INT;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[MEMSET(ADR(Apprendimento^),0,SIZEOF(Apprendimento^));
+TFClearApprendimento := TRUE;
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFClearApprendimento">
+      <LineId Id="33" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="42" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

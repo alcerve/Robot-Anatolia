@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="Pinza" Id="{6dbbb74c-036e-4da8-8672-d688c3370c77}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+
+	(* VARIABILI OVEM DX*)	
+	Ovem1 								: TF_VacumOVEM;
+	ComunicazioneOvem1 					: Ovem_Comunication;
+	I_LivelloDepressioneOVEM_BL_1 		AT %I* : WORD; //Proces Data BYTE LOW  Ovem
+	I_LivelloDepressioneOVEM_BH_1 		AT %I* : WORD; //Proces Data BYTE HIGHT Ovem
+	I_PortQualifierOVEM_1 				AT %I* : WORD; //Port Qualifier Ovem
+	O_ControlWordOVEM_1 				AT %Q* : WORD; //Control Word Ovem A
+	(* VARIABILI OVEM SX*)
+	Ovem2 								: TF_VacumOVEM;
+	ComunicazioneOvem2 					: Ovem_Comunication;
+	I_LivelloDepressioneOVEM_BL_2 		AT %I* : WORD; //Proces Data BYTE LOW Ovem
+	I_LivelloDepressioneOVEM_BH_2 		AT %I* : WORD; //Proces Data BYTE HIGHT Ovem
+	I_PortQualifierOVEM_2 				AT %I* : WORD; //Port Qualifier Ovem
+	O_ControlWordOVEM_2 				AT %Q* : WORD; //Control Word Ovem A
+	
+	CommandOVEM_1			: Ovem_Command;//Comandi Ovem 1
+	CommandOVEM_2			: Ovem_Command;//Comandi Ovem 2
+	
+	(* VARIABILI OVEM DX2*)	
+	Ovem12 								: TF_VacumOVEM;
+	ComunicazioneOvem12 				: Ovem_Comunication;
+	I_LivelloDepressioneOVEM_BL_12 		AT %I* : WORD; //Proces Data BYTE LOW  Ovem
+	I_LivelloDepressioneOVEM_BH_12 		AT %I* : WORD; //Proces Data BYTE HIGHT Ovem
+	I_PortQualifierOVEM_12 				AT %I* : WORD; //Port Qualifier Ovem
+	O_ControlWordOVEM_12 				AT %Q* : WORD; //Control Word Ovem A
+	(* VARIABILI OVEM SX2*)
+	Ovem22 								: TF_VacumOVEM;
+	ComunicazioneOvem22 				: Ovem_Comunication;
+	I_LivelloDepressioneOVEM_BL_22 		AT %I* : WORD; //Proces Data BYTE LOW Ovem
+	I_LivelloDepressioneOVEM_BH_22 		AT %I* : WORD; //Proces Data BYTE HIGHT Ovem
+	I_PortQualifierOVEM_22 				AT %I* : WORD; //Port Qualifier Ovem
+	O_ControlWordOVEM_22 				AT %Q* : WORD; //Control Word Ovem A
+	
+	CommandOVEM_12			: Ovem_Command;//Comandi Ovem 1
+	CommandOVEM_22			: Ovem_Command;//Comandi Ovem 2
+
+	CilindroAperturaPinza 	: DC_Cylinder;
+	CilindroSbloccoPinza 	: SC_Cylinder;
+	CilindroTasteggio 		: SC_Cylinder;
+	AspirazioneFaldaDX 		: SC_Cylinder;
+	AspirazioneFaldaSX 		: SC_Cylinder;
+	CilindroSbloccoBascolante :  SC_Cylinder;
+
+	PinzaVentoseManCmd : TFMachinePalletizer_PinzaVentoseManCmd;
+
+	LetturaFTCPinza0_1 	 : REAL;
+	LetturaFTCPinza180_1 : REAL;
+	LetturaFTCPinza0_2 	 : REAL;
+	LetturaFTCPinza180_2 : REAL;
+	
+	AlPosDestinoBandelCavaleta: REAL;
+	
+END_VAR
+
+VAR_GLOBAL PERSISTENT
+
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

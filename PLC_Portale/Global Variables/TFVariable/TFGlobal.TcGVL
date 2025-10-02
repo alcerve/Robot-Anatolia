@@ -1,0 +1,424 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TFGlobal" Id="{581cf0a5-4fe2-49dc-95b1-7fdf124b35cf}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+	Pos0TrasporteCavallete						: UINT := 0;		
+	Pos180TrasporteCavallete					: UINT := 180;	
+	RIBALTINO_NOP								: INT := 0;
+	RIBALTINO_VERTICALE							: INT := 1;
+	RIBALTINO_ORRIZZONTALE						: INT := 2;
+	
+	NO_INTERPOLAZIONE_ASSE 						: INT := 0; (* Indica che l'interpolazione dell'asse non è abilitata *)
+	INTERPOLAZIONE_ASSE 						: INT := 1; (* Indica che l'interpolazione dell'asse è abilitata *)
+	INTERPOLAZIONE_VIRTUALE_VIRTALE				: INT := 2; (* Indica che è abilitata l'interpolazione "Virtuale" dell'asse *)
+	
+	(* Tipo HOMING *)
+	HOMING_STANDARD				: INT := 1;//Indica l'homing standard con l'uso del sensore
+	HOMING_TORQUE				: INT := 2;//Indica l'homing con l'uso del limite di coppia e controllo dell'errore di inseguimento
+
+	(* Tipi di Encoder *)
+	HOMING_ASSE_PINZA    	: INT := 4; //indica il reset x l'asse K quando si fa il cambio manipolatori
+		
+	SupportoVuoto 			: TFMachinePalletizer_Pallet;
+	
+	
+END_VAR
+
+VAR_GLOBAL
+	(* Project Machine *)
+	MachinePalletizer_TF : TFMachinePalletizer_TF;
+	
+	(* Project Modules *)
+	//ModuloAsse_X 		: TFModulePalletizer_Ax;
+	//ModuloAsse_Y 		: TFModulePalletizer_Ax;
+	//ModuloAsse_Z 		: TFModulePalletizer_Ax;
+	//ModuloAsse_K 		: TFModulePalletizer_Ax;
+	//ModuloAsse_J 		: TFModulePalletizer_Ax;
+	//ModuloAspirazione	: TFModulePalletizer_Aspirazione;
+
+	MachinePalletizerModules	: TFPalletizerModules; //Moduli della macchina
+	
+	Ciclo_Di_Riposo				: Stato_Ciclo_Lavoro;
+	Ciclo_Pelievo_Falda			: Stato_Ciclo_Lavoro;
+	Ciclo_Deposito_Falda		: Stato_Ciclo_Lavoro;
+	//Ciclo_Pelievo_Pallet		: Stato_Ciclo_Lavoro;
+	//Ciclo_Deposito_Pallet		: Stato_Ciclo_Lavoro;
+	Ciclo_Prelievo_Lastra		: Stato_Ciclo_Lavoro;
+	Ciclo_Deposito_Lastra		: Stato_Ciclo_Lavoro;
+	
+	//Depallettizzatore
+	Ciclo_Prelievo_Lastra_Depal		: Stato_Ciclo_Lavoro;
+	Ciclo_Deposito_Lastra_Depal		: Stato_Ciclo_Lavoro;
+	Ciclo_Deposito_Falda_Depal		: Stato_Ciclo_Lavoro;
+
+	
+	PacchiPrelevatiAlMinuto		: UINT;
+	PacchiAlMinuto 				: ARRAY[1..50] OF UINT;
+	PacchiPrelevatiIn5Minuti 	: REAL;
+	TempoUltimoDeposito		 	: UINT;
+	
+	QuotaAnticipoDinamicaX_Raggiunta : BOOL;	//Se TRUE indica che la quota dell'asse X permette i movimenti sucessivi dei vari assi
+	QuotaAnticipoDinamicaY_Raggiunta : BOOL;	//Se TRUE indica che la quota dell'asse Y permette i movimenti sucessivi dei vari assi
+	QuotaAnticipoDinamicaZ_Raggiunta : BOOL;	//Se TRUE indica che la quota dell'asse Z permette i movimenti sucessivi dei vari assi
+	QuotaAnticipoDinamicaJ_Raggiunta : BOOL;	//Se TRUE indica che la quota dell'asse J permette i movimenti sucessivi dei vari assi
+	//QuotaAnticipoDinamicaK_Raggiunta : BOOL;	//Se TRUE indica che la quota dell'asse K permette i movimenti sucessivi dei vari assi
+	
+	QuotaX_ConsensoRotazionePinza_Raggiunta : BOOL;		//Se TRUE indica che l'asse X è alla quota in cui è possibile roto-traslare i vari assi senza rischiare di collidere con le colonne
+	//ConsensoTraslazioneY_TraColonne 		: BOOL;
+	IngombroSuperficialePinzaMAX_Global 	: LREAL;	//Ingombro Superficiale Massimo della pinza 
+	IngombroXPinzaOttimizzato_Global 		: LREAL;	//Ingombro Ottimizzato della pinza in direzione X
+	IngombroYPinzaOttimizzato_Global 		: LREAL;	//Ingombro Ottimizzato della pinza in direzione Y
+	
+	AreaInLavoroPositiva 			: BOOL;	//Indica che la piazzola di deposito e prelivo sono nella stessa zona di lavoro (a DX o SX delle colonne)
+	AreaInLavoroNegativa 			: BOOL;	//Indica che la piazzola di deposito e prelivo sono nella stessa zona di lavoro (a DX o SX delle colonne)
+	AreaInLavoroPositivaNegativa 	: BOOL;	//Indica che la piazzola di deposito e prelivo NON sono nella stessa zona di lavoro (DEVO PASSARE IN MEZZO ALLE COLONNE)
+
+	WorkAreaDX_Attuale : UINT;
+	WorkAreaSX_Attuale : UINT;
+	
+	QuotaAnticipoDinamicaX_DepositoPacco 	: LREAL;
+	QuotaAnticipoDinamicaX_DepositoPallet 	: LREAL;
+	QuotaAnticipoDinamicaZ_VersoDepPallet 	: LREAL;
+	
+	QuotaAnticipoDinamicaZ_VersoPrelPacco 	: LREAL;
+	QuotaAnticipoDinamicaX_VersoDepPacco 	: LREAL;
+	
+	QuotaAnticipoDinamicaZ_VersoPrelPall 	: LREAL;
+	QuotaAnticipoDinamicaX_VersoDepPall 	: LREAL;
+	
+	QuotaAnticipoDinamicaZ_VersoPrelFalda 	: LREAL;
+	QuotaAnticipoDinamicaX_VersoDepFalda 	: LREAL;
+	
+	QuotaAnticipoDinamicaZ_VersoRiposo 		: LREAL;
+	
+	RibaltinoExitOk : BOOL; //Consenso al prelievo dal ribaltino
+	
+	STARTInterpolazioneASSI : BOOL;
+	
+	ProgrammaToModule_X_Interpolato : Descrittore_Programma;
+	ProgrammaToModule_Y_Interpolato : Descrittore_Programma;
+	ProgrammaToModule_Z_Interpolato : Descrittore_Programma;
+	ProgrammaToModule_J_Interpolato : Descrittore_Programma;
+	//ProgrammaToModule_K_Interpolato : Descrittore_Programma;
+	
+	Asse_X_InFinestraDiPassMode : BOOL;
+	Asse_Y_InFinestraDiPassMode : BOOL;
+	Asse_Z_InFinestraDiPassMode : BOOL;
+	Asse_J_InFinestraDiPassMode : BOOL;
+	//Asse_K_InFinestraDiPassMode : BOOL;
+	
+	EncoderEsternoAsse_X : GestioneEncoderEsterno; //Istanza Encoder  Assoluto Asse X
+	//EncoderEsternoAsse_Y : GestioneEncoderEsterno; //Istanza Encoder  Assoluto Asse Y
+	//EncoderEsternoAsse_Z : GestioneEncoderEsterno; //Istanza Encoder  Assoluto Asse Z
+	//EncoderEsternoAsse_J : GestioneEncoderEsterno; //Istanza Encoder  Assoluto Asse J	
+	//EncoderEsternoAsse_K : GestioneEncoderEsterno; //Istanza Encoder  Assoluto Asse K
+	
+	ArrayPacchiSIMULATO : DUT_ArrayPacchi;
+	
+	PaccoPresoXDataLogger : BOOL; //Variabile per loggare il numero di prese
+	
+	ApprendimentoNullo : TFMachinePalletizer_CoordinateApprendimento;
+	
+	EnablePneumatica : BOOL;//Abilitazione marcia pneumatica
+	
+	LOCAL_AmsNetId : T_AmsNetID;
+	
+	ResetNecessarioCentralinaSafety : BOOL;
+
+	FuoriIngombroXNecessario : BOOL;//Indica che la macchina prima di muoversi deve portarsi in  fuori ingombro con l'asse X
+	FuoriIngombroYNecessario : BOOL;//Indica che la macchina prima di muoversi deve portarsi in  fuori ingombro con l'asse Y
+	FuoriIngombroZNecessario : BOOL;//Indica che la macchina prima di muoversi deve portarsi in  fuori ingombro con l'asse Z
+	FuoriIngombroJNecessario : BOOL;//Indica che la macchina prima di muoversi deve portarsi in  fuori ingombro con l'asse J
+
+(* Quote Fuoringobro *)
+	QuotaFuoriIngombro_Z_ConPEZZO 	: LREAL; 
+	QuotaFuoriIngombro_Z_ConPALLET 	: LREAL;
+	QuotaFuoriIngombro_Z_ConFALDA 	: LREAL;
+
+	//	
+	QuotaFuoriIngombro_X_AVUOTO  	: LREAL;
+	QuotaFuoriIngombro_Y_AVUOTO  	: LREAL;
+	QuotaFuoriIngombro_Z_AVUOTO  	: LREAL;
+	QuotaFuoriIngombro_J_AVUOTO  	: LREAL;
+
+	//
+	QuotaFuoriIngombro_X_ConCARICO 	: LREAL; 
+	QuotaFuoriIngombro_Y_ConCARICO 	: LREAL; 
+	QuotaFuoriIngombro_Z_ConCARICO 	: LREAL; 
+	QuotaFuoriIngombro_J_ConCARICO 	: LREAL; 
+	
+	//
+	QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE	: LREAL;
+	QuotaFuoriIngombro_Z_AVUOTO_CESTERNO  	: LREAL;
+	QuotaFuoriIngombro_Z_AVUOTO_CINTERNO  	: LREAL;
+
+	
+	Quota_Attesa_Caduta_Falda_Z     			: LREAL;
+	QuotaFUPRINGOMBROdaRIBALTINO_X_RAGGIUNTA 	: BOOL; //Indica che la pinza è in fuori ingombro col ribaltino in direzione X
+	QuotaFUPRINGOMBROdaRIBALTINO_Y_RAGGIUNTA 	: BOOL; //Indica che la pinza è in fuori ingombro col ribaltino in direzione Y
+	QuotaFuoriIngombroColonne_Y					: LREAL; //Quota Y di Fuori ingombro colonne 
+	
+	Pinza_InIngombroColonne_Attuale				: BOOL;//Indica che la pinzza si trova ini ingombro colonne alla partenza del ciclo
+	Pinza_InIngombroColonne_Destinazione		: BOOL;//Indica che la pinzza si trova ini ingombro colonne alla fine del ciclo
+	
+	AsseXInFinestraDiPrelievo : BOOL;
+	AsseYInFinestraDiPrelievo : BOOL; 
+	AsseZInFinestraDiPrelievo : BOOL; 
+	AsseJInFinestraDiPrelievo : BOOL;
+	
+	AsseXInIngombroColonnePerRotazione : BOOL;
+	AsseYInIngombroColonnePerRotazione : BOOL;
+
+	//Ingombro della pinza nelle varie dimensioni
+	IngombroX_Pos : LREAL;//Ingombro ATTUALE della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroY_Pos : LREAL;//Ingombro ATTUALE della pinza nella Metà POSITIVA della pinza lungo Y
+	IngombroZ_Pos : LREAL;//Ingombro ATTUALE della pinza nella Metà POSITIVA della pinza lungo Z
+	
+	IngombroX_Neg : LREAL;//Ingombro ATTUALE della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroY_Neg : LREAL;//Ingombro ATTUALE della pinza nella Metà NEGATIVA della pinza lungo Y
+	IngombroZ_Neg : LREAL;//Ingombro ATTUALE della pinza nella Metà NEGATIVA della pinza lungo Z
+	
+	IngombroDestinazioneX_Pos : LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroDestinazioneY_Pos : LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y
+	
+	IngombroDestinazioneX_Neg : LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroDestinazioneY_Neg : LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y
+	
+	IngombroDestinazioneZ_Pos : LREAL;//Ingombro della pinza lungo Z Positivo (sopra al fulcro)
+	IngombroDestinazioneZ_Neg : LREAL;//Ingombro della pinza lungo Z Negativo (sotto al fulcro)
+	
+	IngombroMaxX_Pos : LREAL;//Ingombro MASSIMO della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroMaxY_Pos : LREAL;//Ingombro MASSIMO della pinza nella Metà POSITIVA della pinza lungo Y
+	
+	IngombroMaxX_Neg : LREAL;//Ingombro MASSIMO della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroMaxY_Neg : LREAL;//Ingombro MASSIMO della pinza nella Metà NEGATIVA della pinza lungo Y
+	
+	IngombroMaxZ_Pos : LREAL;//Ingombro MASSIMO della pinza lungo Z Positivo (sopra al fulcro)
+	IngombroMaxZ_Neg : LREAL;//Ingombro MASSIMO della pinza lungo Z Negativo (sotto al fulcro)
+
+	IngombroY_Pos_0 	: POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y nella posizione 0°
+	IngombroY_Neg_180 	: POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y nella posizione 180°
+	IngombroY_Neg_0 	: POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y nella posizione 0°
+	IngombroY_Pos_180 	: POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y nella posizione 180°
+
+	ScostamentoVerticalePuntoCentrale : LREAL; //Valore dhe rappresenta quanto il punto centrale si è spostato rispetto allo zero orizzontale (lungo Z crescente)	
+
+	IngombroZ : LREAL;//Ingombro della pinza lungo Z
+	
+	IngombroY_Tot : LREAL;//Ingombro in direzione Y
+
+	SupportoSvuotatoLato90 		: ARRAY[1..MAXAREA] OF BOOL; //Array indicante supporti terminati
+	SupportoSvuotatoLato0 		: ARRAY[1..MAXAREA] OF BOOL; //Array indicante supporti terminati
+	SupportoSvuotatoLato180 	: ARRAY[1..MAXAREA] OF BOOL; //Array indicante supporti terminati
+
+	MaterialeDepositatoSuLinea 	: BOOL;//Segnalazione di materiale depositato a MP
+	SchedulerIDSuPinza 			: DWORD;	
+	
+	MemoriaQuoteTasteggio 		: ARRAY[1..10] OF REAL;//arrey memoria di quote tasteggio, serve per determinare se evacuare o meno il pallet
+	MemoriaQuoteTasteggioVuoto	: ARRAY[1..10] OF REAL;
+	idxTasteg 					: UINT;//Indice usato per riempire l'array di memoria delle quote di tasteggio
+	StopDepositoPerArresto 		: BOOL; //Memoria di richiesta stop ciclo deposito su rulliera
+	TFCalcoloFormatura 			: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+	TFCalcoloFormaturaDaLista	: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+	TFCalcoloFormaturaRT		: ARRAY[1..3] OF Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+
+	SIMULAZIONE_NO_HW 				: BOOL:= FALSE;
+	FormingEmpty 				: TFMachinePalletizer_FormingForSlab;
+	FaldaDaDepositare : TFMachinePalletizer_PlaceElement;//Descrizione falda da depositare, valorizzata dal WorkOrder
+	
+	SupportDataEmpty : ST_SupportData;
+
+//#### Variabili per Test
+	M255 : BOOL := TRUE; 			//# RIcorda Forzatura
+	M255_sempreON :  BOOL := TRUE;
+	M255_sempreOFF : BOOL := FALSE;
+	
+	
+//##
+	CoordenadaZInicial: REAL;
+
+	In_PosRobot: UINT;
+	PosRobot: UINT;
+	QuotaCentroPostazioneIni: LREAL;
+	QuotaCentroPostazionePiking: LREAL;
+	PosicionJActual: LREAL;
+	RobotWorkAreaCavallete : BOOL ;
+	RobotCentroPosX			: BOOL ;
+	PosicionJDestino: LREAL;
+	PosicionJOrigen: LREAL;
+	EjeYPosFueraIngombro: BOOL;
+	EjeYPos0Ingombro: BOOL;
+	EjeYPos180Ingombro: BOOL;
+END_VAR
+
+VAR_GLOBAL PERSISTENT
+
+	(* Parametri nominali degli assi - Coincidenti con i parametri presenti nella scheda NC *)
+	AxisNominalPar_X			: Ax_Palletizer_Nominal_Parameters;
+	AxisNominalPar_Y			: Ax_Palletizer_Nominal_Parameters;
+	AxisNominalPar_Z			: Ax_Palletizer_Nominal_Parameters;
+	AxisNominalPar_J			: Ax_Palletizer_Nominal_Parameters;
+	//AxisNominalPar_K			: Ax_Palletizer_Nominal_Parameters;
+	
+	(* Parametri degli assi *)
+	AxisPar_X					: Ax_Palletizer_Parameters;
+	AxisPar_Y					: Ax_Palletizer_Parameters;
+	AxisPar_Z					: Ax_Palletizer_Parameters;
+	//AxisPar_K					: Ax_Palletizer_Parameters;
+	AxisPar_J					: Ax_Palletizer_Parameters;
+	
+	AxisHomingParameters_X		: AxHomingParameters;	
+	AxisHomingParameters_Y		: AxHomingParameters;	
+	AxisHomingParameters_Z		: AxHomingParameters;	
+	AxisHomingParameters_J		: AxHomingParameters;	
+	//AxisHomingParameters_K		: AxHomingParameters;	
+	(* Override degli assi *)
+	AxisOverride				: TFMachinePalletizer_VelocityOverride_TF;
+	
+	ProgrammaToModule_X			: Descrittore_Programma;
+	ProgrammaToModule_Y			: Descrittore_Programma;
+	ProgrammaToModule_Z			: Descrittore_Programma;
+	ProgrammaToModule_K			: Descrittore_Programma;
+	ProgrammaToModule_J			: Descrittore_Programma;
+	
+	ProgrammaToModuleNEXT_X		: Descrittore_Programma;
+	ProgrammaToModuleNEXT_Y		: Descrittore_Programma;
+	ProgrammaToModuleNEXT_Z		: Descrittore_Programma;
+	ProgrammaToModuleNEXT_K		: Descrittore_Programma;
+	ProgrammaToModuleNEXT_J		: Descrittore_Programma;
+
+	(* Stato dei moduli *)
+	Status_TF 							: TFModulePalletizerSTATUS_TF;
+	(* Parametri assi : Velocità/ Accelerazioni / Decelerazioni CON e SENZA carico relativi ai vari programmi *)
+	ParametriProgramma_X_CicloRiposo	: Ax_Program_Parameters;
+	ParametriProgramma_Y_CicloRiposo	: Ax_Program_Parameters;
+	ParametriProgramma_Z_CicloRiposo	: Ax_Program_Parameters;
+	ParametriProgramma_J_CicloRiposo	: Ax_Program_Parameters;
+	//ParametriProgramma_K_CicloRiposo	: Ax_Program_Parameters;
+	
+	ParametriProgramma_X_CicloPallet	: Ax_Program_Parameters;
+	ParametriProgramma_Y_CicloPallet	: Ax_Program_Parameters;
+	ParametriProgramma_Z_CicloPallet	: Ax_Program_Parameters;
+	ParametriProgramma_J_CicloPallet	: Ax_Program_Parameters;
+	//ParametriProgramma_K_CicloPallet	: Ax_Program_Parameters;
+	
+	ParametriProgramma_X_CicloFalda		: Ax_Program_Parameters;
+	ParametriProgramma_Y_CicloFalda		: Ax_Program_Parameters;
+	ParametriProgramma_Z_CicloFalda		: Ax_Program_Parameters;
+	ParametriProgramma_J_CicloFalda		: Ax_Program_Parameters;
+	//ParametriProgramma_K_CicloFalda		: Ax_Program_Parameters;
+
+	ParametriProgramma_X_CicloLastra		: Ax_Program_Parameters;
+	ParametriProgramma_Y_CicloLastra		: Ax_Program_Parameters;
+	ParametriProgramma_Z_CicloLastra		: Ax_Program_Parameters;
+	ParametriProgramma_J_CicloLastra		: Ax_Program_Parameters;
+	//ParametriProgramma_K_CicloLastra		: Ax_Program_Parameters;
+	(* Traiettoria *)
+	Traiettoria 						: TFTraiettoria;
+	(* Gestore degli stati delle WORKAREA *)
+	WorkAreaManager						: TFWorkAreaManager;
+	(* Stati delle missioni *)
+	MissionStateCase					: MissionStateCase;
+		
+	(* Variabili per punto di riposo *)
+	X_Riposo	: LREAL;
+	Y_Riposo	: LREAL;
+	Z_Riposo	: LREAL;
+	J_Riposo	: LREAL;
+	K_Riposo	: LREAL;
+	
+	Dimensione_Z_ElementoInPresaX_Ingombro : REAL; // E' la somma della dimensione che ha l'ogetto in presa sulla pinza (Pallet/Falda/Pacco) + eventuali offest di prelievo.. in modo da avere l'ingombro Verticale REALE!! dell'oggetto..
+	
+	Dimensioni_Pinza	:	TFDimensioniPinza;
+	
+	(* Offset sicurezza movimenti *)
+	OffsetSicurezzaAnticipoMovimenti	: Offset_Sicurezza_Anticipo_Movimenti;
+	OffsetSicurezza					 	: OffsetSicurezzaIngombro;
+	OffsetPrelieviLenti				 	: Offset_Prelievi_Lenti;
+	OffsetPassMode						: Offset_Pass_Mode;
+	OffsetCadutaFalda				 	: REAL := 200;
+	OffsetDistacco				 		: OffsetDistacco;
+	
+	(* Dimensioni Pick-Point *)
+	WorkPickPointDimension : ARRAY[1..MAXPICKPOINT] OF Work_PickPoint_Dimension;
+	
+	PaccoSulRibaltino : TFHandlingPack;
+	
+	I_PHPresenzaPalletVirtuale :  ARRAY[1..MAXAREA] OF BOOL; //Simula la fotocellula di presenza pallet, utilizzato per i test senza HW
+	
+	InvertiComandoJog_X : BOOL := TRUE;
+	InvertiComandoJog_Y : BOOL := FALSE;
+	
+	OffsetApprendimento : Offeset_Apprendimento;
+	
+	IDFormatura : UINT;
+	GUIDFormatura : UINT;
+
+	WorkAreaCodiciFissi : ARRAY [1..MAXAREA] OF INT;
+	
+	AmsNetId AT %I* : T_AmsNetIdArr;	
+	OffSetPosYReposo 		:REAL := 230;
+	//RetardoAlarTastatore :TON ; 
+	
+	
+	
+	
+	Temp_Bool 	:ARRAY[0..100] OF BOOL;
+	Temp_INT	:ARRAY[0..9] OF INT;
+	Temp_UINT	:ARRAY[0..9] OF UINT;
+	Temp_DINT	:ARRAY[0..9] OF DINT;
+	Temp_UDINT	:ARRAY[0..9] OF UDINT;
+	Temp_REAL	:ARRAY[0..9] OF REAL;
+	Temp_LREAL	:ARRAY[0..9] OF LREAL;
+	Temp_WORD	:ARRAY[0..9] OF WORD;			
+	Temp_DWORD	:ARRAY[0..9] OF DWORD;
+	Temp_SupportData : ARRAY[0..3] OF ST_SupportData; (* Dati del supporto in piano per legni*)	
+	Temp_IdxLista : INT;
+	Temp_i	: INT;
+	LoopLista : UINT;
+	ProgramaEjes 					: ProgramaEjecucion ;
+	
+	
+	
+	
+	
+	RetardoFcTastastatore 								: ARRAY [1..4] OF REAL ;
+	RetardoFcTastastatoreJ								: ARRAY [1..2] OF REAL ;
+	Re_TastatoreEmergenzaPinza							: ARRAY [1..4] OF REAL ;
+	Re_In_TastatoreEmergenzaPinza						: ARRAY [1..4] OF BOOL ;
+	RetardoTastatore 									:BOOL ;
+	RetardoTastatoreJ 									:BOOL ;
+	RegistroAlarma2205									:UINT ;
+	RegistroCotaApolloY									:UINT ;
+	TFFormacionBandelCalculada							: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+	TFFormacionCavalleteCalculada						: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+	TipoLLenarCavellete									 :UINT := 4 ;
+	ReControlPiezaCogida								: REAL ;
+	
+	OffSetZRecogidaEnAngulo0							: REAL ;
+	OffSetZRecogidaEnAngulo180							: REAL ;
+	
+	PikingConCavallete									: BOOL ;
+	AngulosDiferentes									: BOOL ;
+	ReMovEjeX											: REAL ;
+	ReMovEjeXCicloDeposito								: REAL ;
+	AreaPikingConCavallete								: BOOL ;
+	MultiplesCavalletesReceta							: BOOL ;
+	NuEstacionesPiking									: UINT ;
+	NuEstacionPiking									: UINT ;
+	PosCavalleteOrdenPikin								: ARRAY [1..MAXAREA] OF e_Tipo_Pallet ;
+	CoordenadaPasillo0_Y								: LREAL ;
+	CoordenadaPasillo180_Y								: LREAL ;
+	CoordenadaPosGiroPieza_X							: LREAL ;
+	NuPosGuiroPiking									: UINT ;
+	PIezaAgarrada										: BOOL ;
+	WaCavalleteEnPiking									: INT;
+	PosFinOrdenPikingCaballete							: UINT ;
+	EjeYPosFueraIngombroCargado                         : BOOL;
+	CuotaOffSetZRecogidaBundel							: LREAL ;
+	CuotaOffSetZRecogidaCaballete						: LREAL ;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

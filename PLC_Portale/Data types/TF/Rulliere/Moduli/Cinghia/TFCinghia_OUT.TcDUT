@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFCinghia_OUT" Id="{11902e03-8bad-4a6b-84ce-563251a46a5c}">
+    <Declaration><![CDATA[TYPE TFCinghia_OUT :
+STRUCT
+		FTC_Presenza1 : BOOL;//Segnale della FTC 1 in senso marcia
+		FTC_Presenza2 : BOOL;//Segnale della FTC 2 in senso marcia
+		FTC_Presenza3 : BOOL;//Segnale della FTC 3 in senso marcia	
+		
+		ConsensoAMonte 			: BOOL;//Consenso scarico materiale per modulo a monte
+		VelocitaUscitaAValle 	: REAL;//Velocità di rotazione per modulo a valle
+		StopEsterno 			: BOOL;//comando di stop esterno per altri moduli
+		RichiestaAValle			: bool;//Richiesta di scarico al modulo a valle
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

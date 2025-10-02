@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoloOverrideDinamico" Id="{b9413d8f-5af3-4165-b38d-b4a42e6aa222}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCalcoloOverrideDinamico : REAL
+VAR_INPUT
+	NUltimiTrasportiOccupati : UINT;
+	Overide_Dinamico : Overide_Dinamico;
+END_VAR
+VAR
+	i : uint;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+FOR i:= 1 TO MAXSOGLIEOVERRIDE DO
+	IF NUltimiTrasportiOccupati >= Overide_Dinamico.NTrasportiOccupati[i] THEN
+		TFCalcoloOverrideDinamico := Overide_Dinamico.Override[i];
+		RETURN;
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcoloOverrideDinamico">
+      <LineId Id="14" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

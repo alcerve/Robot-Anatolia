@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_ListaProduzione_WAM_HMI" Id="{2da33f18-5fc2-45c8-ad0a-b2bf571bce88}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_ListaProduzione_WAM_HMI :
+STRUCT
+	Stato					: INT		:= -1;	(* Stato Elemento *)
+	Support					: TFMachinePalletizer_Pallet; (* Tipologia supporto *)
+	PElementList			: ARRAY [1..MAXELEMENTLIST] OF TFMachinePalletizer_PlaceElementList ; (* Elemento Da Movimentare *)
+	NumeroListaAssociata 	: UINT := 0;//Indica il numero della lista associata a questa postazione nel caso ci siano + liste possibili es. post 1-4/5-8..																								
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

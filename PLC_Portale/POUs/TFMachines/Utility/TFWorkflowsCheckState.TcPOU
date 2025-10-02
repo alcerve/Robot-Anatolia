@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFWorkflowsCheckState" Id="{2a634cf7-cf13-4d64-8bbb-4ed28548e526}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFWorkflowsCheckState : BOOL
+VAR_INPUT
+	WorkFlow : POINTER TO ARRAY[0..MAXWORKFLOW] OF WorkFlow;
+	State : UINT; // stato da verificare
+END_VAR
+VAR
+	i: UINT;
+END_VAR
+//Funzione che restituisce TRUE se tutti i WORFLOW sono nello stato richiesto
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i:=0 TO MAXWORKFLOW DO
+	IF WorkFlow^[i].State <> State THEN
+		RETURN;
+	END_IF
+END_FOR
+TFWorkflowsCheckState := TRUE;
+		]]></ST>
+    </Implementation>
+    <LineIds Name="TFWorkflowsCheckState">
+      <LineId Id="47" Count="1" />
+      <LineId Id="98" Count="1" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="20" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

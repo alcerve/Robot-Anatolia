@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFCentratoreStatus" Id="{694d5fbf-95fc-4dae-83fd-cbb1efb85b68}">
+    <Declaration><![CDATA[TYPE TFCentratoreStatus :
+STRUCT
+
+	Homed 		: BOOL; //Home modulo eseguito
+	Error 		: UDINT; //Errore mofulo
+	ErrorExtra 	: UDINT; //Errore extra modulo
+	PowerActive : BOOL; //Modulo in marcia
+	
+	Ax1_State : TFMachinePalletizer_AxeState_weintek; //Stato asse 1
+	
+	Px_Home : BOOL; //Sensore reset
+	Px_Aperto : BOOL; //Sensore extracorsa aperto
+	Px_Chiuso : BOOL; //Sensore extracorsa chiuso
+
+	Px_TouchDX : BOOL; //Sensore bandella DX
+	Px_TouchSX : BOOL; //Sensore Bandella SX
+	
+	CentratoreAperto : BOOL;//Indica che il centratore è aperto in fuori ingombro
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

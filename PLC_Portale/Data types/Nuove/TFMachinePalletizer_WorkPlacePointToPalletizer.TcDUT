@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPlacePointToPalletizer" Id="{55dc8ea7-29d6-4ca9-8dca-2153b53c638a}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPlacePointToPalletizer :
+STRUCT
+
+	State					: e_Stato_PickPoint	:= 0;	(* Stato della rulliera (0=Rulliera In Manuale, 1=Rulliera in Automatico, 2=Rulliera in Allarme *)
+                         
+	PhaseStopDone 			: BOOL;(*Richiesta Stop in fase ESEGUITA*)
+                            
+	IDElement 				: UDINT; (*ID univoco generato dalla macchina  per il tracking degli alementi*)
+	SupportPresent 		 	: BOOL;(* Supporto presente sul punto di deposito e pronto per essere pallettizzato *) 	
+	Support 				: TFMachinePalletizer_Pallet; (* Struttura del supporto presente sul punto di prelievo *)
+		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

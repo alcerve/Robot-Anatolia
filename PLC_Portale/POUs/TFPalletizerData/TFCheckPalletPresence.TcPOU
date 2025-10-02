@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCheckPalletPresence" Id="{778ee64e-23ae-45a4-97ad-9b4aba19b117}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCheckPalletPresence : INT
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	PX_WorkArea : ARRAY [1..MAXAREA] OF BOOL;
+END_VAR
+VAR
+	NStack : INT;
+	i : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFCheckPalletPresence := 0;
+NStack := 0;
+
+FOR i:=1 TO MAXAREAPRESENT DO
+	IF WorkArea^[i].Enable = 1 AND WorkArea^[i].Typology = TYPOLOGY_STACK AND (WorkAreaState^[i].State <> WORKAREA_STATE_OCCUPIED_LGVREQ AND WorkAreaState^[i].State <> WORKAREA_STATE_OCCUPIED_LGVREQ_DISABLED) AND PX_WorkArea[i] THEN
+		RETURN;
+	END_IF
+END_FOR
+TFCheckPalletPresence := 1;
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCheckPalletPresence">
+      <LineId Id="10" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="14" Count="1" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="20" Count="2" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

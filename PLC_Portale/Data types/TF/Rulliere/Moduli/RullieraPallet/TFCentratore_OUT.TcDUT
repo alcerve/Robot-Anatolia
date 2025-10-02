@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFCentratore_OUT" Id="{33f28ad8-c5f7-4690-aab7-3bdfacbe552d}">
+    <Declaration><![CDATA[TYPE TFCentratore_OUT :
+STRUCT
+	PosizioneAperta : BOOL; //Posizione centratore Aperta e fuori ingombro
+	PosizioneChiusa : BOOL; //Posizione centratore Chiusa e in ingombro
+	PosizioneIndefinita : BOOL; //Posizione centratore Indefinita	
+	
+	FuoriIngombroXCarico : BOOL;//Posizione che consente alla rulliera di caricare senza che l'elemento in transito collida col centratore
+	FuoriIngombroXScarico : BOOL;//Posizione che consente alla rulliera di scaricare l'elemento senza problemi
+		
+	TuochDX_Filtrato : BOOL;//Segnale stato bandella DX 
+	TuochSX_Filtrato : BOOL;//Segnale stato bandella SX  
+
+	PosizioneUltimaCentratura : REAL := 1900;//Posizione ultima centratura
+		
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_StatisticData" Id="{96dbb5da-1331-44e9-a450-baa1f8a433f3}">
+    <Declaration><![CDATA[TYPE ST_StatisticData :
+STRUCT
+	Auto 					: BOOL;//Automatico, tutto ok-macchina in lavoro
+	Man 					: BOOL;//Manuale,non in lavoro senza errori
+	Error 					: BOOL;//Macchina Ferma per qualche problema
+	LGVReqEntry 			: BOOL;//Macchina in automatico con richiesta ingresso attiva
+	ReadyToChange 			: BOOL;//Macchina con possibilità di eseguire il cambio
+	StatoMacchina			: INT;//Stato della macchina in forma numerica: 
+	TempoCicloPinza 		: ARRAY[1..4] OF INT;//Tempo ciclo di lavoro della pinza, tempo che intercorre tra prelievo-deposito-ritorno a poszione di riposo 
+	PezziDepositatiActualWO : ARRAY[1..4] OF INT;//Numero di pezzi depositati ordine corrente
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

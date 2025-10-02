@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <Task Name="Plc_Portale" Id="{338ef85e-bfb8-4ebf-b493-c0f83df19ea8}">
+    <!--CycleTime in micro seconds.-->
+    <CycleTime>1000</CycleTime>
+    <Priority>6</Priority>
+    <PouCall>
+      <Name>TFMachinePalletizerMain</Name>
+    </PouCall>
+    <TaskFBGuid>{38e48026-fce2-4e7f-a8c1-80c918c6fe5a}</TaskFBGuid>
+    <Fb_init>{50a97f9c-c981-4b52-8151-241294fd1a34}</Fb_init>
+    <Fb_exit>{2549380a-b149-4140-b5a8-0f71298b818f}</Fb_exit>
+    <CycleUpdate>{b5d25183-d3fe-427b-9d09-439bf67f6d0f}</CycleUpdate>
+    <PostCycleUpdate>{7ade438b-0067-4b44-9c76-28774134d030}</PostCycleUpdate>
+  </Task>
+</TcPlcObject>

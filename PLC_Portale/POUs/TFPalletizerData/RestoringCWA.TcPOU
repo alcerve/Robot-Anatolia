@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="RestoringCWA" Id="{5a22bc75-c18f-4621-9b5f-5ac2050f3afc}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION RestoringCWA : UINT
+VAR_INPUT
+	RestoreCWA : POINTER TO BOOL;
+	PreviousPWA : POINTER TO UINT;
+	pwa : UINT;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[RestoringCWA := pwa;
+
+IF RestoreCWA^ THEN
+	RestoringCWA := PreviousPWA^;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="RestoringCWA">
+      <LineId Id="11" Count="3" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

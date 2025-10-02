@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerIsCodeAssigned" Id="{40bfd9b8-6eaa-44ce-8c1c-73f0aaa2686e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerIsCodeAssigned : BOOL
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	Code : INT;
+END_VAR
+VAR
+	wa : INT;
+	n : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerIsCodeAssigned := FALSE; 
+
+FOR wa:=1 TO MAXAREA DO
+	IF WorkArea^[wa].Enable = 1 THEN
+		(* Verifico se il codice è già stato assegnato *)
+		IF WorkArea^[wa].Code = Code AND Code <> 0 THEN
+			(* Verifico se la piazzola è in lavorazione *)
+			(* Se è in lavorazione allora è inutile assegnarne un'altra con lo stesso codice *)
+			IF WorkAreaState^[wa].State < WORKAREA_STATE_OCCUPIED_WORKED AND 
+				WorkAreaState^[wa].State > WORKAREA_STATE_FREE_DISABLED THEN
+				TFPalletizerIsCodeAssigned := TRUE;
+				RETURN;
+			END_IF
+		END_IF
+	END_IF
+END_FOR
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerIsCodeAssigned">
+      <LineId Id="12" Count="1" />
+      <LineId Id="89" Count="5" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="96" Count="3" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

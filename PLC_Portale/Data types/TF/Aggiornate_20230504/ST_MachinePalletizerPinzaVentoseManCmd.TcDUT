@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_MachinePalletizerPinzaVentoseManCmd" Id="{441b3b19-b3ef-4b6e-897d-f1ba3b9501d9}">
+    <Declaration><![CDATA[TYPE ST_MachinePalletizerPinzaVentoseManCmd:
+STRUCT
+	(* Attivazione vuoto Ovem DX  *)
+	AttivazioneVuotoDX : BOOL;
+	(* Attivazione vuoto Ovem SX *)
+	AttivazioneVuotoSX : BOOL;
+	(* Comandi Ovem *)
+	DisattivazioneVuotoDX : BOOL;
+	(* Comandi Ove *)
+	DisattivazioneVuotoSX : BOOL;
+	(* Apertura Pinza *)
+	ApriPinza : BOOL;
+	(* Apertura Pinza *)
+	ChiudiPinza : BOOL;
+	(* Sblocco rotazione *)
+	SbloccoPinza : BOOL;
+	(* Blocco rotazione *)
+	BloccoPinza : BOOL;
+	(* Attivazione aspirazione Falde DX *)
+	AttivazioneVuotoFaldeDX : BOOL;
+	(* Disattivazione aspirazione Falde DX *)
+	DisattivazioneVuotoFaldeDX : BOOL;
+	(* Attivazione aspirazione Falde SX *)
+	AttivazioneVuotoFaldeSX : BOOL;
+	(* Disattivazione aspirazione Falde SX *)
+	DisattivazioneVuotoFaldeSX : BOOL;
+	(* Attivazione Tastatori *)
+	AttivaTastatori : BOOL;
+	(* Disattivazione Tastatori *)
+	DisattivaTastatori : BOOL;
+	(* Calibrazione OVEM *)
+	CalibrazioneOVEM : BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFRefreshUsedCode" Id="{e4d5b804-198b-4a3d-8af6-235ea9493b8e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFRefreshUsedCode : BOOL
+VAR_INPUT
+	pcode : INT;
+	UsedCode : POINTER TO ARRAY [1..MAXFORMINGCODE] OF INT;
+END_VAR
+VAR
+	j : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFRefreshUsedCode := FALSE;
+
+FOR j:=1 TO MAXFORMINGCODE-1 DO
+	UsedCode^[MAXFORMINGCODE-j+1]:= UsedCode^[MAXFORMINGCODE-j];
+END_FOR
+UsedCode^[1] := pcode;
+
+TFRefreshUsedCode := TRUE;]]></ST>
+    </Implementation>
+    <LineIds Name="TFRefreshUsedCode">
+      <LineId Id="21" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPickPointState_OLD" Id="{98d34d7c-6d74-4160-b075-5a9ab6409245}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPickPointState_OLD :
+STRUCT
+	
+	State			: INT	:= 0;	(* Stato PickPoint (0=Pacco Assente, 1=Pacco Presente *)
+	Code			: INT	:= 0;	(* Codice Pacco *)
+	NextCode		: INT	:= 0;   (* Codice Pacco Successivo *)
+	TC				: INT   := 0;   (* Comando Ribaltino 0=Nop, 1=Ribaltino Verticale, 2=Ribaltino Orizzontale *)
+	TS				: INT	:= 0;   (* Stato Ribaltino; 0=Nop,1=Ribaltino Verticale, 2=Ribaltino Orizzontale *)
+	NextTC			: INT	:= 0;   (* Comando Successivo Ribaltino; 0=Nop, 1=Ribaltino Verticale, 2=Ribaltino Orizzontale*)
+	ZTilter			: REAL  := 0.0; (* Quota asse Ribaltino, Scritta dall'Handling *)
+	Encumbrance		: BOOL	:= FALSE; (* TRUE:= Le dimensioni del pacco sono tali da impegnare anche la PX di Uscita del Deviatore, FALSE:= Pacco cCmpletamente sul Ribaltino*)
+	
+	XDim			: REAL;		(* (mm) Dimensione X del Pacco *)
+	YDim			: REAL;		(* (mm) Dimensione Y del Pacco *)
+	ZDim			: REAL;		(* (mm) Dimensione Z del Pacco *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

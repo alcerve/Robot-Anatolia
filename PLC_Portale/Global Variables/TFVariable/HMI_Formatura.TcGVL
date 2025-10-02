@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="HMI_Formatura" Id="{39723e67-ecd1-4689-8921-66fa9da0a504}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+	HMI_Forming_Calcola 					: BOOL; //START Esecuzione calcoli formatura
+	HMI_Forming_Supporto 					: TFMachinePalletizer_Pallet; //Struttura pallet calcoli formatura
+	HMI_Forming_LastraDaDepositare			: TFMachinePalletizer_PlaceElement; //Struttura dati dell'elemento da depositare 
+	HMI_Forming_NumeroElementiDaDepositare 	: UINT; //Numero di elementi da depositare sul supporto
+
+	HMI_Forming_FormaturaCalcolata			: TFMachinePalletizer_FormingForSlab; //Formatura calcolata dal FB
+	HMI_Forming_ErroreCalcoli 				: UINT;//Errore calcoli formatura per sagnalazioni a operatore 
+	HMI_Forming_IndiceFormaturaAttivata		: UINT; //Indica l'indice sul quale la formatura è stata attivata
+	HMI_Forming_CodiciAbilitatiFormatura	: ARRAY[1..MAXFORMING] OF TFCodiciPerFormatura;
+
+	HMI_Forming_GUID 						: UINT;
+	HMI_Forming_Attivazione					: ARRAY[1..MAXFORMING] OF BOOL; //Attivazione formatura
+	HMI_Forming_Disattivazione				: ARRAY[1..MAXFORMING] OF BOOL; //Disattiva formatura
+		
+	HMI_Forming_FormaturaCreata 			: BOOL; //TRUE se la formatura è stata creata correttamente
+	HMI_Forming_FormaturaAttivata 			:  ARRAY[1..MAXFORMING] OF BOOL; //TRUE se la formatura è stata attivata correttamente
+
+	HMI_ErrAckCalcolaFormatura 				: BOOL; //Variabile che serve per dare ok acquisizione da operatore
+	
+	HMI_ConfermaAttivazioneFormatura		: ARRAY[1..MAXFORMING] OF BOOL;  //Bit per far uscire il popup di formatura attivata correttamente
+
+	
+	pippo : BOOL;
+
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFModulePalletizerSTATUS_TF" Id="{ff50c72f-e907-4251-b526-cd42a82d130f}">
+    <Declaration><![CDATA[TYPE TFModulePalletizerSTATUS_TF :
+STRUCT
+	
+	X	: TFMachinePalletizer_AxeState_TF;	(* X Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	Y	: TFMachinePalletizer_AxeState_TF;	(* Y Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	Z	: TFMachinePalletizer_AxeState_TF;	(* Z Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	J	: TFMachinePalletizer_AxeState_TF;	(* J Axe State (UI Position=°,  UI Velocity=°/sec  UI Acc/Dec=°/sec2) *)
+	K	: TFMachinePalletizer_AxeState_TF;	(* K Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	
+	ModAsse_X : TFMachinePalletizer_ModuleState;
+	ModAsse_Y : TFMachinePalletizer_ModuleState;
+	ModAsse_Z : TFMachinePalletizer_ModuleState;
+	ModAsse_J : TFMachinePalletizer_ModuleState;
+	ModAsse_K : TFMachinePalletizer_ModuleState;
+	
+	Macchina : TFMachinePalletizer_MachineState;
+	
+	ModAspirazione : TFMachinePalletizer_ModuleState;
+	
+	Pinza : TFMAchinePalletizer_PinzaVentoseStatus;
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

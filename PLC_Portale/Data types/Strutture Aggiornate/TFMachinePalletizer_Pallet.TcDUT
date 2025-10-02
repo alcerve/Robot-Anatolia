@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_Pallet" Id="{212322e8-54e1-47a6-b5d6-5bf84c54dfd4}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_Pallet :
+STRUCT
+	Tipologia				: INT	:= 0;  (* Indica la tipologia dell'elemento *)
+	Code					: INT 	:= -1;	(* Codici Del supporto *)
+	XDim					: REAL	:= 0.0;	(* (mm) Dimensione X ex Lunghezza_Cavallina*) // Lunghezza X della cavallina (Lunghezza per la cassa)
+	YDim					: REAL	:= 0.0;	(* (mm) Dimensione Y ex L_Base *) // Larghezza totale della base della cavallina (Larghezza della cassa)
+	ZDim					: REAL	:= 0.0;	(* (mm) Dimensione Z Base Cavallina(interno, + bassa) o Base Cassa *)
+	ZDim_Ext1 				: REAL  := 0.0; (* (mm) Dimensione Z Base Cavallina(esterna, + alta) NON USATA PER CASSA *)
+	HMAX					: REAL  := 0.0;	(* (mm) Altezza Massima dell'elemento telaio cavallina o sponde cassa, dal terreno alla massima altezza*)
+	
+	//ZDim_Int1 				: REAL  := 0.0; // Altezza della base interna 1 della cavallina (altezza della base di supporto per la cassa) 
+	//ZDim_Int2 				: REAL  := 0.0; // Altezza della base interna 2 della cavallina
+	//ZDim_Ext2 				: REAL  := 0.0; // Altezza della base esterna 2 della cavallina
+	
+	DimVertice 				: REAL  := 0.0; // Larghezza parte alta della cavallina
+	DimBaseUtile 			: REAL  := 0.0; // Larghezza della base utile di appoggio delle lastre x cavallina
+	
+	AltezzaDenteRitenuta	: REAL := 0.0; 	(* (mm) Altezza del dente di ritenuta (per cavalletti) *)
+	TipoPianoAppoggio		: UINT := 0; //0=Con dente di ritenuta e in piano, 1=piano inclinato
+	//Spessore_DenteRitenuta	: REAL := 0.0;	(* (mm) Spessore del dente di ritenuta (per cavalletti) *)
+	//OffsetY_DenteRitenuta 	: REAL := 0.0;	(* (mm) Posizione del dente di ritenuta rispetto la quota Y del cavalletto (per cavalletti) *)
+	
+	LatoDeposito 			: UINT := 0; 	(* Lato in cui depositare gli elementi in caso di tipologia BUNDLE 0 o 180 *)
+	AngoloAlfaBundle		: REAL := 0.0;	(* Angolo Alfa di inclinazione del BUNDLE *)
+	
+	OFSDE_X90 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione X, utilizzato per PALLET o CASSE *)
+	OFSDE_Y90 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Y, utilizzato per PALLET o CASSE *)
+	OFSDE_Z90 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Z, utilizzato per PALLET o CASSE *)
+	OFSDE_J90 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione J, utilizzato per PALLET o CASSE *)
+	
+	OFSDE_X0 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione X, utilizzato per CAVALLETTI *)
+	OFSDE_Y0 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Y, utilizzato per CAVALLETTI *)
+	OFSDE_Z0 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Z, utilizzato per CAVALLETTI *)
+	OFSDE_J0 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione J, utilizzato per CAVALLETTI *)
+	
+	OFSDE_X180 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione X, utilizzato per CAVALLETTI *)
+	OFSDE_Y180 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Y, utilizzato per CAVALLETTI *)
+	OFSDE_Z180 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione Z, utilizzato per CAVALLETTI *)
+	OFSDE_J180 				: REAL := 0.0;	(* (mm) OFFSET di deposito direzione J, utilizzato per CAVALLETTI *)
+
+	ConfigurazioneBC 	 	: INT := -1;	(* (mm) Indica la modalità di funzionamento del barcode.. sono i suoi parametri *)
+	QuotaRilevamentoBC_X 	: REAL := 0;	(* (mm) Indica la posizione del barcode lungo la sua lunghezza e rispetto il punto medio *)
+	QuotaRilevamentoBC_Y 	: REAL := 0;	(* (mm) Indica la posizione del barcode lungo la sua larghezza e rispetto il punto medio	*)
+	QuotaRilevamentoBC_Z 	: REAL := 0;	(* (mm) Indica la posizione del barcode lungo il suo spessore e rispetto il punto medio *)
+	QuotaRilevamentoBC_J 	: REAL := 0;	(* (mm) Indica la posizione del barcode lungo il suo spessore e rispetto il punto medio *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

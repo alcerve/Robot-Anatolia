@@ -1,0 +1,521 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFProgramma_Ciclo_Lastra" Id="{5fb8a4c1-f0ae-4c92-adfb-79d16d52ec23}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFProgramma_Ciclo_Lastra
+VAR_INPUT
+	X_Par : Ax_Program_Parameters; // Parametri degli assi
+	Y_Par : Ax_Program_Parameters; // Parametri degli assi
+	Z_Par : Ax_Program_Parameters; // Parametri degli assi
+	//K_Par : Ax_Program_Parameters; // Parametri degli assi
+	J_Par : Ax_Program_Parameters; // Parametri degli assi
+	
+	(*X*)
+	Quota_Prelievo_Lastra_X 			: LREAL;
+	Quota_StartLenta_Prelievo_Lastra_X 	: LREAL;	// quota approccio
+	Quota_Deposito_Lastra_X 			: LREAL;
+	Quota_StartLenta_Deposito_Lastra_X 	: LREAL;	// quota approccio
+	Quota_Distacco_Lastra_X 			: LREAL; 	//Quota di distacco lastra
+	Quota_Fuori_Ingombro_SenzaCarico_X 	: LREAL; 
+	Quota_Fuori_Ingombro_Carico_X 		: LREAL;
+	Quota_PosGiroPiezaTraCavalleteX     : LREAL;   //Cuota Posicion Giro Trabajo Cavallete
+	(*Y*)
+	Quota_Prelievo_Lastra_Y 				: LREAL; // Quota di prelievo lastra
+	Quota_StartLenta_Prelievo_Lastra_Y 		: LREAL; // quota approccio in prelievo
+	Quota_StartLenta_Deposito_Lastra_Y 		: LREAL; // quota approccio in deposito
+	Quota_Deposito_Lastra_Y 				: LREAL; // Quota deposito lastra 
+	Quota_Fuori_Ingombro_Y 					: LREAL; // Quota Fuori ingombro in fase di prelievo
+	Quota_Distacco_Lastra_Y 				: LREAL; // Quota a cui si posiziona in fase di distacco lastra
+	Quota_Posicion_Giro_Pinza				: LREAL; // Quota posicion giro pieza para cavalina EjeX
+	Quota_PasilloCavallete0GradosY          : LREAL ;
+	Quota_PasilloCavallete1800GradosY       : LREAL ;
+
+	(*Z*)
+	Quota_StartLenta_Prelievo_Lastra_Z 		: LREAL;
+	Quota_Prelievo_Lastra_Z 				: LREAL;
+	Quota_StartLenta_Deposito_Lastra_Z 		: LREAL; // quota approccio
+	Quota_Deposito_Lastra_Z 				: LREAL;
+	Quota_Fuori_Ingombro_ConCarico_Z		: LREAL;
+	Quota_Fuori_Ingombro_SenzaCarico_Z 		: LREAL;
+	DisabilitaDepositoConTasteggio 			: BOOL;
+	Quota_Distacco_Lastra_Z		 			: LREAL; //Quota di distacco lastra
+	Quota_PostScarico							: LREAL;//posizione che si porta dopo aver scaricato la lastra
+	
+	(*J*)
+	Quota_Rotazione_Prelievo_Lastra 			: LREAL;
+	Quota_Rotazione_Deposito_Lastra 			: LREAL;
+	Quota_Rotazione_StartTasteggio_Lastra 		: LREAL;
+	Quota_Fuori_Ingombro_J						: LREAL;
+	Quota_Rotazione_Sfogliatura					: LREAL;
+	Quota_PostScaricoJ						: LREAL;//posizione che si porta dopo aver scaricato la lastra
+	Quota_Fuori_Ingombro_AttualeJ			: LREAL;
+
+	
+END_VAR
+VAR_OUTPUT
+	Inizializzato : BOOL;
+END_VAR
+VAR
+	;	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*
+X:
+(* Programma 1 Asse X : Traslazione Verso Postazione di Prelievo Lastra*)
+(* Programma 2 Asse X : Traslazione veloce a quota ammessa per veloce di deposito Pacco su piazzola*)
+(* Programma 3 Asse X : Traslazione lenta a quota di deposito Pacco su piazzola*)
+Y:
+(* Programma 1 Asse Y : Traslazione a quota di Prelievo Pacco*)
+(* Programma 2 Asse Y : Traslazione veloce a quota ammessa per veloce per Deposito Pacco su piazzola*)
+(* Programma 3 Asse Y : Traslazione a quota di Deposito Pacco su piazzola*)
+
+Z:
+(* Programma 1 Asse Z : Traslazione veloce fino alla quota ammessa in veloce in fase di Prelievo pacco*)
+(* Programma 2 Asse Z : Traslazione lenta fino al raggiungimento della quota di prelievo*)
+(* Programma 3 Asse Z : Traslazione veloce fino alla quota ammessa in veloce in fase di deposito pacco *)
+(* Programma 4 Asse Z : Traslazione lenta fino alla quota di deposito su piazzola*)
+(* Programma 5 Asse Z : Traslazione a quota di "Fuori Ingombro" con carico a bordo*)
+(* Programma 6 Asse Z : Traslazione a quota di "Fuori Ingombro" con carico a bordo*)
+
+J:
+(* Programma 0 Asse J : Rotazione 90° a vuoto *)
+(* Programma 1 Asse J : Rotazione 0° a vuoto *)
+(* Programma 2 Asse J : Rotazione 180° a vuoto *)
+(* Programma 3 Asse J : Rotazione 270° a vuoto *)
+(* Programma 4 Asse J : Rotazione 90° con carico *)
+(* Programma 5 Asse J : Rotazione 0° con carico *)
+(* Programma 6 Asse J : Rotazione 180° con carico *)
+(* Programma 7 Asse J : Rotazione 270° con carico *)
+*)
+Inizializzato := FALSE;
+(*************************************************************************************************************************************)
+(******************************************************  ASSE X **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 101 Asse X : Traslazione veloce Verso Postazione di Prelievo in quoata di start lenta *)
+Programma_X[101].ID 				:= 101;
+Programma_X[101].Quota_Destinazione	:= Quota_StartLenta_Prelievo_Lastra_X;
+Programma_X[101].Velocita			:= X_Par.Vel_Vuoto;
+Programma_X[101].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[101].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[101].Jerk				:= X_Par.Jerk_Vuoto;
+
+(* Programma 102 Asse X : Traslazione in lenta fino alla posizione di prelievo*)
+Programma_X[102].ID 				:= 102;
+Programma_X[102].Quota_Destinazione	:= Quota_Prelievo_Lastra_X;
+Programma_X[102].Velocita			:= X_Par.Vel_Ridotta;
+Programma_X[102].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[102].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[102].Jerk				:= X_Par.Jerk_Vuoto;
+
+(* Programma 103 Asse X : Traslazione in lenta per distacco della lastra *)
+Programma_X[103].ID 				:= 103;
+Programma_X[103].Quota_Destinazione	:= Quota_Distacco_Lastra_X;
+Programma_X[103].Velocita			:= X_Par.Vel_Ridotta;
+Programma_X[103].Accelerazione		:= X_Par.Acc_Carico;
+Programma_X[103].Decelerazione		:= X_Par.Dec_Carico;
+Programma_X[103].Jerk				:= X_Par.Jerk_Carico;
+Programma_X[103].InnestoDiretto		:= TRUE;
+
+(* Programma 104 Asse X : Traslazione veloce alla quota di approccio in deposito *)
+Programma_X[104].ID 				:= 104;
+Programma_X[104].Quota_Destinazione	:= Quota_StartLenta_Deposito_Lastra_X;
+Programma_X[104].Velocita			:= X_Par.Vel_Carico;
+Programma_X[104].Accelerazione		:= X_Par.Acc_Carico;
+Programma_X[104].Decelerazione		:= X_Par.Dec_Carico;
+Programma_X[104].Jerk				:= X_Par.Jerk_Carico;
+Programma_X[104].InnestoDiretto		:= TRUE;
+
+(* Programma 105 Asse X : Traslazione LENTA alla quota di deposito *)
+Programma_X[105].ID 				:= 105;
+Programma_X[105].Quota_Destinazione	:= Quota_Deposito_Lastra_X;
+Programma_X[105].Velocita			:= X_Par.Vel_Ridotta;
+Programma_X[105].Accelerazione		:= X_Par.Acc_Carico;
+Programma_X[105].Decelerazione		:= X_Par.Dec_Carico;
+Programma_X[105].Jerk				:= X_Par.Jerk_Carico;
+Programma_X[105].InnestoDiretto		:= TRUE;
+
+(* Programma 106 Asse X : Traslazione a quota di "Fuori Ingombro" senza carico a bordo*)
+Programma_X[106].ID 				:= 106;
+Programma_X[106].Quota_Destinazione	:= Quota_Fuori_Ingombro_SenzaCarico_X;
+Programma_X[106].Velocita			:= X_Par.Vel_Vuoto;
+Programma_X[106].Accelerazione		:= X_Par.Acc_Vuoto;
+Programma_X[106].Decelerazione		:= X_Par.Dec_Vuoto;
+Programma_X[106].Jerk					:= X_Par.Jerk_Vuoto;
+Programma_X[106].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 126 Asse X : Traslazione a quota di "Fuori Ingombro" poso con carico*)
+Programma_X[126].ID 				:= 126;
+Programma_X[126].Quota_Destinazione	:= Quota_Fuori_Ingombro_Carico_X;
+Programma_X[126].Velocita			:= X_Par.Vel_Carico;
+Programma_X[126].Accelerazione		:= X_Par.Acc_Carico;
+Programma_X[126].Decelerazione		:= X_Par.Dec_Carico;
+Programma_X[126].Jerk				:= X_Par.Jerk_Carico;
+
+(* Programma 127 Asse X : Traslazione a quota posicion Para invertir guiro*)
+Programma_X[X_PosGiroPiezaTraCavallete].ID 				:= 127;
+Programma_X[X_PosGiroPiezaTraCavallete].Quota_Destinazione	:= Quota_PosGiroPiezaTraCavalleteX;
+Programma_X[X_PosGiroPiezaTraCavallete].Velocita			:= X_Par.Vel_Carico;
+Programma_X[X_PosGiroPiezaTraCavallete].Accelerazione		:= X_Par.Acc_Carico;
+Programma_X[X_PosGiroPiezaTraCavallete].Decelerazione		:= X_Par.Dec_Carico;
+Programma_X[X_PosGiroPiezaTraCavallete].Jerk				:= X_Par.Jerk_Carico;
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE Y **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 101 Asse Y : Traslazione veloce Verso Postazione di Prelievo in quoata di start lenta *)
+Programma_Y[101].ID 				:= 101;
+Programma_Y[101].Quota_Destinazione	:= Quota_StartLenta_Prelievo_Lastra_Y;
+Programma_Y[101].Velocita			:= Y_Par.Vel_Vuoto;
+Programma_Y[101].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[101].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[101].Jerk				:= Y_Par.Jerk_Vuoto;
+Programma_Y[101].DisabilitaTasteggio	:= FALSE;
+
+(* Programma 102 Asse Y : Traslazione in lenta fino alla posizione di prelievo*)
+Programma_Y[102].ID 				:= 102;
+Programma_Y[102].Quota_Destinazione	:= Quota_Prelievo_Lastra_Y;
+Programma_Y[102].Velocita			:= Y_Par.Vel_Ridotta;
+Programma_Y[102].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[102].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[102].Jerk				:= Y_Par.Jerk_Carico;
+//Programma_Y[102].DisabilitaTasteggio	:= FALSE;
+Programma_Y[102].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 103 Asse Y : Traslazione in lenta per distacco della lastra *)
+Programma_Y[103].ID 				:= 103;
+Programma_Y[103].Quota_Destinazione	:= Quota_Distacco_Lastra_Y;
+Programma_Y[103].Velocita			:= Y_Par.Vel_Ridotta;
+Programma_Y[103].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[103].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[103].Jerk				:= Y_Par.Jerk_Carico;
+Programma_Y[103].InnestoDiretto		:= TRUE;
+
+(* Programma 104 Asse Y : Traslazione veloce alla quota di approccio in deposito *)
+Programma_Y[104].ID 				:= 104;
+Programma_Y[104].Quota_Destinazione	:= Quota_StartLenta_Deposito_Lastra_Y;
+Programma_Y[104].Velocita			:= Y_Par.Vel_Carico;
+Programma_Y[104].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[104].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[104].Jerk				:= Y_Par.Jerk_Carico;
+Programma_Y[104].InnestoDiretto		:= TRUE;
+Programma_Y[104].DisabilitaTasteggio := FALSE;
+
+(* Programma 105 Asse Y : Traslazione LENTA alla quota di deposito *)
+Programma_Y[105].ID 				:= 105;
+Programma_Y[105].Quota_Destinazione	:= Quota_Deposito_Lastra_Y;
+Programma_Y[105].Velocita			:= Y_Par.Vel_Ridotta;
+Programma_Y[105].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[105].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[105].Jerk				:= Y_Par.Jerk_Carico;
+Programma_Y[105].InnestoDiretto		:= TRUE;
+Programma_Y[105].DisabilitaTasteggio	:= FALSE;
+
+(* Programma 6 Asse Y : Traslazione a quota "Fuori Ingombro"  a Vuoto *)
+Programma_Y[106].ID 				:= 106;
+Programma_Y[106].Quota_Destinazione	:= Quota_Fuori_Ingombro_Y;
+Programma_Y[106].Velocita			:= Y_Par.Vel_Vuoto;
+Programma_Y[106].Accelerazione		:= Y_Par.Acc_Vuoto;
+Programma_Y[106].Decelerazione		:= Y_Par.Dec_Vuoto;
+Programma_Y[106].Jerk				:= Y_Par.Jerk_Vuoto;
+Programma_Y[106].DisabilitaTasteggio	:= TRUE;
+(* Programma 126 Asse Y : Traslazione a quota "Fuori Ingombro" con carico*)
+Programma_Y[126].ID 				:= 126;
+Programma_Y[126].Quota_Destinazione	:= Quota_Fuori_Ingombro_Y;
+Programma_Y[126].Velocita			:= Y_Par.Vel_Carico;
+Programma_Y[126].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[126].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[126].Jerk				:= Y_Par.Jerk_Carico;
+Programma_Y[126].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 127 Asse Y : Traslazione a quota "Possicion Girar Pieza " con carico*)
+Programma_Y[127].ID 				:= 127;
+Programma_Y[127].Quota_Destinazione	:= Quota_Posicion_Giro_Pinza;
+Programma_Y[127].Velocita			:= Y_Par.Vel_Carico;
+Programma_Y[127].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[127].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[127].Jerk				:= Y_Par.Jerk_Carico;
+Programma_Y[127].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 128 Asse Y : Traslazione a quota "Possicion Girar Pieza " con carico*)
+Programma_Y[Y_PosPasillo0grados].ID 					:= Y_PosPasillo0grados;
+Programma_Y[Y_PosPasillo0grados].Quota_Destinazione		:= Quota_PasilloCavallete0GradosY;
+Programma_Y[Y_PosPasillo0grados].Velocita				:= Y_Par.Vel_Carico;
+Programma_Y[Y_PosPasillo0grados].Accelerazione			:= Y_Par.Acc_Carico;
+Programma_Y[Y_PosPasillo0grados].Decelerazione			:= Y_Par.Dec_Carico;
+Programma_Y[Y_PosPasillo0grados].Jerk					:= Y_Par.Jerk_Carico;
+Programma_Y[Y_PosPasillo0grados].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 129 Asse Y : Traslazione a quota "Possicion Girar Pieza " con carico*)
+Programma_Y[Y_PosPasillo180grados].ID 					:= Y_PosPasillo180grados;
+Programma_Y[Y_PosPasillo180grados].Quota_Destinazione	:= Quota_PasilloCavallete1800GradosY;
+Programma_Y[Y_PosPasillo180grados].Velocita				:= Y_Par.Vel_Carico;
+Programma_Y[Y_PosPasillo180grados].Accelerazione		:= Y_Par.Acc_Carico;
+Programma_Y[Y_PosPasillo180grados].Decelerazione		:= Y_Par.Dec_Carico;
+Programma_Y[Y_PosPasillo180grados].Jerk					:= Y_Par.Jerk_Carico;
+Programma_Y[Y_PosPasillo180grados].DisabilitaTasteggio	:= TRUE;
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE Z **********************************************************************)
+(*************************************************************************************************************************************)
+
+(* Programma 101 Asse Z : Traslazione veloce Verso Postazione di Prelievo in quoata di start lenta *)
+Programma_Z[101].ID 					:= 101;
+Programma_Z[101].Quota_Destinazione		:= Quota_StartLenta_Prelievo_Lastra_Z;
+Programma_Z[101].Velocita				:= Z_Par.Vel_Vuoto;
+Programma_Z[101].Accelerazione			:= Z_Par.Acc_Vuoto;
+Programma_Z[101].Decelerazione			:= Z_Par.Dec_Vuoto;
+Programma_Z[101].Jerk					:= Z_Par.Jerk_Vuoto;
+Programma_Z[101].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 102 Asse Z : Traslazione in lenta fino alla posizione di prelievo*)
+Programma_Z[102].ID 				:= 102;
+Programma_Z[102].Quota_Destinazione	:= Quota_Prelievo_Lastra_Z;
+Programma_Z[102].Velocita			:= Z_Par.Vel_Ridotta;
+Programma_Z[102].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[102].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[102].Jerk					:= Z_Par.Jerk_Vuoto;
+Programma_Z[102].DisabilitaTasteggio	:= FALSE;
+
+(* Programma 103 Asse Z : Traslazione in lenta per distacco della lastra *)
+Programma_Z[103].ID 				:= 103;
+Programma_Z[103].Quota_Destinazione	:= Quota_Distacco_Lastra_Z;
+Programma_Z[103].Velocita			:= MAX(2,HMI_VelocitaDistaccoLastra_Z);//Z_Par.Vel_Ridotta;
+Programma_Z[103].Accelerazione		:= Z_Par.Acc_Carico;
+Programma_Z[103].Decelerazione		:= Z_Par.Dec_Carico;
+Programma_Z[103].Jerk				:= Z_Par.Jerk_Carico;
+Programma_Z[103].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 104 Asse Z : Traslazione veloce alla quota di approccio in deposito *)
+Programma_Z[104].ID 				:= 104;
+Programma_Z[104].Quota_Destinazione	:= Quota_StartLenta_Deposito_Lastra_Z;
+Programma_Z[104].Velocita			:= Z_Par.Vel_Carico;
+Programma_Z[104].Accelerazione		:= Z_Par.Acc_Carico;
+Programma_Z[104].Decelerazione		:= Z_Par.Dec_Carico;
+Programma_Z[104].Jerk					:= Z_Par.Jerk_Carico;
+Programma_Z[104].DisabilitaTasteggio	:= FALSE;//DisabilitaDepositoConTasteggio;
+Programma_Z[104].InnestoDiretto		:= TRUE;
+
+(* Programma 105 Asse Z : Traslazione lenta alla quota di deposito *)
+Programma_Z[105].ID 					:= Z_PosDepositoInLentaLastra;
+Programma_Z[105].Quota_Destinazione		:= Quota_Deposito_Lastra_Z;
+Programma_Z[105].Velocita				:= Z_Par.Vel_Ridotta;
+Programma_Z[105].Accelerazione			:= Z_Par.Acc_Carico;
+Programma_Z[105].Decelerazione			:= Z_Par.Dec_Carico;
+Programma_Z[105].Jerk					:= Z_Par.Jerk_Carico;
+Programma_Z[105].DisabilitaTasteggio 	:= FALSE;//NOT HMI_AbilitaDepositoPaccoOrrizzontaleConTasteggio;
+
+(* Programma 106 Asse Z : Traslazione a quota di "Fuori Ingombro" senza carico a bordo*)
+Programma_Z[106].ID 				:= 106;
+Programma_Z[106].Quota_Destinazione	:= Quota_Fuori_Ingombro_SenzaCarico_Z;
+Programma_Z[106].Velocita			:= Z_Par.Vel_Vuoto;
+Programma_Z[106].Accelerazione		:= Z_Par.Acc_Vuoto;
+Programma_Z[106].Decelerazione		:= Z_Par.Dec_Vuoto;
+Programma_Z[106].Jerk					:= Z_Par.Jerk_Vuoto;
+Programma_Z[106].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 126 Asse Z : Traslazione a quota "Fuori Ingombro" con carico*)
+Programma_Z[126].ID 				:= 126;
+Programma_Z[126].Quota_Destinazione	:= Quota_Fuori_Ingombro_ConCarico_Z;
+Programma_Z[126].Velocita			:= Z_Par.Vel_Carico;
+Programma_Z[126].Accelerazione		:= Z_Par.Acc_Carico;
+Programma_Z[126].Decelerazione		:= Z_Par.Dec_Carico;
+Programma_Z[126].Jerk				:= Z_Par.Jerk_Carico;
+Programma_Z[126].DisabilitaTasteggio	:= TRUE;
+(* Programma 107 Asse Z : Traslazione a quota deposito pacco in veloce usato senza approccio*)
+Programma_Z[107].ID 				:= 107;
+Programma_Z[107].Quota_Destinazione	:= Quota_Deposito_Lastra_Z;
+Programma_Z[107].Velocita			:= Z_Par.Vel_Carico;
+Programma_Z[107].Accelerazione		:= Z_Par.Acc_Carico;
+Programma_Z[107].Decelerazione		:= Z_Par.Dec_Carico;
+Programma_Z[107].Jerk					:= Z_Par.Jerk_Carico;
+Programma_Z[107].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 107 Asse Z : Traslazione a quota deposito pacco in veloce usato senza approccio*)
+Programma_Z[Z_PosPostScarico].ID 				:= INT_TO_UINT(Z_PosPostScarico);
+Programma_Z[Z_PosPostScarico].Quota_Destinazione	:= Quota_PostScarico;
+Programma_Z[Z_PosPostScarico].Velocita			:= Z_Par.Vel_Carico;//Z_Par.Vel_Vuoto;
+Programma_Z[Z_PosPostScarico].Accelerazione		:= Z_Par.Acc_Carico;
+Programma_Z[Z_PosPostScarico].Decelerazione		:= Z_Par.Dec_Carico;
+Programma_Z[Z_PosPostScarico].Jerk					:= Z_Par.Jerk_Carico;
+Programma_Z[Z_PosPostScarico].DisabilitaTasteggio	:= TRUE;
+
+
+(*
+(*************************************************************************************************************************************)
+(******************************************************  ASSE K **********************************************************************)
+(*************************************************************************************************************************************)
+
+(* Programma 101 Asse K : Apertura pinza per prelievo pacco *)
+Programma_K[101].ID 				:= 101;
+Programma_K[101].Quota_Destinazione	:= Quota_Apertura_Prelievo_Pacco_K;
+Programma_K[101].Velocita			:= K_Par.Vel_Vuoto;
+Programma_K[101].Accelerazione		:= K_Par.Acc_Vuoto;
+Programma_K[101].Decelerazione		:= K_Par.Dec_Vuoto;
+Programma_K[101].Jerk				:= K_Par.Jerk_Vuoto;
+Programma_K[101].Torque				:= K_Par.Torque;
+Programma_K[101].Controllo_Tastatori	:= TRUE;
+Programma_K[101].ControlloCoppiaAbilitato := FALSE;
+
+
+(* Programma 102 Asse K : Chiusura pinza per prelievo pacco *)
+Programma_K[102].ID 				:= 102;
+Programma_K[102].Quota_Destinazione	:= Quota_Chiusura_Prelievo_Pacco_K;
+Programma_K[102].Velocita			:= K_Par.Vel_Vuoto;
+Programma_K[102].Accelerazione		:= K_Par.Acc_Vuoto;
+Programma_K[102].Decelerazione		:= K_Par.Dec_Vuoto;
+Programma_K[102].Jerk				:= K_Par.Jerk_Vuoto;
+Programma_K[102].Torque				:= K_Par.Torque;
+Programma_K[102].Controllo_Tastatori	:= FALSE;
+Programma_K[102].ControlloCoppiaAbilitato := Abilitazione_Controllo_Coppia_K;
+
+(* Programma 103 Asse K : Apertura pinza per deposito pacco *)
+Programma_K[103].ID 				:= 103;
+Programma_K[103].Quota_Destinazione	:= Quota_Apertura_Deposito_Pacco_K;
+Programma_K[103].Velocita			:= K_Par.Vel_Vuoto;
+Programma_K[103].Accelerazione		:= K_Par.Acc_Vuoto;
+Programma_K[103].Decelerazione		:= K_Par.Dec_Vuoto;
+Programma_K[103].Jerk				:= K_Par.Jerk_Vuoto;
+Programma_K[103].Torque				:= K_Par.Torque;
+Programma_K[103].Controllo_Tastatori	:= TRUE;
+Programma_K[103].ControlloCoppiaAbilitato := FALSE;
+*)
+
+(*************************************************************************************************************************************)
+(******************************************************  ASSE J **********************************************************************)
+(*************************************************************************************************************************************)
+(*************************************************************************************************************************************)
+(******************************************************  ASSE J **********************************************************************)
+(*************************************************************************************************************************************)
+(* Programma 6 Asse J : Traslazione a quota di FUORI INGOMBRO*)
+Programma_J[J_PosFuoriIngombro].ID 					:= TO_UINT(J_PosFuoriIngombro);
+Programma_J[J_PosFuoriIngombro].Quota_Destinazione	:= Quota_Fuori_Ingombro_J;
+Programma_J[J_PosFuoriIngombro].Velocita			:= J_Par.Vel_Vuoto;
+Programma_J[J_PosFuoriIngombro].Accelerazione		:= J_Par.Acc_Vuoto;
+Programma_J[J_PosFuoriIngombro].Decelerazione		:= J_Par.Dec_Vuoto;
+Programma_J[J_PosFuoriIngombro].Jerk				:= J_Par.Jerk_Vuoto;
+Programma_J[J_PosFuoriIngombro].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 12 Asse J : Rotazione a quota di PRELIEVO LASTRA *)
+Programma_J[J_PosPrelievoLastra].ID 					:= TO_UINT(J_PosPrelievoLastra);
+Programma_J[J_PosPrelievoLastra].Quota_Destinazione	:= Quota_Rotazione_Prelievo_Lastra;
+Programma_J[J_PosPrelievoLastra].Velocita			:= J_Par.Vel_Vuoto;
+Programma_J[J_PosPrelievoLastra].Accelerazione		:= J_Par.Acc_Vuoto;
+Programma_J[J_PosPrelievoLastra].Decelerazione		:= J_Par.Dec_Vuoto;
+Programma_J[J_PosPrelievoLastra].Jerk				:= J_Par.Jerk_Vuoto;
+Programma_J[J_PosPrelievoLastra].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 13 Asse J : Rotazione a quota di deposito DEPOSITO LASTRA *)
+Programma_J[J_PosDepositoLastra].ID 				:= TO_UINT(J_PosDepositoLastra);
+Programma_J[J_PosDepositoLastra].Quota_Destinazione	:= Quota_Rotazione_Deposito_Lastra;
+Programma_J[J_PosDepositoLastra].Velocita			:= J_Par.Vel_Carico;
+Programma_J[J_PosDepositoLastra].Accelerazione		:= J_Par.Acc_Carico;
+Programma_J[J_PosDepositoLastra].Decelerazione		:= J_Par.Dec_Carico;
+Programma_J[J_PosDepositoLastra].Jerk				:= J_Par.Jerk_Carico;
+Programma_J[J_PosDepositoLastra].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 14 Asse J : Rotazione a quota di START APPROCCIO per prelievo su cavallina *)
+Programma_J[J_PosStartApproccioPrelLastra].ID 					:= TO_UINT(J_PosStartApproccioPrelLastra);
+Programma_J[J_PosStartApproccioPrelLastra].Quota_Destinazione	:= Quota_Rotazione_StartTasteggio_Lastra;
+Programma_J[J_PosStartApproccioPrelLastra].Velocita			:= J_Par.Vel_Vuoto;
+Programma_J[J_PosStartApproccioPrelLastra].Accelerazione		:= J_Par.Acc_Vuoto;
+Programma_J[J_PosStartApproccioPrelLastra].Decelerazione		:= J_Par.Dec_Vuoto;
+Programma_J[J_PosStartApproccioPrelLastra].Jerk				:= J_Par.Jerk_Vuoto;
+Programma_J[J_PosStartApproccioPrelLastra].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 14 Asse J : Rotazione a quota di START APPROCCIO per prelievo su cavallina *)
+Programma_J[J_PosSfogliatura].ID 					:= INT_TO_UINT(J_PosSfogliatura);
+Programma_J[J_PosSfogliatura].Quota_Destinazione	:= Quota_Rotazione_Sfogliatura;
+Programma_J[J_PosSfogliatura].Velocita			:= J_Par.Vel_Ridotta;
+Programma_J[J_PosSfogliatura].Accelerazione		:= J_Par.Acc_Carico;
+Programma_J[J_PosSfogliatura].Decelerazione		:= J_Par.Dec_Carico;
+Programma_J[J_PosSfogliatura].Jerk				:= J_Par.Jerk_Carico;
+//Programma_J[J_PosSfogliatura].DisabilitaTasteggio	:= FALSE;
+Programma_J[J_PosSfogliatura].DisabilitaTasteggio	:= TRUE; //24-7-2025
+
+(* Programma 17 Asse J : Posizione di PosPostScarico in deposito *)
+Programma_J[J_PosPostScarico].ID 					:= INT_TO_UINT(J_PosPostScarico);
+Programma_J[J_PosPostScarico].Quota_Destinazione	:= Quota_PostScaricoJ;
+Programma_J[J_PosPostScarico].Velocita			:= J_Par.Vel_Vuoto;
+Programma_J[J_PosPostScarico].Accelerazione		:= J_Par.Acc_Carico;
+Programma_J[J_PosPostScarico].Decelerazione		:= J_Par.Dec_Carico;
+Programma_J[J_PosPostScarico].Jerk				:= J_Par.Jerk_Carico;
+Programma_J[J_PosPostScarico].DisabilitaTasteggio	:= TRUE;
+
+(* Programma 18 Asse J : Traslazione a quota di FUORI INGOMBRO Pos Acrual*)
+Programma_J[J_PosFuoriIngombroPosAttuale].ID 					:= INT_TO_UINT(J_PosFuoriIngombroPosAttuale);
+Programma_J[J_PosFuoriIngombroPosAttuale].Quota_Destinazione	:= Quota_Fuori_Ingombro_AttualeJ;
+Programma_J[J_PosFuoriIngombroPosAttuale].Velocita				:= J_Par.Vel_Vuoto;
+Programma_J[J_PosFuoriIngombroPosAttuale].Accelerazione			:= J_Par.Acc_Vuoto;
+Programma_J[J_PosFuoriIngombroPosAttuale].Decelerazione			:= J_Par.Dec_Vuoto;
+Programma_J[J_PosFuoriIngombroPosAttuale].Jerk					:= J_Par.Jerk_Vuoto;
+Programma_J[J_PosFuoriIngombroPosAttuale].DisabilitaTasteggio	:= TRUE;
+
+
+(* Programma 0 Asse J : Traslazione a quota di 0 Grados) *)
+Programma_J[Pos0TrasporteCavallete].ID 						:= Pos0TrasporteCavallete;
+Programma_J[Pos0TrasporteCavallete].Quota_Destinazione		:= Pos0TrasporteCavallete;
+Programma_J[Pos0TrasporteCavallete].Velocita				:= J_Par.Vel_Vuoto;
+Programma_J[Pos0TrasporteCavallete].Accelerazione			:= J_Par.Acc_Vuoto;
+Programma_J[Pos0TrasporteCavallete].Decelerazione			:= J_Par.Dec_Vuoto;
+Programma_J[Pos0TrasporteCavallete].Jerk					:= J_Par.Jerk_Vuoto;
+Programma_J[Pos0TrasporteCavallete].DisabilitaTasteggio	:= TRUE;
+
+
+(* Programma 180 Asse J : Traslazione a quota di 180 Grados) *)
+Programma_J[Pos180TrasporteCavallete].ID 						:= Pos180TrasporteCavallete;
+Programma_J[Pos180TrasporteCavallete].Quota_Destinazione		:= Pos180TrasporteCavallete;
+Programma_J[Pos180TrasporteCavallete].Velocita					:= J_Par.Vel_Vuoto;
+Programma_J[Pos180TrasporteCavallete].Accelerazione				:= J_Par.Acc_Vuoto;
+Programma_J[Pos180TrasporteCavallete].Decelerazione				:= J_Par.Dec_Vuoto;
+Programma_J[Pos180TrasporteCavallete].Jerk						:= J_Par.Jerk_Vuoto;
+Programma_J[Pos180TrasporteCavallete].DisabilitaTasteggio		:= TRUE;
+
+
+Inizializzato := TRUE;
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFProgramma_Ciclo_Lastra">
+      <LineId Id="2084" Count="73" />
+      <LineId Id="2569" Count="0" />
+      <LineId Id="2159" Count="15" />
+      <LineId Id="2985" Count="6" />
+      <LineId Id="2984" Count="0" />
+      <LineId Id="2175" Count="10" />
+      <LineId Id="2567" Count="0" />
+      <LineId Id="2186" Count="8" />
+      <LineId Id="2854" Count="0" />
+      <LineId Id="2436" Count="0" />
+      <LineId Id="2195" Count="16" />
+      <LineId Id="2737" Count="0" />
+      <LineId Id="2212" Count="8" />
+      <LineId Id="2437" Count="0" />
+      <LineId Id="2221" Count="15" />
+      <LineId Id="2566" Count="0" />
+      <LineId Id="2792" Count="7" />
+      <LineId Id="2791" Count="0" />
+      <LineId Id="3003" Count="0" />
+      <LineId Id="3005" Count="6" />
+      <LineId Id="3004" Count="0" />
+      <LineId Id="3020" Count="0" />
+      <LineId Id="3013" Count="6" />
+      <LineId Id="3012" Count="0" />
+      <LineId Id="2237" Count="75" />
+      <LineId Id="2446" Count="0" />
+      <LineId Id="2448" Count="7" />
+      <LineId Id="2447" Count="0" />
+      <LineId Id="2313" Count="43" />
+      <LineId Id="2620" Count="46" />
+      <LineId Id="2909" Count="0" />
+      <LineId Id="2667" Count="16" />
+      <LineId Id="2515" Count="0" />
+      <LineId Id="2965" Count="8" />
+      <LineId Id="2964" Count="0" />
+      <LineId Id="2975" Count="8" />
+      <LineId Id="2974" Count="0" />
+      <LineId Id="2504" Count="0" />
+      <LineId Id="2386" Count="2" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

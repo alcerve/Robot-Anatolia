@@ -1,0 +1,151 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFVerificaLetturaBarcodeConDatiDB" Id="{2946d544-14a8-4396-bf2d-56467578275b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFVerificaLetturaBarcodeConDatiDB //FB che verifica se i dati letti del barcode sono validi per il database
+VAR_INPUT
+	VerificaDati 	: BOOL;	//Bit di start
+	BarcodeUDC 		: STRING;//Barcode elemento
+	IDUDC 			: UDINT;//ID elemento
+	AbilitaSTHere 	: BOOL;
+END_VAR
+VAR
+	DataElementNull : TFMachinePalletizer_DataElement;
+	DimElementNull	: TFDimensionElement; 
+	RicavaDatiDaBarcodeUDC : TFSPRicavaDatiDaBarcodeUDC;
+	FirstCycleDone : bool;
+END_VAR
+VAR_OUTPUT
+	DatoValido 			: BOOL; //Dati ok
+	VerificaDatiDone 	: BOOL; //Verifica completata
+	DataElement 		: TFMachinePalletizer_DataElement;//dati elemento
+	DimElement 			: TFDimensionElement; //Dimensioni Pezzi
+	RequetsIDValido		: BOOL;//se TRUE allora il materiale puù entrare
+	Error : BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+IF VerificaDati AND BarcodeUDC <> '0' AND BarcodeUDC <> '' AND NOT (RicavaDatiDaBarcodeUDC.State[1].Error OR RicavaDatiDaBarcodeUDC.State[2].Error) THEN//Se ho il comando di verifica dei dati su DB
+	Error 			:= FALSE;
+	RicavaDatiDaBarcodeUDC.ResetError := FALSE;
+	RequetsIDValido := FALSE;
+	DataElement 	:= DataElementNull;
+	DimElement 		:= DimElementNull;
+	AbilitaSTHere 	:= TRUE;	
+
+	(* Eseguo Stored Procedure per acquisire i dati dell'articolo all'interno dell'UDC avente il codice in ingresso del BARCODE *)
+	RicavaDatiDaBarcodeUDC.BarcodeUDC 	:= BarcodeUDC; 	//BARCODE letto sull'elemento
+	RicavaDatiDaBarcodeUDC.DBID 		:= 1;			//Numero del DB configurato
+	RicavaDatiDaBarcodeUDC.IDUDC 		:= IDUDC;		//ID dell'elemento
+	RicavaDatiDaBarcodeUDC.StartRead 	:= TRUE;		//Start comando lettura
+	RicavaDatiDaBarcodeUDC.AbilitaSTHere := AbilitaSTHere;	
+
+	IF (RicavaDatiDaBarcodeUDC.State[1].ReadDone AND NOT RicavaDatiDaBarcodeUDC.State[1].Error) THEN
+		//Dati elemento
+		DataElement.Tono 	:= RicavaDatiDaBarcodeUDC.DataFromDB.Tone;
+		DataElement.Scelta 	:= RicavaDatiDaBarcodeUDC.DataFromDB.Choice;
+		DataElement.Calibro := RicavaDatiDaBarcodeUDC.DataFromDB.Caliber;
+		DataElement.Codice  := RicavaDatiDaBarcodeUDC.DataFromDB.ArticleCode;
+		DataElement.Quantity := LREAL_TO_UINT(RicavaDatiDaBarcodeUDC.DataFromDB.Quantity);
+		DataElement.ArticleDescription  := RicavaDatiDaBarcodeUDC.DataFromDB.ArticleDescription;
+		
+		//Dimensioni elemento
+		DimElement.ZDim		:= DINT_TO_REAL(RicavaDatiDaBarcodeUDC.DataFromDB.Thickness_mm);
+		IF RicavaDatiDaBarcodeUDC.DataFromDB.Length_mm > RicavaDatiDaBarcodeUDC.DataFromDB.Width_mm THEN
+			DimElement.XDim		:= DINT_TO_REAL(RicavaDatiDaBarcodeUDC.DataFromDB.Length_mm);
+			DimElement.YDim		:= DINT_TO_REAL(RicavaDatiDaBarcodeUDC.DataFromDB.Width_mm);
+		ELSE
+			DimElement.XDim		:= DINT_TO_REAL(RicavaDatiDaBarcodeUDC.DataFromDB.Width_mm);
+			DimElement.YDim		:= DINT_TO_REAL(RicavaDatiDaBarcodeUDC.DataFromDB.Length_mm);
+		END_IF
+
+		//Validità dati
+		DatoValido 			:= NOT RicavaDatiDaBarcodeUDC.State[1].Error AND DataElement.Codice <> '0' AND DataElement.Codice <> '';
+		 
+		IF ((RicavaDatiDaBarcodeUDC.State[2].ReadDone AND NOT RicavaDatiDaBarcodeUDC.State[2].Error) OR NOT AbilitaSTHere) THEN//Se lettura da DB terminata	
+			//Valore Record ID che se <> da 0 vuol dire che il materiale puù entrare
+			IF NOT RicavaDatiDaBarcodeUDC.State[2].Error THEN
+				DataElement.WorkingID 	:= DINT_TO_STRING(RicavaDatiDaBarcodeUDC.RecordID);
+				RequetsIDValido 		:= DataElement.WorkingID <> '0';//indico che l'elemento può entrare
+				IF NOT RequetsIDValido THEN
+					DataElement.WorkingID := '0';
+				END_IF
+			ELSE
+				DataElement.WorkingID 	:= '';
+			END_IF
+		END_IF
+		RicavaDatiDaBarcodeUDC.StartRead := FALSE;//Stoppo la lettura
+		VerificaDatiDone 	:= TRUE;
+	ELSIF FirstCycleDone AND RicavaDatiDaBarcodeUDC.State[1].Error OR RicavaDatiDaBarcodeUDC.State[2].Error THEN
+		Error 				:= TRUE;
+		VerificaDatiDone 	:= TRUE;
+		RicavaDatiDaBarcodeUDC.StartRead := FALSE;//Stoppo la lettura
+	END_IF
+	FirstCycleDone := TRUE;
+	
+ELSIF VerificaDatiDone AND NOT VerificaDati THEN //Attendo che dall'esterno venga terminata la richiesta di lettura dal DB
+	DatoValido 			:= FALSE;
+	VerificaDatiDone 	:= FALSE;
+	FirstCycleDone 		:= FALSE;
+ELSIF RicavaDatiDaBarcodeUDC.State[1].Error OR RicavaDatiDaBarcodeUDC.State[2].Error THEN
+	DatoValido 	:= FALSE;
+	RicavaDatiDaBarcodeUDC.ResetError := TRUE;
+	Error 				:= TRUE;
+END_IF
+
+//Esguo FB per ricerca dati da DB
+RicavaDatiDaBarcodeUDC();
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFVerificaLetturaBarcodeConDatiDB">
+      <LineId Id="145" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="114" Count="1" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="72" Count="1" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="287" Count="19" />
+      <LineId Id="286" Count="0" />
+      <LineId Id="217" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="117" Count="0" />
+      <LineId Id="328" Count="0" />
+      <LineId Id="330" Count="0" />
+      <LineId Id="329" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="307" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="140" Count="1" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="171" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="172" Count="0" />
+      <LineId Id="263" Count="0" />
+      <LineId Id="351" Count="0" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="352" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="147" Count="1" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

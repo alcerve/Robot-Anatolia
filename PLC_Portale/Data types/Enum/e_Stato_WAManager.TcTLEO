@@ -1,0 +1,275 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <EnumerationTextList Name="e_Stato_WAManager" Id="{dafd2037-31e3-4743-8613-215615a35dd7}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+{attribute 'strict'}
+//Stato del WorkAreaManager
+TYPE e_Stato_WAManager :
+(
+	WAMANAGER_NOT_DEFINED						:= -1,
+	(*********************************************************************)
+	WAMANAGER_NOP								:= 100,
+	(*********************************************************************)
+	WAMANAGER_CICLO_RIPOSO_INIT					:= 110,
+	WAMANAGER_CICLO_RIPOSO_RUN					:= 111,
+	WAMANAGER_CICLO_RIPOSO_END					:= 112,
+	(*********************************************************************)
+	//WAMANAGER_CICLO_PALL_INIT					:= 120,
+	//WAMANAGER_CICLO_PRELIEVO_PALL_RUN			:= 121,
+	//WAMANAGER_CICLO_PRELIEVO_PALL_END			:= 122,
+	//WAMANAGER_CICLO_DEPOSITO_PALL_RUN			:= 123,
+	//WAMANAGER_CICLO_DEPOSITO_PALL_END			:= 124,
+	(*********************************************************************)
+	//WAMANAGER_CICLO_FALDA_VUOTI_INIT			:= 130,
+	//WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_RUN	:= 131,
+	//WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_END	:= 132,
+	//WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_RUN	:= 133,
+	//WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_END	:= 134,
+	(*********************************************************************)
+	WAMANAGER_CICLO_FALDA_INIT					:= 140,
+	WAMANAGER_CICLO_PRELIEVO_FALDA_RUN			:= 141,
+	WAMANAGER_CICLO_PRELIEVO_FALDA_END			:= 142,
+	WAMANAGER_CICLO_DEPOSITO_FALDA_RUN			:= 143,
+	WAMANAGER_CICLO_DEPOSITO_FALDA_END			:= 144,
+	(*********************************************************************)
+	//WAMANAGER_CICLO_PACCO_INIT					:= 150,
+	//WAMANAGER_CICLO_PRELIEVO_PACCO_RUN			:= 151,
+	//WAMANAGER_CICLO_PRELIEVO_PACCO_END			:= 152,
+	//WAMANAGER_CICLO_DEPOSITO_PACCO_RUN			:= 153,
+	//WAMANAGER_CICLO_DEPOSITO_PACCO_END			:= 154,
+	(*********************************************************************)
+	(* Ciclo Lastra NORMALE..Prelievo in Pick-Point *)
+	WAMANAGER_CICLO_LASTRA_PP_INIT				:= 160, 
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_RUN		:= 161,
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_END		:= 162,
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_RUN		:= 163,
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_END		:= 164,
+	(*********************************************************************)
+	(* Ciclo Lastra SPECIALE..Prelievo in Work-Area *)
+	WAMANAGER_CICLO_LASTRA_WA_INIT				:= 170,
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_RUN		:= 171,
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_END		:= 172,
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN		:= 173,
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_END		:= 174,
+	
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN		:= 180,
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_END		:= 181,
+	
+	WAMANAGER_CICLO_PAREGGIATURA_RUN		:= 182,
+	WAMANAGER_CICLO_PAREGGIATURA_END		:= 183,
+	
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN		:= 184,
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_END		:= 185,
+	
+	(* Ciclo lastra per depalettizzare da postazioni senza formature, con autoapprndimenti*)
+	WAMANAGER_CICLO_LASTRA_DEPAL_INIT  			:= 190,
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_DEPAL_RUN	:= 191,
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_DEPAL_END	:= 192,
+	(* Ciclo lastra deposito su rulliera *)
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_DEPAL_RUN	:= 193,
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_DEPAL_END	:= 194,
+	(* Ciclo deposito FALDA su magazzino dedicato *)
+	WAMANAGER_CICLO_DEPOSITO_FALDA_DEPAL_RUN 	:= 195,
+	WAMANAGER_CICLO_DEPOSITO_FALDA_DEPAL_END    := 196,
+	
+	(*********************************************************************)	
+	WAMANAGER_SALTA_DA_RIPOSO_A_PRELIEVO		:= 200
+);
+END_TYPE
+]]></Declaration>
+    <XmlArchive>
+      <Data>
+        <o xml:space="preserve" t="TextListEnumerationTextListObject">
+          <l n="TextList" t="ArrayList" cet="TextListRow">
+            <o>
+              <v n="TextID">"WAMANAGER_NOT_DEFINED"</v>
+              <v n="TextDefault">"-1"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_NOP"</v>
+              <v n="TextDefault">"100"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_RIPOSO_INIT"</v>
+              <v n="TextDefault">"110"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_RIPOSO_RUN"</v>
+              <v n="TextDefault">"111"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_RIPOSO_END"</v>
+              <v n="TextDefault">"112"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_FALDA_INIT"</v>
+              <v n="TextDefault">"140"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_FALDA_RUN"</v>
+              <v n="TextDefault">"141"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_FALDA_END"</v>
+              <v n="TextDefault">"142"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_FALDA_RUN"</v>
+              <v n="TextDefault">"143"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_FALDA_END"</v>
+              <v n="TextDefault">"144"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_LASTRA_PP_INIT"</v>
+              <v n="TextDefault">"160"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_RUN"</v>
+              <v n="TextDefault">"161"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_END"</v>
+              <v n="TextDefault">"162"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_RUN"</v>
+              <v n="TextDefault">"163"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_END"</v>
+              <v n="TextDefault">"164"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_LASTRA_WA_INIT"</v>
+              <v n="TextDefault">"170"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_RUN"</v>
+              <v n="TextDefault">"171"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_END"</v>
+              <v n="TextDefault">"172"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN"</v>
+              <v n="TextDefault">"173"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_END"</v>
+              <v n="TextDefault">"174"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN"</v>
+              <v n="TextDefault">"180"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_END"</v>
+              <v n="TextDefault">"181"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PAREGGIATURA_RUN"</v>
+              <v n="TextDefault">"182"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PAREGGIATURA_END"</v>
+              <v n="TextDefault">"183"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN"</v>
+              <v n="TextDefault">"184"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_END"</v>
+              <v n="TextDefault">"185"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_LASTRA_DEPAL_INIT"</v>
+              <v n="TextDefault">"190"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_DEPAL_RUN"</v>
+              <v n="TextDefault">"191"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_PRELIEVO_LASTRA_DEPAL_END"</v>
+              <v n="TextDefault">"192"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_DEPAL_RUN"</v>
+              <v n="TextDefault">"193"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_LASTRA_DEPAL_END"</v>
+              <v n="TextDefault">"194"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_FALDA_DEPAL_RUN"</v>
+              <v n="TextDefault">"195"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_CICLO_DEPOSITO_FALDA_DEPAL_END"</v>
+              <v n="TextDefault">"196"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">"WAMANAGER_SALTA_DA_RIPOSO_A_PRELIEVO"</v>
+              <v n="TextDefault">"200"</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+            <o>
+              <v n="TextID">""</v>
+              <v n="TextDefault">""</v>
+              <l n="LanguageTexts" t="ArrayList" />
+            </o>
+          </l>
+          <l n="Languages" t="ArrayList" />
+          <v n="GuidInit">{cc030e08-d13f-4d95-b431-33bcdedd57a1}</v>
+          <v n="GuidReInit">{d25609d8-32f5-4741-a506-43982e88aa67}</v>
+          <v n="GuidExitX">{15bdc442-cf52-4e37-b79f-301c68dc6bdc}</v>
+        </o>
+      </Data>
+      <TypeList>
+        <Type n="ArrayList">System.Collections.ArrayList</Type>
+        <Type n="Guid">System.Guid</Type>
+        <Type n="String">System.String</Type>
+        <Type n="TextListEnumerationTextListObject">{4b60233c-f940-4beb-b331-82133b520151}</Type>
+        <Type n="TextListRow">{53da1be7-ad25-47c3-b0e8-e26286dad2e0}</Type>
+      </TypeList>
+    </XmlArchive>
+  </EnumerationTextList>
+</TcPlcObject>

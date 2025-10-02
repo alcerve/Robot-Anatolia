@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_ListaProduzione" Id="{bb7e39ea-1034-4a32-b6eb-d9d27f5ddf13}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_ListaProduzione :
+STRUCT
+	ID_LIST		: STRING(255) 					:= '';	(* Identificatore univoco della LISTA da Eseguire *)
+	State		: e_Stato_ListaDiProduzione		:= -1;	(*Stato della lista in lavoro *)
+	SlabNumber  : UINT := 0; (* Numero di lastre da depositare sul supporto *)
+	SlabData 	: ARRAY[1..MAXARTICLEPICKING] OF TFMachinePalletizer_DataElement; (* Lastra che serve per comporre l'ordine finale, ordinato in base alla sequenza richiesta 1=Primo prodotto da pallettizzare *)
+	SlabDimension 	: TFDimensionElement; (* Dimensione Lastra *)
+	LayerSequence 	: UINT := 0;//Sequenza di deposito delle falde -> 0=Nessuna falda,1=Deposito dopo ogni lastra,2=Deposito ogni 2 lastre,ecc
+	LayerCode     	: UDINT := 0; (* Codice della falda da deposotare *)
+	Support			: UDINT := 0; (* Codice pallet su cui eseguire la pallettizzazione *)
+											
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

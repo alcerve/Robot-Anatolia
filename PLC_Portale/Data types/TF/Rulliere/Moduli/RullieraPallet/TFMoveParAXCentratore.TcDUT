@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMoveParAXCentratore" Id="{c9a62f6e-8fe4-4585-8302-81a4b4d950f9}">
+    <Declaration><![CDATA[TYPE TFMoveParAXCentratore :
+STRUCT
+	AccChiusura				: REAL := 20; // [mm/s2] Accelerazione Chiusura
+	DecChiusura				: REAL := 20; // [mm/s2] Decelerazione Chiusura
+	VelocitaChiusura		: REAL := 20; // [mm/s] Velocità Chiusura
+	VelocitaApertura		: REAL := 20; // [mm/s] Velocità Apertura
+	AccApertura				: REAL := 20; // [mm/s2] Accelerazione Apertura
+	DecApertura				: REAL := 20; // [mm/s2] Decelerazione Apertura
+	Jerk					: REAL := 999999;
+	MinChiusura				: REAL := 400; 	// Quota minima di posizionamento	
+	MaxApertura				: REAL := 1000; // Quota massima di posizionamento
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

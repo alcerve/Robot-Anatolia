@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPlacePointFromPalletizer" Id="{aa943e2d-ace2-4825-b62c-f57df89d95aa}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPlacePointFromPalletizer :
+STRUCT
+
+	PhaseStopReq 			: BOOL;(*Richiesta Stop in fase*)
+                            
+	SupportREQ 				: BOOL;(* Richiesta del supporto punto di depostio *)
+	Support				  	: TFMachinePalletizer_Pallet;(* Struttura del supporto richiesto sul punto di deposito *)
+                                                 
+	StatoIngombroEE			: INT   := 0;	(* Stato dell'ingombro dell'End-Effector: 0 = Non in ingombro, 1 = In Ingombro *)	
+	
+	ElementCompleted		: BOOL; (* Indica che l'elemento è stato completato *)
+
+	State					: INT;//STtao pallettizzatore
+
+	NextSupport			  	: TFMachinePalletizer_Pallet;(* Struttura del supporto successivo richiesto sul punto di deposito *)
+   
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

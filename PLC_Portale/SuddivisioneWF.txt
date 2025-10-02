@@ -1,0 +1,23 @@
+--------------------------------------------------------
+------- Suddivisione dei WorkFlow della Macchina -------
+--------------------------------------------------------
+WorkFlow 1 : WF principale macchina
+
+WorkFlow 2 : MISSION_STATE_VAIaRIPOSO_RUN
+
+WorkFlow 3 : MISSION_STATE_PRELIEVO_FALDA_RUN
+
+WorkFlow 4 : MISSION_STATE_DEPOSITO_FALDA_RUN
+
+WorkFlow 5 : MISSION_STATE_PRELIEVO_LASTRA_WA_RUN
+
+WorkFlow 6 : MISSION_STATE_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN
+
+WorkFlow 7 : MISSION_STATE_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN
+
+WorkFlow 8 : MISSION_STATE_DEPOSITO_LASTRA_WA_RUN
+
+WorkFlow 9 : MISSION_STATE_PRELIEVO_LASTRA_PP_RUN
+
+WorkFlow 10 : 
+		

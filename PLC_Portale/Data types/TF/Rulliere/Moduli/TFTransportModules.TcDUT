@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFTransportModules" Id="{e8569d17-fa2d-4da4-a663-4f9dd588c054}">
+    <Declaration><![CDATA[TYPE TFTransportModules :
+STRUCT
+
+	BancoScelta 			: TFModuleSorterBancoScelta2Motori;
+	ModuloCinghie 			: ARRAY[1..6] OF TFModuleCinghia;
+	Bancalino 				: ARRAY[1..2] OF TFModuleBancalino;
+	RullieraDopoBancalino 	: ARRAY[1..2] OF TFModuleRulliera;
+	RullieraPareggiatore 	: ARRAY[1..2] OF TFModuleRulliera;
+	RullieraPrelievo 		: ARRAY[1..2] OF TFModuleRulliera;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

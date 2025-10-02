@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="DUT_Struttura_Dati_Pacco" Id="{3f71fd0c-4ee4-49a3-ac69-c6e5ba8f097c}">
+    <Declaration><![CDATA[TYPE DUT_Struttura_Dati_Pacco :
+STRUCT
+
+	ID			: DUT_Lista_Pacchi_In_Pila;
+	PC			: UINT;					(* Production Code *)
+	PP      	: BOOL; 				(* Pack Presence *)
+
+	X 			: REAL;					(* X dimension *)
+	Y 			: REAL;					(* Y dimension *)
+	Z 			: REAL;					(* Z dimension *)
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

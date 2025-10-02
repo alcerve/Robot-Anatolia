@@ -1,0 +1,252 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFGateAccessNoStop" Id="{7488c7fb-18cd-49f7-a396-e7fbe7d6f474}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFGateAccessNoStop
+VAR_INPUT
+	MachineCmd : POINTER TO CommandBuffer;
+	MachineCmdExe : POINTER TO CommandExe;
+	MachineState : POINTER TO State;
+	MachineError : POINTER TO Error;
+	MachineMode : POINTER TO Mode;
+	Modules : POINTER TO TFPalletizerModules;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	TimeBase : REAL;
+	AccessRequest : BOOL;
+	AccessDone : BOOL;
+	LGVAccessActive	: BOOL;
+	TilterPhaseStopDone : BOOL;
+	PowerOK : BOOL;//Indica la presenza della marcia
+	MacchinaInLavoroZonaOpposta : bool;//segnale da safety che indica che la macchina è in lavoro nella zona opposta a dove è stato effettuato l'ingresso... l'operatore può entrare senza far cadere la marcia
+END_VAR
+VAR_OUTPUT
+	AccessLamp : BOOL; (* Access Lamp: 	OFF = No Access Consent,
+										ON = Access Consent,
+										FLASH (1sec) = Access Requested (Machine Stopping)
+										FLASH (0.5sec) = Waiting Restart
+										FLASH (0.1sec) = Access Error *)
+										
+	AccesActive : BOOL; (* Gate Acces Sequence in Execution *)
+	AccessOK : BOOL;	(* Accesso consentito *)
+	TilterPhaseStop : BOOL;		
+	AccessERRORCode : UINT;		
+	ErrAck : BOOL;
+	ErrAckDriver : BOOL;			
+END_VAR
+VAR
+	ParametersArray : ParametersArray;
+	
+	AccessERROR : BOOL;
+	AccessReqIN : BOOL;
+	AccessReqOUT : BOOL;
+	AccessCase : INT;
+	MachineWasRunning : BOOL;
+	MachineWasRunning2 : bool;
+	Timer100 : REAL;
+	Timer500 : REAL;
+	Timer1000 : REAL;
+	Clock100 : BOOL;
+	Clock500 : BOOL;
+	Clock1000 : BOOL;
+	TimerPowerOFF : real;
+	MEMDiMarciaInPartenza : BOOL;
+	TimerRitardoPower : REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFTimerCall(ADR(Timer100),TimeBase);
+TFTimerCall(ADR(Timer500),TimeBase);
+TFTimerCall(ADR(Timer1000),TimeBase);
+TFTimerCall(ADR(TimerPowerOFF),TimeBase);
+TFTimerCall(ADR(TimerRitardoPower),TimeBase);
+
+CASE AccessCase OF
+	
+	(* Wait Request ON *)
+	0:	AccesActive := FALSE;
+		AccessOK := FALSE;
+		AccessReqIN := FALSE;
+		AccessReqOUT := FALSE;
+		
+		IF AccessRequest AND NOT AccessDone AND NOT TFIsModuleError(MachineError^) THEN
+			//AccesActive := TRUE;
+			AccessERROR := FALSE;
+			AccessReqIN := TRUE;
+			(* Machine Was Running if CmdDO and No Stop Request *) 
+			MachineWasRunning := MachineCmdExe^.Code = CmdDO AND MachineCmdExe^.PhaseStopRequest = 0 AND MachineCmdExe^.RapidStopRequest = 0;
+			IF MacchinaInLavoroZonaOpposta AND ((MachineWasRunning AND WorkAreaManager.State = WAMANAGER_NOP AND 
+				TFPalletizerInPosizioneRiposo(ModuleAX_X:=ADR(Modules^.AX_X),ModuleAX_Y:=ADR(Modules^.AX_Y),ModuleAX_Z:=ADR(Modules^.AX_Z),ModuleAX_J:=ADR(Modules^.AX_J),Mission:=Mission)) OR
+				NOT MachineWasRunning) THEN
+					AccessCase := 25;
+					AccesActive := TRUE;
+			ELSIF TFIsModuleError(MachineError^) THEN
+				AccessERRORCode := ErrMACHINEPALLETIZER_ERRORE_MACCHINA_IN_RICHIN;
+				AccessERROR := TRUE;
+				AccessCase := 0;
+			END_IF
+		ELSIF AccessERROR THEN
+			AccessERRORCode := 0;
+			AccessERROR 	:= FALSE;
+			TilterPhaseStop := false;
+		END_IF
+		
+	(* Access Ok.... Wait Request Done ON *)
+	25:
+		AccessReqIN 	:= FALSE;
+		AccessReqOUT 	:= FALSE;
+		AccessOK 		:= TRUE;
+		IF NOT AccessRequest AND AccessDone THEN
+			AccessCase := 27;
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAck := TRUE;
+			//AccessOK 		:= FALSE;
+			AccessReqOUT 	:= TRUE;
+		END_IF
+		IF TFIsModuleError(MachineError^) THEN
+			AccessERRORCode := ErrMACHINEPALLETIZER_ERRORE_MACCHINA_IN_RICHIN;
+			AccessERROR := TRUE;
+			AccessCase := 0;
+		END_IF
+	
+	(* *)	
+	27:	IF NOT AccessDone THEN
+			AccessCase := 28;
+		END_IF
+		
+	(* *)	
+	28:	IF AccessDone THEN
+			AccessOK 		:= FALSE;
+			AccessCase := 29;
+		END_IF
+	
+	(* *)
+	29:	IF NOT AccessDone THEN
+			AccessCase := 60;
+		END_IF
+
+	(* Machine Restart *)
+	60:	
+		IF TFIsModuleError(MachineError^) THEN
+			AccessERRORCode := ErrMACHINEPALLETIZER_ERRORE_MACCHINA_IN_RICHIN;
+			AccessERROR := TRUE;
+			AccessCase := 0;
+		END_IF
+		AccessCase := AccessCase + 1;
+		
+	(* *)
+	61:	AccessReqIN := FALSE;
+		AccessReqOUT := FALSE;
+		AccessOK := FALSE;
+		AccessCase := 0;
+		MEMDiMarciaInPartenza := FALSE;
+		
+	ELSE
+		AccessERROR := TRUE;
+		AccessERRORCode := ErrMACHINEPALLETIZER_ERRORE_MACCHINA_IN_RICHIN;
+		MEMDiMarciaInPartenza := FALSE;
+		AccessCase := 0;
+		
+END_CASE
+
+(* Clocks *)
+IF TFTimerDone(ADR(Timer100)) THEN
+	TFTimerSet(ADR(Timer100),100,TRUE);
+	Clock100 := NOT Clock100;
+END_IF
+IF TFTimerDone(ADR(Timer500)) THEN
+	TFTimerSet(ADR(Timer500),500,TRUE);
+	Clock500 := NOT Clock500;
+END_IF
+IF TFTimerDone(ADR(Timer1000)) THEN
+	TFTimerSet(ADR(Timer1000),1000,TRUE);
+	Clock1000 := NOT Clock1000;
+END_IF
+
+(* Access Lamp *)
+AccessLamp := 	((AccessOK AND NOT AccessReqOUT) OR
+				(AccessReqOUT AND Clock1000) OR
+				(AccessReqIN AND Clock1000))AND
+				NOT AccessERROR OR (AccessERROR AND Clock100);
+				]]></ST>
+    </Implementation>
+    <LineIds Name="TFGateAccessNoStop">
+      <LineId Id="275" Count="0" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="583" Count="0" />
+      <LineId Id="280" Count="0" />
+      <LineId Id="995" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="148" Count="0" />
+      <LineId Id="388" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="463" Count="0" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="173" Count="0" />
+      <LineId Id="844" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="464" Count="0" />
+      <LineId Id="398" Count="0" />
+      <LineId Id="209" Count="0" />
+      <LineId Id="400" Count="2" />
+      <LineId Id="1211" Count="0" />
+      <LineId Id="1218" Count="0" />
+      <LineId Id="1215" Count="0" />
+      <LineId Id="787" Count="0" />
+      <LineId Id="1237" Count="0" />
+      <LineId Id="1240" Count="3" />
+      <LineId Id="1212" Count="0" />
+      <LineId Id="845" Count="0" />
+      <LineId Id="788" Count="1" />
+      <LineId Id="403" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="1232" Count="0" />
+      <LineId Id="325" Count="0" />
+      <LineId Id="1002" Count="6" />
+      <LineId Id="1019" Count="0" />
+      <LineId Id="1230" Count="1" />
+      <LineId Id="1009" Count="4" />
+      <LineId Id="1001" Count="0" />
+      <LineId Id="409" Count="0" />
+      <LineId Id="1233" Count="0" />
+      <LineId Id="412" Count="0" />
+      <LineId Id="415" Count="1" />
+      <LineId Id="1219" Count="0" />
+      <LineId Id="1234" Count="0" />
+      <LineId Id="1221" Count="1" />
+      <LineId Id="1296" Count="0" />
+      <LineId Id="1220" Count="0" />
+      <LineId Id="1223" Count="0" />
+      <LineId Id="1235" Count="0" />
+      <LineId Id="1225" Count="1" />
+      <LineId Id="1224" Count="0" />
+      <LineId Id="417" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="862" Count="0" />
+      <LineId Id="857" Count="3" />
+      <LineId Id="360" Count="0" />
+      <LineId Id="1217" Count="0" />
+      <LineId Id="361" Count="0" />
+      <LineId Id="1236" Count="0" />
+      <LineId Id="211" Count="2" />
+      <LineId Id="193" Count="0" />
+      <LineId Id="934" Count="0" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="399" Count="0" />
+      <LineId Id="852" Count="0" />
+      <LineId Id="145" Count="0" />
+      <LineId Id="933" Count="0" />
+      <LineId Id="396" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="127" Count="0" />
+      <LineId Id="302" Count="0" />
+      <LineId Id="468" Count="3" />
+      <LineId Id="282" Count="0" />
+      <LineId Id="294" Count="7" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="473" Count="0" />
+      <LineId Id="309" Count="0" />
+      <LineId Id="475" Count="0" />
+      <LineId Id="307" Count="0" />
+      <LineId Id="1091" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

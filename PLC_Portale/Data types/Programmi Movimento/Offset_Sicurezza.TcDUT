@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Offset_Sicurezza" Id="{d9b52394-8ce8-4ba9-98ec-10085458aba6}">
+    <Declaration><![CDATA[TYPE Offset_Sicurezza :
+STRUCT
+	Carico		: REAL := 100;  // OFFSET di sicurezza utilizzato per il calcolo della quota di fuoringombro dell'asse 
+	Avuoto		: REAL := 100;  // OFFSET di sicurezza utilizzato per il calcolo della quota di fuoringombro dell'asse 
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

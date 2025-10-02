@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_DataElementMP" Id="{31897de3-069a-4e26-996b-efdca3d628da}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_DataElementMP :
+STRUCT
+	RequetsID 		: DINT	:= 0; (* Scheduler ID *)
+	Article 			: STRING(49) := '';
+	ArticleDescription 	: STRING(49) := '';(* Descrizione Articolo *)
+	Tono			: STRING(19)	:= '';	(* Tono Elemento *)
+	Scelta			: STRING(19)	:= '';	(* Scelta Elemento *)
+	Calibro			: STRING(19)	:= '';	(* Calibro Elemento *)
+	
+	Lenght 		: INT := 0; //Lunghezza
+	Width 		: INT := 0; //Larghezza
+	Thickness 	: INT := 0; //Spessore
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

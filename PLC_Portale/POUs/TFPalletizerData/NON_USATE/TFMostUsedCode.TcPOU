@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFMostUsedCode" Id="{5283495c-9a21-4494-bc64-61d9cc287282}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFMostUsedCode : INT
+VAR_INPUT
+	EnableCode : ARRAY [1..MAXFORMINGCODE*MAXFORMING] OF INT;
+	UsedCode : POINTER TO ARRAY [1..MAXFORMINGCODE] OF INT;
+END_VAR
+VAR
+	Code : INT;
+	i : INT;
+	j : INT;
+	Counter : INT;
+	MaxCounter : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFMostUsedCode := 0;
+Code := 0;
+MaxCounter := 0;
+
+FOR i:=1 TO MAXFORMINGCODE*MAXFORMING DO
+	IF EnableCode[i] > 0 THEN
+		Counter := 0;
+		FOR j:=1 TO MAXFORMINGCODE DO
+			IF UsedCode^[j] = EnableCode[i] THEN
+				Counter := Counter + 1;
+			END_IF
+		END_FOR
+		IF Counter > MaxCounter THEN
+			MaxCounter := Counter;
+			Code := EnableCode[i];
+		END_IF 
+	END_IF
+END_FOR
+
+TFMostUsedCode := Code;]]></ST>
+    </Implementation>
+    <LineIds Name="TFMostUsedCode">
+      <LineId Id="34" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="23" Count="1" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="28" Count="1" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="32" Count="1" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

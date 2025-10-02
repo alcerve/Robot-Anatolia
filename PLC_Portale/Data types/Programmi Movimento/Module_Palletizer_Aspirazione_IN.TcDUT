@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Module_Palletizer_Aspirazione_IN" Id="{514b2b45-cc56-41a3-907b-21cd1c911777}">
+    <Declaration><![CDATA[TYPE Module_Palletizer_Aspirazione_IN :
+STRUCT
+	PX_SuctionCupsUp : BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

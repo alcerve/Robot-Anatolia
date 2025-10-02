@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Ax_Palletizer_Parameters" Id="{145107a6-e942-444a-b09e-d1fde529ef49}">
+    <Declaration><![CDATA[TYPE Ax_Palletizer_Parameters :
+STRUCT
+	HomeDefine		: REAL	:= 0.0;	(* Home Define (Posizione di Azzeramento Encoder) *)
+	HomePosition	: REAL	:= 0.0;	(* Home Position (Posizione di Home) *)
+	Vel				: REAL	:= 0.0;	(* Velocità di funzionamento*)
+	Acc				: REAL	:= 100.0;	(* Accelerazione di funzionamento *)
+	Dec				: REAL	:= 100.0;	(* Decelerazione di funzionamento *)
+	Jerk			: REAL  := 100.0; (* Jerk di funzionamento *) 
+	MaxTorque		: REAL	:= 100.0; (* Coppia massima utilizzata se si effettua il controllo di coppia*)
+	JOGAcc			: REAL	:= 100.0;	(* Accelerazione di funzionamento *)
+	JOGDec 			: REAL	:= 100.0;	(* Decelerazione di funzionamento *)
+	MaxDeceleration : REAL  := 100.0; (* Massima Decelerazione *)
+	MinPosition		: REAL	:= 0.0;
+	MaxPosition		: REAL	:= 0.0;
+	MaxVel		    : REAL  := 0.0; (* Massima velocità per gestire i jog manuali *)
+	MaxAcc		    : REAL  := 0.0; (* Massima velocità per gestire i jog manuali *)
+	MaxDec		    : REAL  := 0.0; (* Massima velocità per gestire i jog manuali *)
+	ManSlowVel		: REAL	:= 0.0; (* Manual Slow Velocity (% of MaxVelocity) *)
+	ManFastVel		: REAL	:= 0.0; (* Manual Fast Velocity (% of MaxVelocity) *)
+	Quota_Destinazione	: LREAL  := 0.0; (*Posizione target da raggiungere*)
+	HomeVelocity		: REAL  := 1.0; (* Velocità per ricerca sesore di Home *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

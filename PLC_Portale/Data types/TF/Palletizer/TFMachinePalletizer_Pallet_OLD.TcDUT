@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_Pallet_OLD" Id="{c8fa156f-6512-41ac-bea1-82aaa0dc6adf}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_Pallet_OLD :
+STRUCT
+	X			: REAL	:= 0.0;	(* READ	- (mm) Dimensione X *)
+	Y			: REAL	:= 0.0;	(* READ	- (mm) Dimensione Y *)
+	Z			: REAL	:= 0.0;	(* READ	- (mm) Dimensione Z *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkArea_VECCHIO" Id="{788dab53-b99c-49d2-beeb-25e4404d1686}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkArea_VECCHIO :
+STRUCT
+
+	Enable			: INT	:= -1;	(* READ			- Postazione Abilitata 0=no, 1=si, -1 dato non valido *)
+	Typology		: e_Tipo_WorkArea	:= -1;	(* READ			- Tipologia 1=Catasta Vuoti, 2=Pallet Singolo, 3=Falda, -1 dato non valido *)
+	Typology_Desc	: INT 	:= -1;	(* READ			- Descrizione Dettagliata della Tipologia dell'elmento *)
+	Pallet			: INT	:= -1;	(* READ			- Tipo di pallet assegnato (0 = tipo 0, 1 = tipo 1, 2 = tipo 2,  …. , 0 / -1 dato non valido. Usato se Typology=1 *)
+	Layer			: INT	:= -1;	(* READ/WRITE	- Tipo di falda dopo il pallet (0 = assente, 1 = tipo 1, 2 = tipo 2,  …. , -1 dato non valido. Usato se Typology=3 *)
+	Layer0			: INT 	:= -1;	(* READ/WRITE	- Tipo di falda su cavalletti lato deposito 0° (0 = assente, 1 = tipo 1, 2 = tipo 2,  …. , -1 dato non valido. Usato solo per cavalletti *)
+	Layer180		: INT 	:= -1;	(* READ/WRITE	- Tipo di falda su cavalletti lato deposito 180° (0 = assente, 1 = tipo 1, 2 = tipo 2,  …. , -1 dato non valido. Usato solo per cavalletti *)
+	Code			: INT	:= -1;	(* READ/WRITE	- Codice di Pallettizzazione (0..n=, -1 dato non valido). Viene estratto dalla Forming se Jolly=1, altrimenti lo si riceve! *)
+	Jolly			: INT	:= -1;	(* READ/WRITE	- (Definizione del Codice di Pall... A carico del PLC) (0=no, 1=si, -1= non valido) *)
+	
+	DoLearn_YDx		: INT	:= -1;	(* READ/WRITE 	- Stato apprendimento Direzione Y verso DX 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+	Learn_YDx		: LREAL	:= 0.0;	(* READ			- (mm) Quota inizio Apprendimento Direzione Y verso DX *)
+	Learned_YDx		: LREAL	:= 0.0; (* WRITE		- Quota rilevata durante apprendimento Direzione Y verso DX *)
+	DoLearn_YSx		: INT	:= -1;	(* READ/WRITE 	- Stato apprendimento Direzione Y verso SX 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+	Learn_YSx		: LREAL	:= 0.0;	(* READ			- (mm) Quota inizio Apprendimento Direzione Y verso SX *)
+	Learned_YSx		: LREAL	:= 0.0; (* WRITE		- Quota rilevata durante apprendimento Direzione Y verso SX *)
+	DoLearn_Z		: e_Stato_Apprendimento	:= -1;	(* READ/WRITE 	- Stato apprendimento Direzione Z 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+	Learn_Z			: LREAL	:= 0.0;	(* READ			- (mm) Quota inizio Apprendimento Direzione Z *)
+	Learned_Z		: LREAL	:= 0.0; (* WRITE		- Quota rilevata durante apprendimento Direzione Z *)
+
+	Slow			: INT	:= -1;		(* READ			- Primo Pacco/Lastra in Lenta (0=no, 1=si, -1= non valido) *)
+	Taped			: INT	:= -1;		(* READ/WRITE	- Nastratura eseguita. Determina espulsione! (0=non eseguita, 1=eseguita, -1= non valido) *)
+	RefuseLGV       : BOOL	:= FALSE;	(* READ		- Abilitazione chiamata LGV a termine pallettizzazione - TRUE= Non chiama LGV quando pallet pieno, FALSE= viene eseguita richiesta LGV *)
+	Initialize		: BOOL	:= FALSE; 	(* Se TRUE: Blocca la pallettizzazione, mettendo in pausa la postazione *)
+	
+	X				: LREAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Y				: LREAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Z				: LREAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	J				: LREAL	:= 0.0;	(* READ			- (°) Quota assoluta di impianto DA ORIGINE *)
+	H				: LREAL	:= 0.0; (* READ/WRITE	- (mm) Altezza Reale. Viene calcolata dal PLC dopo ogni prelievo (Vuoti o Falde) o deposito Pallet e durante la pallettizzazione *)
+	HPL				: LREAL	:= 0.0; (* READ/WRITE   - (mm) Altezza del pallett utilizzato + altezza layers utilizzati *)
+	
+	JPick			: LREAL	:= 0.0;	(* READ			- (°) Quota rotazione EndEffector fase di prelievo *)
+	KPick			: LREAL	:= 0.0;	(* READ			- (mm) Quota apertura pinza per prelievo Pacco (usata se la workarea è un magazziono pallet/falde) *)
+	JPlace			: LREAL	:= 0.0;	(* READ			- (°) Quota rotazione EndEffector per deposito pallet/falde *)
+	
+	LGV_Req			: INT	:= 0;	(* READ/WRITE	- Richiesta LGV (0=Nop, 1=Richiesta LGV, 2= Consenso Ingresso, -1= non valido) *)
+	LGV_GetIn_GetOut: INT	:= -1;	(* WRITE		- Tipo Richiesta LGV  (0=Nop, 1=Richiesta Prelievo, 2= Richiesta Deposito, -1= non valido) *)	
+	LGV_LetIn		: INT	:= -1;	(* READ			- Stato LGV (0=Nop, 1=Richiesta Ingresso, 2=Fine Ingresso, -1= non valido) *)
+	LGV_Footprint	: INT	:= -1;	(* READ			- Presenza Ingombro Veicolo (0=Nessun Ingombro, 1=In Ingombro, -1= non valido) *)
+	LGV_ReqAbort	: BOOL	:= FALSE; (* READ		- Aborto chimata LGV *)
+	
+	ProgressiveNr	: UDINT;
+	
+	IDX_UDCLayer	: INT := 1;	(* Indice che identifica lo strato cassa in lavorazione*)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

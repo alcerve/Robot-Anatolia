@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="DUT_ArrayPacchi" Id="{b1d1df7a-85b4-4141-993e-62f65ece895f}">
+    <Declaration><![CDATA[TYPE DUT_ArrayPacchi :
+STRUCT
+	Pacco :ARRAY[1..MAXDIMARRAYPACCHI] OF DUT_Struttura_Dati_Pacco;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,192 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TFMachinePalletizerVariables" Id="{1822202d-f3b1-4541-ab9e-2d2c1ea7e34e}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+
+	MAXWORKFLOW : UINT := 12;//Numero di Workflow presenti
+
+	(******************************************************************************************************************************************)
+	(* Palletizer Constant *)
+	(******************************************************************************************************************************************)
+	MAXFOOTPRINT 								: UINT := 16; //Ingombri
+	
+	MAXPICKPOINT 								: UINT := 1; //Punti di prelievo
+	
+	MAXAREA 									: UINT := 12;//Piazzole di lavoro
+	
+	MAXPALLET 									: UINT := 32; //Numero di pallet
+	
+	MAXLAYER 									: UINT := 32; //Numero di falde
+	
+	MAXFORMINGCODE 								: UINT := 32; //Numero di codici di formatura
+	
+	MAXFORMINGPACK 								: UINT := 128; //Numero di pacchi in formatura
+	
+	MAXFORMING 									: UINT := 6; //Numero di formature attive contemporaneamente = NUMERO DI POSTAZIONI IN MACCHINA
+	
+	MAXZONE 									: UINT := 8; //Numero massimo numero di zone
+	
+	MAXHANDLINGPACK								: UINT := 15;
+	
+	MAXHANDLINGSTACK							: UINT := 8;
+		
+	MAXFORMINGSLAB	 							: UINT := 128;//Numero di Lastre/Elementi in Formatura
+	
+	PICKPOINT1									: UINT := 1;
+	PICKPOINT2									: UINT := 2;
+	PICKPOINT3									: UINT := 3;
+	PICKPOINT4									: UINT := 4;
+	
+	KPRODUCTLOADING								: INT := 0;
+	KPRODUCTLOADED								: INT := 1;
+	KPRODUCTUNLOADING							: INT := 2;
+	KPRODUCTUNLOADED							: INT := 3;
+	KNOPRODUCT									: INT := 5;
+	
+	
+	ZRESTPOSITION								: REAL := 1600.0;
+	PICKLTRESTPOSITION							: INT  := 0; // LONGITUDINALE
+ 	VORESTPOSITION								: INT  := 0;
+	KRESTPOSITION								: REAL := 700.0;
+	TORQUERESTPOSITION							: REAL := 15;
+	KPICKMODERESTPOSITION						: INT  := 1;
+	
+		
+	OFFSETKPOSITION								: REAL := 40.0; //Quota fittizzia aggiuntiva per raggiungere la coppia necessaria in chiusura pinza
+	OFFSETTORQUEPOSITION						: REAL := 40.0;
+	KPICKTORQUELAYER							: REAL := 100.0;//Coppia per apertura/Chiusura Pinza in prelievo falda
+		
+	MAXSOGLIEOVERRIDE 							: UINT := 4;	// Numero di soglie utilizzate per il calcolo dell'override dinamico
+	
+	MAXNUMVISIONSYSTEM 		: INT := 3; //Indica il numero di sistemi di visione di difetti presenti
+
+	MAXTYPE_SLABLAYER 		: UINT := 2; // Numero massimo di tipi di materiale (lastre o falde)
+
+END_VAR
+	
+VAR_GLOBAL
+
+	MachinePalletizerInitDone : BOOL := FALSE;
+	MachinePalletizerInitVariables	: BOOL; (* Init Variables To Desired Values *)
+	ParametersArray : ParametersArray;
+	(* Variabile per Visualizzazione in debug *)
+	l : INT;
+	z : INT;
+	
+	(* Gate Access *)
+	MachinePalletizerGatesAccess : TFMachinePalletizer_GatesAccess;
+	(* Errori GATEACCESS *)
+	GateAccessError							: UINT;
+	(* Errori LGV *)
+	LGVError 								: UINT;
+	
+	(* Project Modules I/O/Motion/Inverter *)	
+	X_Axis									: AXIS_REF;
+	X_AxisLib								: TFMotion;
+
+	Y_Axis									: AXIS_REF;
+	Y_AxisLib								: TFMotion;
+
+	Z_Axis									: AXIS_REF;
+	Z_AxisLib								: TFMotion;
+	
+	(* Rotazione Basculante Pinza - Angolo di Pitch *)
+	J_Axis									: AXIS_REF;
+	J_AxisLib								: TFMotion;
+	(* Rotazione Piano Ventose Pinza - Angolo di Roll *)
+	K_Axis									: AXIS_REF;
+	K_AxisLib								: TFMotion;
+	(* Rotazione Intero Corpo Pinza - Angolo di Yaw *)
+	W_Axis									: AXIS_REF;
+	W_AxisLib								: TFMotion;
+
+	(* Change Gripper Configuration *)
+	ChangeGripperConfig						: BOOL;
+	
+	(* Pallet and Layer stacks state *)
+	PalletStackEmpty 						: INT;
+	LayerStackEmpty 						: INT;
+	AllWABusy								: INT;
+	//EmptyPack                               : TFHandlingPack;
+	EmptySlab                               : TFMachinePalletizer_PlaceElement;
+	
+	OSchedulerIDPerLinea AT %Q* 			: DWORD;//Scheduler ID doppia lunghezza per linea
+
+	StatoMissione : INT := 0;//Stato della missione del pallettizzatore per segnalazione a HMI: 0=Nessuna Missione Attiva;1=Missione Attiva 
+		
+	FirstStatrtEx : BOOL;	
+
+	NCodiciPresenti : UINT;// numero di codici presenti in fase di attivazione formatura
+	
+	EmptyWorkAreaState 	: TFMachinePalletizer_WorkAreaState;
+	EmptySlabArray 		: ARRAY[1..MAXFORMINGSLAB] OF TFMachinePalletizer_PlaceElement;
+	EmptyDataSlab       : ST_SlabData;
+	EmptyDataSlabArray 	: ARRAY[1..MAXFORMINGSLAB] OF ST_SlabData;
+
+	EseguitoAllinementoPezziDeposito : BOOL;//bit per impedire mescolamenti in fase di "annullamento" missione con stacco aspirazione
+	
+	NumeroPezziPresentiPostazioneStart : ARRAY[1..MAXAREA] OF UINT;//numero pezzi allo start della lavorazione
+	
+END_VAR
+
+{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL PERSISTENT
+	
+	WorkSpace 				: TFMachinePalletizer_WorkSpace;										(* Work Space (Spazio di Lavoro) *)
+	WorkFootprint 			: ARRAY [1..MAXFOOTPRINT] OF TFMachinePalletizer_WorkFootprint;			(* Work Footprint (Ingombri "Parallelepipedi") *)
+	WorkPickPoint 			: ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;			(* Work PickPoint (Punti di Prelievo Pacchi) *)
+//WorkPickPointState 		: ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;	(* Work PickPoint State (Stato Punti di Prelievo Pacchi) *)
+	WorkPickPointState		: ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;	(* Work PICKPOINT Roller State (Stato Punti di Prelievo Lastre: RULLIERE) *)
+	//WorkPickPointTransportState : ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointTransport_State; (* Work PICKPOINT TRANSPORT State (Stato Punti di Prelievo Lastre traporti -> es. rulliere a terra ) *)
+
+
+	//WorkPickPointStoreState	: POINTER TO ARRAY [1..MAXPICKPOINTSTORE] OF TFMachinePalletizer_WorkPickPointStore_State;	(* Work STORE State (Stato Punti di Prelievo STATICI: Magazzini: Layer,ecc) *)
+	WorkPickPointOffset 	: ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointOffset;			(* Offset dei PickPoint rispetto le posizioni assolute *)
+	
+	
+	
+	
+	WorkArea 				: ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;					(* Work Area (Postazioni Pallet/Vuoti/Falde) *)
+	WorkAreaState 			: ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;				(* Work Area State (Stato Postazioni) *)
+	WorkAreaOffset 			: ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaOffset;				(* Offset delle postazioni rispetto le posizioni assolute *)
+	WorkAreaZone			: TFMachinePalletizer_WorkAreaZone;										(* Suddivisione in zone delle postazioni del pallettizzatore  per gestire la priorità di deposito *)
+	Pallet 					: ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;					(* Pallet (Caratteristiche Pallet) *)
+	Layer 					: ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;						(* Layer (Caratteristiche Falde) *)
+	Forming 				: ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;					(* Layer (Caratteristiche Formatura) *)
+	AxisPar					: TFModulePalletizerRobot_AxisPar;										(* Axis Parameters *)
+	ManCmd					: TFModulePalletizerRobot_ManCmd;										(* Manual Commands *)
+	Mission					: TFMachinePalletizer_Mission;											(* Missione della macchina *)
+	MachineManCmd			: TFMachinePalletizer_ManCmd;											(* Comandi Manuali della Macchina *)
+	PickPlaceParameters		: TFMachinePalletizer_PickPlaceParameters;								(* Parametri di prelievo e deposito *)
+	TCPParameter			: TFModulePalletizerRobot_TCPPar;										(* Parametri del TCP (pinza) *)
+	ProgressiveNrWA			: UDINT;																(* UDC delle postazioni:Aggiornato ad ogni deposito "Pallet"*)
+	ProductOnGripper		: INT := KPRODUCTUNLOADED;												(* Indica cosa è presente nella pinza *)
+	UsedCode				: ARRAY [1..MAXFORMINGCODE] OF INT;										(* Codici utilizzati *)
+	GripperConfiguration	: INT;																	(* Indica il numero della configurazione della pinza *)
+	(**********************************************************************************************************************************************************************************)
+	(**********************************************************************************************************************************************************************************)
+	PreviousPWA 			: INT;
+	PreviousStackWA			: INT;
+	RestoreCWA				: BOOL;
+	TouchErrorEnable		: BOOL;																	(* Var Appoggio per Abilitazione Errore Tastatori *)
+	(**********************************************************************************************************************************************************************************)
+	(**********************************************************************************************************************************************************************************)
+	IPalletizer_Safety_Gate_Enable : BOOL;
+	(**********************************************************************************************************************************************************************************)
+	(**********************************************************************************************************************************************************************************)
+	Status					: TFModulePalletizerRobot_Status;	(* Indica lo stato del pallettizzatore *)
+	(**********************************************************************************************************************************************************************************)
+	(**********************************************************************************************************************************************************************************)
+	AbilitazionePassModeGlobale : BOOL := TRUE; (* Abilitazione globale PassMode *)
+
+	UltimaPostazioneInPrelievo : UINT;//Indica l'ultima postazione che è stata lavorata
+	UltimoSchedulerLavorato : STRING;//Indica l'ultimo scheduler lavorato dalla macchina
+	RichiestaCambioScheduler : BOOL;//Indica la richiesta all'operatore del cambio scheduler e attende la pressione del pulsante ciclo per partire
+	UltimaTipologiaLavorata : INT;
+
+	WorkAreaProductionList : ARRAY [1..MAXAREA] OF TFMachinePalletizer_ListaProduzione_WAM;
+	WorkAreaStateBK	: ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

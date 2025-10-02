@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_GatesAccess" Id="{9cd291b3-823e-41c2-9794-a7500899fe6a}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_GatesAccess :
+STRUCT
+	GateAccessConsolle 	: TFGateAccess; //Consolle
+	GateAccessPS306 	: TFGateAccessNoStop; //PS306 - Lato Sx Inizio
+	GateAccessPS307 	: TFGateAccessNoStop; //PS307 - Lato Sx Centrale
+	GateAccessPS308		: TFGateAccessNoStop; //PS308 - Lato Dx Centrale
+	GateAccessPS309		: TFGateAccessNoStop; //PS309 - Lato DX In Fondo
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

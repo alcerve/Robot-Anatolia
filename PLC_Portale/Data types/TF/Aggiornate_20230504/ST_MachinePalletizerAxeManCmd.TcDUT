@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_MachinePalletizerAxeManCmd" Id="{19420f6f-9e84-4b28-b2f5-7b432a163099}">
+    <Declaration><![CDATA[TYPE ST_MachinePalletizerAxeManCmd :
+STRUCT
+	(*  READ	- Home (Ricerca Posizione di Home)  *)
+	Home : BOOL := false;
+	(*  READ	- Jog +  *)
+	JogPos : BOOL := false;
+	(*  READ	- Jog -  *)
+	JogNeg : BOOL := false;
+	(*  READ	- Jog +/- in Fast Speed  *)
+	JogFast : BOOL := false;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.6">
+  <DUT Name="OutputDataLogic" Id="{ab81e5e6-5da5-4d5b-b3c5-50282ec2953b}">
+    <Declaration><![CDATA[TYPE OutputDataLogic :
+STRUCT
+	 LastItemSequenceNumberReceived : SINT;
+	 RemotePresenceOutputBits : UINT;
+	 LastFragmentSequenceNumberReceived : SINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

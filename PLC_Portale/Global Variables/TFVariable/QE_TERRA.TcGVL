@@ -1,0 +1,223 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="QE_TERRA" Id="{04cb3932-578b-4f7f-b415-89ad232834c1}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+	
+	//******************** SCHEDA IN AP200.2		
+	I_AP200_2 			AT %I*: ARRAY[1..16] OF BOOL;
+
+	I_AutoPal			: BOOL;	// 1 = Selettore manuale automatico Pal
+	I_StartCicloPal		: BOOL;	// 2 = Star Ciclo Pallettizzatore
+	I_StopCicloPal		: BOOL;	// 3 = Stop Ciclo Pallettizzatore
+	//I_FREE 			: bool; // 4 = FREE
+	//I_FREE 			: bool; // 5 = FREE
+	I_AriaOK			: BOOL; // 6 = Aria ok 
+	I_24VOK_AUXQE		: BOOL; // 7 = Presenza 24V AUSILIARI Quadro
+	I_24VOK_SAFETY		: BOOL; // 8 = Presenza 24V SAFETY
+	I_24VOK_MONITOR		: BOOL; // 9 = Presenza 24V MONITOR
+	I_24VOK_PS305		: BOOL; // 10 = Presenza 24V PS305
+	I_24VOK_PS306		: BOOL;	// 11 = Presenza 24V PS306
+	I_24VOK_PS307		: BOOL;	// 12 = Presenza 24V PS307
+	I_24VOK_JB310		: BOOL; // 13 = Presenza 24V JB311
+	I_24VOK_JB311 		: BOOL; // 14 = Presenza 24V JB311
+	I_24VOK_JB312 		: BOOL; // 15 = Presenza 24V JB312
+	I_24VOK_JB313 		: BOOL; // 16 = Presenza 24V JB313
+
+	//******************** SCHEDA IN SAFETY AP200.3		
+	I_AP200_3 			AT %I*: ARRAY[1..4] OF BOOL;
+	//I_EmergenzaGenerale_CH1 	: BOOL; // 1=
+	//I_EmergenzaGenerale_CH2 	: BOOL; // 2=	
+	//I_BarrieraDX_CH1			: BOOL; // 3=	
+	//I_BarrieraDX_CH2			: BOOL; // 4=	
+
+	//******************** SCHEDA IN SAFETY AP200.4		
+	I_AP200_4 			AT %I*: ARRAY[1..4] OF BOOL;
+	//I_EmergenzaPS306PS307_CH1 	: BOOL; // 1=
+	//I_EmergenzaPS306PS307_CH2 	: BOOL; // 2=	
+	//I_BarrieraPS308PS309_CH1		: BOOL; // 3=	
+	//I_BarrieraPS308PS309_CH2		: BOOL; // 4=	
+	
+	I_PresenzaSupporto	: ARRAY[1..8] OF BOOL;
+	I_PresenzaTelaio	: ARRAY[1..8] OF BOOL;
+	I_PresenzaCentrale	: ARRAY[1..8] OF BOOL;
+	I_PresenzaBundle	: ARRAY[1..8] OF BOOL; 
+	
+	//******************** SCHEDA IN AP200.5		
+	I_AP200_5 			AT %I*: ARRAY[1..16] OF BOOL;
+	//I_PresenzaSupporto[1] : BOOL;	// 1 = 
+	//I_PresenzaTelaio[1]	: BOOL;	// 2 = 
+	//I_PresenzaCentrale[1]	: BOOL;	// 3 = 
+	//I_PresenzaBundle[1] 	: BOOL; // 4 = 
+	//
+	//I_PresenzaSupporto[2] : BOOL;	// 5 = 
+	//I_PresenzaTelaio[2]	: BOOL;	// 6 = 
+	//I_PresenzaCentrale[2]	: BOOL;	// 7 = 
+	//I_PresenzaBundle[2] 	: BOOL; // 8 = 
+	//
+	//I_PresenzaSupporto[3] : BOOL;	// 9 = 
+	//I_PresenzaTelaio[3]	: BOOL;	// 10 = 
+	//I_PresenzaCentrale[3]	: BOOL;	// 11 = 
+	//I_PresenzaBundle[3] 	: BOOL; // 12 = 
+	//
+	//I_PresenzaSupporto[4] : BOOL;	// 13 = 
+	//I_PresenzaTelaio[4]	: BOOL;	// 14 = 
+	//I_PresenzaCentrale[4]	: BOOL;	// 15 = 
+	//I_PresenzaBundle[4] 	: BOOL; // 16 = 
+
+	//******************** SCHEDA IN SAFETY AP200.6		
+	I_AP200_6	AT %I*: ARRAY[1..4] OF BOOL;
+	I_RichiestaIngressoConsolle 		AT %I* : BOOL; // 2 = Richiesta ingresso Pal CONSOLLE
+	I_ResetRichiestaIngressoConsolle 	AT %I* : BOOL; // 4 = Richiesta ingresso Pal CONSOLLE
+	I_PulsanteMarciaConsolle			AT %I* : BOOL; // 6 = Pulsante Marcia Pallettizzatore CH1
+	I_RichiestaIngressoPS309 			AT %I* : BOOL; // 8 = Richiesta ingresso Pal PS309
+
+	//******************** SCHEDA IN SAFETY AP200.7		
+	I_AP200_7	AT %I*: ARRAY[1..4] OF BOOL;
+	I_RichiestaIngressoPS306 			AT %I* : BOOL; // 2 = Richiesta ingresso Pal PS306
+	I_ResetRichiestaIngressoPS306 		AT %I* : BOOL; // 4 = Reset Richiesta ingresso Pal PS306
+	I_RichiestaIngressoPS307 			AT %I* : BOOL; // 6 = Richiesta ingresso Pal PS307	
+	I_ResetRichiestaIngressoPS307 		AT %I* : BOOL; // 8 = Reset Richiesta ingresso Pal PS307
+	
+	//******************** SCHEDA IN AP200.8
+	I_AP200_8 			AT %I*: ARRAY[1..16] OF BOOL;
+	//I_FREE 				: bool; // 1 = FREE
+	//I_FREE 				: bool; // 2 = FREE
+	//I_FREE 				: bool; // 3 = FREE
+	//I_FREE 				: bool; // 4 = FREE
+	I_24VOK_PS308			: BOOL;	// 5 = Presenza 24V PS308
+	I_24VOK_PS309			: BOOL;	// 6 = Presenza 24V PS309
+	I_24VOK_JB314			: BOOL;	// 7 = Presenza 24V JB314
+	I_24VOK_JB315			: BOOL;	// 8 = Presenza 24V JB315
+	//I_PresenzaSupporto[5] : BOOL;	// 9 = 
+	//I_PresenzaTelaio[5]	: BOOL;	// 10 = 
+	//I_PresenzaCentrale[5]	: BOOL;	// 11 = 
+	//I_PresenzaBundle[5] 	: BOOL; // 12 = 
+	//I_PresenzaSupporto[6] : BOOL;	// 13 = 
+	//I_PresenzaTelaio[6]	: BOOL;	// 14 = 
+	//I_PresenzaCentrale[6]	: BOOL;	// 15 = 
+	//I_PresenzaBundle[6] 	: BOOL; // 16 =
+
+	//******************** SCHEDA IN SAFETY AP200.9		
+	I_AP200_9	AT %I*: ARRAY[1..4] OF BOOL;
+	I_RicevitoreConsensoVeicolo AT %I*: ARRAY[1..8] OF BOOL;
+	//I_RicevitoreConsensoVeicolo[1]	: BOOL; // 1=
+	//I_RicevitoreConsensoVeicolo[2] 	: BOOL; // 2=	
+	//I_RicevitoreConsensoVeicolo[3]	: BOOL; // 3=	
+	//I_RicevitoreConsensoVeicolo[4]	: BOOL; // 4=	
+	
+	//******************** SCHEDA IN SAFETY AP200.10		
+	I_AP200_10	AT %I*: ARRAY[1..4] OF BOOL;
+	I_RichiestaIngressoPS308 			AT %I* : BOOL; // 2 = Richiesta ingresso Pal PS308
+	I_ResetRichiestaIngressoPS308 		AT %I* : BOOL; // 6 = Richiesta ingresso Pal PS308
+	//I_BarrieraCentroDx_CH1			: BOOL; // 3=	
+	//I_BarrieraCentroDx_CH2			: BOOL; // 4=	
+
+	//******************** SCHEDA IN SAFETY AP201.2		
+	I_AP201_2	AT %I*: ARRAY[1..4] OF BOOL;
+	//I_FeedBackMarcia				: BOOL; // 1=
+	I_ResetRichiestaIngressoPS309 				AT %I* : BOOL; // 6 = Richiesta ingresso Pal PS309
+	//I_BarrieraInterna_CH1			: BOOL; // 3=	
+	//I_BarrieraInterna_CH2			: BOOL; // 4=	
+
+	//******************** SCHEDA OUT AP201.4
+	O_AP201_4 			AT %Q*: ARRAY[1..16] OF BOOL;		
+	O_SirenaAllarmiPal							: BOOL;	// 1 = Sirena Allarmi
+	O_LampadaAutomaticoPal						: BOOL;	// 2 = Lampada AUtomatico
+	O_LampadaAllarmiPal							: BOOL;	// 3 = Lampada Allarmi
+	O_LampadaRichiestaIngressoPal				: BOOL;	// 4 = Lampada Richiesta Ingresso PAL 1
+	O_ConsensoVeicolo 							: ARRAY[1..8] OF BOOL;
+	//O_ConsensoVeicolo[1]						: BOOL;	// 5 =
+	//O_ConsensoVeicolo[2]						: BOOL;	// 6 =
+	//O_ConsensoVeicolo[3]						: BOOL;	// 7 =
+	//O_ConsensoVeicolo[4]						: BOOL;	// 8 =
+	O_LampadaPulsanteCicloPalConsolle 			: BOOL;	//9 = Lampada Pulsante Ciclo Pallettizzatore
+	O_LampadaPulsanteRichiestaIngressoConsolle 	: BOOL; //10 = Lampada Pulsante richiesta ingresso PS305
+	O_LampadaPulsanteMarciaPalConsolle 			: BOOL;	//11 = Lampada Pulsante Marcia Pal 1 Consolle
+	O_LampadaPulsanteRichiestaIngressoPS306 	: BOOL; //12 = Lampada Pulsante richiesta ingresso PS306
+	O_LampadaPulsanteRichiestaIngressoPS307		: BOOL; //13 = Lampada Pulsante richiesta ingresso PS307
+	O_LampadaPulsanteRichiestaIngressoPS308 	: BOOL; //14 = Lampada Pulsante richiesta ingresso PS308
+	O_LampadaPulsanteRichiestaIngressoPS309		: BOOL; //15 = Lampada Pulsante richiesta ingresso PS309
+	//FREE 										: BOOL; //16 =
+
+	//******************** SCHEDA OUT SAFETY AP201.5		
+	O_AP201_5	AT %Q*: ARRAY[1..4] OF BOOL;  			I_AP201_5 AT %I*: ARRAY[1..4] OF BOOL;//Appoggio
+	//O_MarciaPal	: BOOL; // CH1=
+	//FREE			: BOOL; // CH2=	
+	//FREE			: BOOL; // CH3=	
+	//FREE			: BOOL; // CH4=	
+	
+	//******************** SCHEDA OUT AP201.6	
+	O_AP201_6 						AT %Q*: ARRAY[1..16] OF BOOL;
+	
+	O_LampadaIngressoVietatoPS306 	: BOOL; // 1 = Lampada Pulsante richiesta ingresso PS306
+	O_LampadaIngressoVietatoPS307 	: BOOL; // 2 = Lampada Pulsante richiesta ingresso PS306
+	O_LampadaIngressoVietatoPS308 	: BOOL; // 3 = Lampada Pulsante richiesta ingresso PS306
+	O_LampadaIngressoVietatoPS309 	: BOOL; // 4 = Lampada Pulsante richiesta ingresso PS306
+	//O_ConsensoVeicolo[5]		  	: BOOL;	// 5 =
+	//O_ConsensoVeicolo[6]			: BOOL;	// 6 =
+	//O_ConsensoVeicolo[7]			: BOOL;	// 7 =
+	//O_ConsensoVeicolo[8]			: BOOL;	// 8 =
+	//FREE 							: BOOL; // 9 =
+	//FREE 							: BOOL; // 10 =
+	//FREE 							: BOOL; // 11 =
+	//FREE 							: BOOL; // 12 =
+	//FREE 							: BOOL; // 13 =
+	//FREE 							: BOOL; // 14 =
+	//FREE 							: BOOL; // 15 =
+	//FREE 							: BOOL; // 16 =
+
+	//******************** SCHEDA IN AP201.3	
+	I_AP201_3 			AT %I*: ARRAY[1..16] OF BOOL;
+		
+	//I_PresenzaSupporto[7] : BOOL;	// 1 = 
+	//I_PresenzaTelaio[7]	: BOOL;	// 2 = 
+	//I_PresenzaCentrale[7]	: BOOL;	// 3 = 
+	//I_PresenzaBundle[7] 	: BOOL; // 4 = 
+	//I_PresenzaSupporto[8] : BOOL;	// 5 = 
+	//I_PresenzaTelaio[8]	: BOOL;	// 6 = 
+	//I_PresenzaCentrale[8]	: BOOL;	// 7 = 
+	//I_PresenzaBundle[8] 	: BOOL; // 8 = 
+	//FREE 							: BOOL; // 9 =
+	//FREE 							: BOOL; // 10 =
+	//FREE 							: BOOL; // 11 =
+	//FREE 							: BOOL; // 12 =
+	//FREE 							: BOOL; // 13 =
+	//FREE 							: BOOL; // 14 =
+	//FREE 							: BOOL; // 15 =
+	//FREE 							: BOOL; // 16 =
+
+	//******************** SCHEDA IN SAFETY AP202.2		
+	I_AP202_2	AT %I*: ARRAY[1..4] OF BOOL;
+	//I_RicevitoreConsensoVeicolo[5]	: BOOL; // 1=
+	//I_RicevitoreConsensoVeicolo[6] 	: BOOL; // 2=	
+	//I_RicevitoreConsensoVeicolo[7]	: BOOL; // 3=	
+	//I_RicevitoreConsensoVeicolo[8]	: BOOL; // 4=	
+
+	//******************** SCHEDA IN SAFETY AP202.3		
+	I_AP202_3	AT %I*: ARRAY[1..4] OF BOOL;
+	I_PresenzaVeicolo : ARRAY[1..8] OF BOOL;
+	//I_PresenzaVeicolo[1]	: BOOL; // 1=
+	//I_PresenzaVeicolo[2] 	: BOOL; // 2=	
+	//I_PresenzaVeicolo[3]	: BOOL; // 3=	
+	//I_PresenzaVeicolo[4]	: BOOL; // 4=	
+
+	//******************** SCHEDA IN SAFETY AP202.5		
+	I_AP202_5	AT %I*: ARRAY[1..4] OF BOOL;
+	//I_PresenzaVeicolo[5]	: BOOL; // 1=
+	//I_PresenzaVeicolo[6] 	: BOOL; // 2=	
+	//I_PresenzaVeicolo[7]	: BOOL; // 3=	
+	//I_PresenzaVeicolo[8]	: BOOL; // 4=	
+
+	//******************** SCHEDA IN SAFETY AP202.6		
+	I_AP202_6	AT %I*: ARRAY[1..4] OF BOOL;
+	//I_BarrieraCentroSx_CH1	: BOOL; // 1=
+	//I_BarrieraCentroSx_CH2 	: BOOL; // 2=	
+	//I_BarrieraSx_CH1			: BOOL; // 3=	
+	//I_BarrieraSx_CH2			: BOOL; // 4=	
+	
+	I_PHPresenzaPallet		: ARRAY[1..MAXAREA] OF BOOL; // Presenza pallet
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

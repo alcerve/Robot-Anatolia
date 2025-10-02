@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFRullieraMobileStatus" Id="{432e55ca-6651-442f-b5f1-454dcf6f70db}">
+    <Declaration><![CDATA[TYPE TFRullieraMobileStatus :
+STRUCT
+	Homed 		: BOOL; //Home modulo eseguito
+	Error 		: UDINT; //Errore modulo
+	ErrorExtra 	: UDINT; //Errore extra modulo
+	PowerActive : BOOL; //Modulo in marcia
+		
+	Ax1_State : TFMachinePalletizer_AxeState_weintek; //Stato asse 1
+	Ax2_State : TFMachinePalletizer_AxeState_weintek; //Stato Asse 2
+
+	AxT_State : TFMachinePalletizer_AxeState_weintek; //Stato Asse Traslazione
+	
+	Element : TFMachineTransportElementWeintek;
+	ElementPresente : BOOL;
+	Element2 : TFMachineTransportElementWeintek;
+	Element2Presente : BOOL;
+	
+	FTC_1 : BOOL; //Sensore 1
+	FTC_2 : BOOL; //Sensore 2			
+	FTC_3 : BOOL; //Sensore 3
+
+	Px_Positivo : BOOL;//Sensore Extra corsa Positivo
+	Px_Negativo : BOOL;//Sensore Extra corsa Positivo
+
+	PosizioneRulliera : UINT; //Indica la posizione della rulliera
+
+	StatoComando : UDINT;//Inidca lo stato in cui si trova il modulo
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

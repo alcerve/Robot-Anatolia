@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_SupportTypeAriostea" Id="{c3a57dc9-2583-47bc-952e-9715b11954fd}">
+    <Declaration><![CDATA[{attribute 'strict'}
+TYPE e_SupportTypeAriostea :
+(
+	CAVA3100X750     := 35,		//Cavalletto	1000x3000             
+	CAVA3100X740     := 37,		//Cavalletto	1500x3000             
+	CSS05H150M       := 46,		//Cassa	1000x3000                  
+	CSS03H120M       := 68,		//Cassa	1500x3000                  
+	CSS12H120M       := 69,		//Cassa	1200x3000                  
+	CAVA3370X740     := 73,		//Cavalletto	1500x3000  - 1600x3200
+	CSS06H120M       := 148,	//Cassa	1500x3000  - 1600x3200     
+	CAVA3100H1200    := 149 	//Cavalletto	1200x3000             
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_EAPPinzaVentoseDeviceState" Id="{2320731f-2f7f-4260-be98-69a522396bcb}">
+    <Declaration><![CDATA[TYPE ST_EAPPinzaVentoseDeviceState : 
+	STRUCT
+		(* Stato del Cilindro Apertura/chiusura pinza  *)
+		CilindroApertura : ST_EAPCylinderState;
+		(* Stato del Cilindro Apertura/chiusura pinza  *)
+		CilindroSbloccoRotazione : ST_EAPCylinderState;
+		(* Stato del Cilindro di gestione Aspirazione Falda DX *)
+		AspirazioneFaldaDX : ST_EAPCylinderState;
+		(* Stato del Cilindro di gestione Aspirazione Falda DX *)
+		AspirazioneFaldaSX : ST_EAPCylinderState;
+		(* Stato Vacuostato DX *)
+		AspirazioneDX : ST_EAPOvemStatus;
+		(* Stato Vacuostato SX *)
+		AspirazioneSX : ST_EAPOvemStatus;
+	END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

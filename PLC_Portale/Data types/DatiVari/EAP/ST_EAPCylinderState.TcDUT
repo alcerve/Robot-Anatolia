@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_EAPCylinderState" Id="{4686a941-d851-4ec7-8e41-9dd69aac6e2f}">
+    <Declaration><![CDATA[TYPE ST_EAPCylinderState : 
+	STRUCT
+		(* Dispositivo nello stato attivo *)
+		Active : BOOL;
+		(* Dispositivo nello stato inattivo *)
+		Inactive : BOOL;
+		(* Dispositivo in errore *)
+		Error : UDINT;
+		(* Sensore Attivo ON *)
+		SensorActive : BOOL;
+		(* Senore Inattivo ON *)
+		SensorInactive : BOOL;
+		(* 0= Null; 1= Active ; 2= Inactive; 3= Idle; 9 = Error ; *)
+		StatusToHMI : UINT;
+	END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

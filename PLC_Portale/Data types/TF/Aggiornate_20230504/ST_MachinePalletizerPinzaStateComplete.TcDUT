@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_MachinePalletizerPinzaStateComplete" Id="{5c866924-8c14-4795-9803-0df8c2570a8e}">
+    <Declaration><![CDATA[TYPE ST_MachinePalletizerPinzaStateComplete :
+STRUCT
+	(*  Indica che la prolunga DX della pinza è aperta  *)
+	LatoDxAperto : BOOL;
+	(*  Indica che la prolunga SX della pinza è aperta  *)
+	LatoSxAperto : BOOL;
+	(*  Indica che la prolunga DX della pinza è chiusa  *)
+	LatoDxChiuso : BOOL;
+	(*  Indica che la prolunga SX della pinza è chiusa  *)
+	LatoSxChiuso : BOOL;
+	(*  Indica che sul lato SX ho in presa la piastrella  *)
+	LatoSxPiastrellaInPresa : BOOL;
+	(*  Indica che sul lato DX ho in presa la piastrella  *)
+	LatoDxPiastrellaInPresa : BOOL;
+	(*  Indica che sul lato SX ho in presa la FALDA  *)
+	LatoSxFaldaInPresa : BOOL;
+	(*  Indica che sul lato DX ho in presa la FALDA  *)
+	LatoDxFaldaInPresa : BOOL;
+	(*  Indica che la Rotazione lungo z è sbloccata  *)
+	RotazioneSbloccata : BOOL;
+	(*  Indica che la rotazione lungo z è bloccata  *)
+	RotazioneBloccata : BOOL;
+	(*  Indica che l'elemento è stato prelevato  *)
+	ElementoPrelevato : BOOL;
+	(*  Indica che il piano è in presa del pezzo  *)
+	PianoInPresa : BOOL;
+	(*  Stato degli elementi  *)
+	ElState : ST_MachinePalletizerPinzaDeviceState;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

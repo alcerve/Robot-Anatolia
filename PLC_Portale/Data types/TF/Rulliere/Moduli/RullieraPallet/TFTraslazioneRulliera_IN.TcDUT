@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFTraslazioneRulliera_IN" Id="{c4f3e0b2-38f8-4950-835c-1c23f19dccbb}">
+    <Declaration><![CDATA[TYPE TFTraslazioneRulliera_IN :
+STRUCT
+	PX_Positive : BOOL; //Sensore Positivo
+	PX_Negative : BOOL; //Sensore Negativo
+	PX_Home   : BOOL; //Sensore HOME 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

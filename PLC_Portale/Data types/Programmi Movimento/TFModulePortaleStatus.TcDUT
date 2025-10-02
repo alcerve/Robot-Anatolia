@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFModulePortaleStatus" Id="{8cdc8e8b-7d6d-4c36-b737-f05932fc03ef}">
+    <Declaration><![CDATA[TYPE TFModulePortaleStatus :
+STRUCT
+	
+	X				: ST_MachinePalletizerAxeState;	(* X Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	Y				: ST_MachinePalletizerAxeState;	(* Y Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	Z				: ST_MachinePalletizerAxeState;	(* Z Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	J				: ST_MachinePalletizerAxeState;	(* J Axe State (UI Position=°,  UI Velocity=°/sec  UI Acc/Dec=°/sec2) *)
+	K				: ST_MachinePalletizerAxeState;	(* K Axe State (UI Position=mm, UI Velocity=mm/sec UI Acc/Dec=mm/sec2) *)
+	Pinza 			: ST_MachinePalletizerPinzaStateComplete; (* State Pinza *)
+	
+	Macchina   		: ST_MachinePalletizerMachineState; (* Stato del modulo di gestione Della Macchina *)
+
+	ModAsse_X 		: ST_MachinePalletizerModuleState; (* Stato del modulo di gestione Asse X *)
+	ModAsse_Y 		: ST_MachinePalletizerModuleState; (* Stato del modulo di gestione Asse Y *)
+	ModAsse_Z 		: ST_MachinePalletizerModuleState; (* Stato del modulo di gestione Asse Z *)
+	ModAsse_J 		: ST_MachinePalletizerModuleState; (* Stato del modulo di gestione Asse J *)
+	ModAsse_K 		: ST_MachinePalletizerModuleState; (* Stato del modulo di gestione Asse K *)
+	ModPinza 		: ST_MachinePalletizerModuleState; (* Stato del modulo di gestione Pinza *)
+	ModLettoreBc 	: ST_MachinePalletizerModuleState; (* Stato del modulo di gestione Lettore Barcode *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

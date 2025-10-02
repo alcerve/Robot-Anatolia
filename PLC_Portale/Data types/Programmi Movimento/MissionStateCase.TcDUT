@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="MissionStateCase" Id="{4912b0f8-f379-4622-94d0-1ba535dbbc5b}">
+    <Declaration><![CDATA[TYPE MissionStateCase :
+STRUCT
+	Mission : e_Stato_Missione;		// Stato della missione
+	NCase	: INT;		// Case dello stato della missione
+	InitCase : BOOL;	// TRUE = case della missione inizializzato; FALSE= case della missione da inizializzare
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

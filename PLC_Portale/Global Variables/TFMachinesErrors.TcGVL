@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TFMachinesErrors" Id="{e7c839e6-8a89-4599-83f2-94bb6ff016c4}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+
+	(******************************************************************************************************************************************)
+	(* Machine Errors *)
+	(******************************************************************************************************************************************)
+	ErrMACHINE_CPUSAFETYNOTOK 					: UINT := 2100; (* Machine - CPU Safety NOT Ok *)
+	ErrMACHINE_CPUSAFETYNOTRUNNING 				: UINT := 2101; (* Machine - CPU Safety NOT Running *)
+	ErrMACHINE_IOSAFETYNOTOK 					: UINT := 2102; (* Machine - IO Safety NOT Ok *)
+
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

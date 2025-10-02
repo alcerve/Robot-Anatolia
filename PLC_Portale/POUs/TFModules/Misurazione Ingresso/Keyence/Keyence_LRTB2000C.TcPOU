@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="Keyence_LRTB2000C" Id="{dc2950e0-5829-4e9f-9b8f-f4628010470a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION Keyence_LRTB2000C : REAL
+VAR_INPUT
+	Byte0 : BYTE;
+	Byte1 : BYTE;
+END_VAR
+
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+Keyence_LRTB2000C := Byte0*256 + Byte1;]]></ST>
+    </Implementation>
+    <LineIds Name="Keyence_LRTB2000C">
+      <LineId Id="12" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

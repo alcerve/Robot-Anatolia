@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFMoveParAXCinghia" Id="{213d924b-cacf-4b8a-b2b8-b8c383fee5c8}">
+    <Declaration><![CDATA[TYPE TFMoveParAXCinghia :
+STRUCT
+	AccCarico				: REAL := 20; // [mm/s2] Accelerazione FASE carico 
+	DecCarico				: REAL := 20; // [mm/s2] Decelerazione FASE carico 
+	VelocitaCarico			: REAL := 20; // [mm/s] Velocità FASE carico 
+	
+	AccScarico				: REAL := 20; // [mm/s2] Accelerazione FASE scarico
+	DecScarico				: REAL := 20; // [mm/s2] Decelerazione FASE scarico
+	VelocitaScarico			: REAL := 20; // [mm/s] Velocità FASE scarico
+	
+	VelocitaVuoto			: REAL := 20; // [mm/s] Velocità Senza carico a bordo 
+	AccVuoto				: REAL := 20; // [mm/s2] Accelerazione Senza carico a bordo
+	DecVuoto				: REAL := 20; // [mm/s2] Decelerazione Senza carico a bordo
+
+	JerkConCarico			: REAL := 99999; //Jerk Con carico
+	JerkVuoto				: REAL := 99999; //Jerk a Vuoto
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

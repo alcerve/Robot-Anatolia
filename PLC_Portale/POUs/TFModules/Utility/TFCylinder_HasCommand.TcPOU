@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCylinder_HasCommand" Id="{29c6a6de-24ef-44f0-8107-5d892edb72e5}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCylinder_HasCommand : bool
+VAR_INPUT
+	Command: CylinderCommand;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Cylinder_HasCommand:=
+Command.Deactivation OR 
+Command.Activation OR 
+Command.Hold OR
+Command.Abort;]]></ST>
+    </Implementation>
+    <LineIds Name="TFCylinder_HasCommand">
+      <LineId Id="8" Count="3" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

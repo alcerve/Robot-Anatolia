@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="e_TypologySupDataPicking" Id="{2ba49402-756f-4b9e-89d5-8dfddbf01d7b}">
+    <Declaration><![CDATA[{attribute 'strict'}
+TYPE e_TypologySupDataPicking :
+(
+	//0= Orrizzontale LEGNO,1= Orrizzontale Telaio , 2 = Bundle, 3 = A-FRAME
+	LEGNO_PIANO 	:= 0, //Legno/Pallet in piano
+	TELAIO_PIANO 	:= 1, //Telaio in ferro in piano
+	BUNDLE_VERT 			:= 2, //Bundle posteriore
+	A_FRAME_VERT 		:= 3 //A-FRAME 
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

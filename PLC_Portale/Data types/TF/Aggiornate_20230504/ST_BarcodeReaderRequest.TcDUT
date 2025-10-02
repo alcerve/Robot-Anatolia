@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_BarcodeReaderRequest" Id="{8e129d3b-a9ef-45ae-863c-530b9dbe71df}">
+    <Declaration><![CDATA[//Struttura utilizzata per il comando del barcode della Keyence
+TYPE ST_BarcodeReaderRequest :
+STRUCT
+	ReadRequest 		: BOOL;//Comando di lettura
+	ErrorClear 			: BOOL;//Comando azzeramento buffer errori
+	ReadCompleteClear 	: BOOL;//Comando azzeramento buffer dati, da mettere a TRUE dopo ogni lettura terminata..
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

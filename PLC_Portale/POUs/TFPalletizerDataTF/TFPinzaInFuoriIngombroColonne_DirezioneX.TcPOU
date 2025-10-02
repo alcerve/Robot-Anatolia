@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPinzaInFuoriIngombroColonne_DirezioneX" Id="{24002259-11e4-4a2b-bac2-284944738182}" SpecialFunc="None">
+    <Declaration><![CDATA[(* Valuta se la pinza + il suo ingombro ha oltrepassato le colonne centrali *)
+FUNCTION TFPinzaInFuoriIngombroColonne_DirezioneX : bool
+VAR_INPUT
+	DirezioneXPositiva : BOOL; //Indica che l'asse sta traslando in direzione Positiva
+	AsseInMoto : BOOL; //Indica che lasse si sta muovento
+	PosizioneAttuale : LREAL; //Posizione Attuale dell'asse
+	IngombroX_Pos : LREAL; //Ingombro Attuale Pinza X Positivo
+	IngombroX_Neg : LREAL; //Ingombro Attuale Pinza X Negativo
+	PosizioneColonna_X : LREAL; //Posizione della colonna centrale in direzione X
+	IngombroColonna_X : LREAL; //Ingobro della colonna in direzione X
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPinzaInFuoriIngombroColonne_DirezioneX := FALSE;
+(* Quota di Fuori-Ingombro della X rispetto le colonne, valutando l'ingombro effettivo della pinza *)
+IF DirezioneXPositiva AND AsseInMoto THEN //Direzione POSITIVA con asse in moto
+	IF (PosizioneAttuale - IngombroX_Neg)-50 >= (PosizioneColonna_X + IngombroColonna_X) THEN
+		TFPinzaInFuoriIngombroColonne_DirezioneX := TRUE;
+	END_IF
+ELSIF NOT DirezioneXPositiva AND AsseInMoto THEN //Direzione NEGATIVA con asse in moto 
+	IF (PosizioneAttuale + IngombroX_Pos)+50 < PosizioneColonna_X THEN
+		TFPinzaInFuoriIngombroColonne_DirezioneX := TRUE;
+	END_IF
+ELSIF NOT AsseInMoto THEN //Se l'asse è fermo 
+	IF (PosizioneAttuale - IngombroX_Neg)-50 >= (PosizioneColonna_X + IngombroColonna_X) OR // Se la quota attuale superiore alla posizione della colonna 
+		(PosizioneAttuale + IngombroX_Pos)+50 < PosizioneColonna_X THEN 					// Se la quota attuale è inferiore alla posizione della colonna
+			TFPinzaInFuoriIngombroColonne_DirezioneX := TRUE;
+	END_IF
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFPinzaInFuoriIngombroColonne_DirezioneX">
+      <LineId Id="33" Count="0" />
+      <LineId Id="8" Count="3" />
+      <LineId Id="14" Count="3" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

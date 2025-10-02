@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_CoordinateApprendimento" Id="{a7b85eee-a307-4f27-92a6-c6945778521b}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_CoordinateApprendimento :
+STRUCT
+	X : TFMachinePalletizer_LatoApprendimento;
+	Y : TFMachinePalletizer_LatoApprendimento;
+	Z : TFMachinePalletizer_LatoApprendimento;
+	J : TFMachinePalletizer_LatoApprendimento;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

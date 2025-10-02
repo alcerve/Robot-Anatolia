@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_PlaceElement" Id="{144fbca5-3155-4157-93b6-cfb55eb43089}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_PlaceElement :
+STRUCT
+	(* Tipologia *)
+	Typology		: e_Tipo_Elemento_Da_Lavorare := TERMINATORE;	(* Tipo di ELEMENTO DA LAVORARE: 0: LASTRA,1:FALDA *)
+	TypologyCode	: INT						:= -1;	(* Descrittore tipo elemento *)
+	(* Dimensioni *)
+	XDim		: REAL							:= 0.0;	(* (mm) Dimensione X *)
+	YDim		: REAL							:= 0.0;	(* (mm) Dimensione Y *)
+	ZDim		: REAL							:= 0.0;	(* (mm) Dimensione Z *)
+	(* Quote di deposito *)
+	X			: LREAL							:= 0.0;	(* (mm) Destination - Coordinata X *)
+	Y			: LREAL							:= 0.0;	(* (mm) Destination - Coordinata Y *)
+	Z			: LREAL							:= 0.0;	(* (mm) Destination - Coordinata Z *)
+	J			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata J (PITCH)*)
+	//K			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata K (ROLL)*)
+	//W			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata W (YAW)*)
+
+	(* Distanza di Accostamento *)
+	AX			: REAL							:= 0.0; (* (mm) Approach X Distance - Distanza Accostamento X *)
+	AY			: REAL							:= 0.0; (* (mm) Approach Y Distance - Distanza Accostamento Y *)
+	AZ			: REAL							:= 0.0; (* (mm) Approach Z Distance - Distanza Accostamento Z *)
+	AJ			: REAL							:= 0.0; (* (mm) Approach J Distance - Distanza Accostamento J (PITCH)*)
+	//NUOVE???
+	//AK			: REAL						:= 0.0; (* (mm) Approach Z Distance - Distanza Accostamento K (ROLL)*)
+	//AW			: REAL						:= 0.0; (* (mm) Approach J Distance - Distanza Accostamento W (YAW)*)
+	(* traiettoria di deposito *)
+	Trajectory	: e_Tipo_Traiettoria			:= 0;	(* READ	- Tipo di percorso (0, 1, 2, 3, …) (-1 dato non valido) *)
+	Empty : BOOL;//Indica che è vuoto
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

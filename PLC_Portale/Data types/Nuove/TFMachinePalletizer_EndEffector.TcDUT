@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_EndEffector" Id="{c52d455a-e2a9-48f2-bf5a-f2b57845c7f0}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_EndEffector :
+STRUCT
+	Tipologia 	: INT := -1; 	//Indica la tipologia dell'elemento 
+	Lunghezza 	: REAL := 0; 	//Indica la lunghezza dell'elemento
+	Larghezza 	: REAL := 0; 	//Indica la larghezza dell'elemento	
+	Spessore	: REAL := 0; 	//Indica lo spessore dell'elemento
+	PosizioneBC_X : REAL := 0;	//Indica la posizione del barcode lungo la sua lunghezza e rispetto il punto medio
+	PosizioneBC_Y : REAL := 0;	//Indica la posizione del barcode lungo la sua larghezza e rispetto il punto medio	
+	PosizioneBC_Z : REAL := 0;	//Indica la posizione del barcode lungo il suo spessore e rispetto il punto medio
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

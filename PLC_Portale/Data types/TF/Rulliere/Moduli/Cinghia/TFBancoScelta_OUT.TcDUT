@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFBancoScelta_OUT" Id="{2c42627e-61b7-4cdd-9bf2-17a684604367}">
+    <Declaration><![CDATA[TYPE TFBancoScelta_OUT :
+STRUCT
+		FTC_Presenza1 : BOOL;
+		FTC_Presenza2 : BOOL;
+		FTC_Presenza3 : BOOL;	
+		
+		
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

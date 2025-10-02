@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFTraslazioneRullieraParameters" Id="{1a7850b3-513d-4c33-9157-7fb3b2dc7c99}">
+    <Declaration><![CDATA[TYPE TFTraslazioneRullieraParameters :
+STRUCT
+	QuotaRullieraCarico 	: REAL := 100; //Posizione Rulliera di ingresso materiale	
+	QuotaRullieraScarico 	: REAL := 2000; //Posizione Rulliera di uscita materiale
+	QuotaRullieraPrelievo1 	: REAL := 100; //Posizione Rulliera di prelievo 1
+	QuotaRullieraPrelievo2 	: REAL := 2000; //Posizione Rulliera di prelievo 2
+	//Con Carico a bordo
+	VelocitaCarico			: REAL := 20; // [%] Percentuale Velocità Con carico a bordo
+	AccCarico				: REAL := 20; // [%] Percentuale Accelerazione Con carico a bordo
+	DecCarico				: REAL := 20; // [%] Percentuale Decelerazione Con carico a bordo
+	//Senza Carico a bordo
+	VelocitaVuoto			: REAL := 50; // [%] Percentuale Velocità Senza carico a bordo 
+	AccVuoto				: REAL := 50; // [%] Percentuale Accelerazione Senza carico a bordo
+	DecVuoto				: REAL := 50; // [%] Percentuale Decelerazione Senza carico a bordo
+
+	//Manulai
+	VelocitaJog				: REAL := 50; // [%] Percentuale Velocità Manuale
+	AccJog					: REAL := 50; // [%] Percentuale Accelerazione Manuale
+	DecJog					: REAL := 50; // [%] Percentuale Decelerazione Manuale
+
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,308 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoliIngombroPinza" Id="{cf9324bf-f2b1-4e52-9da9-40a5d0dd036d}" SpecialFunc="None">
+    <Declaration><![CDATA[(* Funzione che calcola l'ingombro della pinza nelle varie dimensioni a seconda del ciclo che la massima sta eseguendo *)
+FUNCTION TFCalcoliIngombroPinza : BOOL
+VAR_INPUT
+
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+
+	AngoloRotazioneDestinazionePinza : LREAL; //Ango di rotazione del quale si vogliono calcolare le quote degli ingombri a destinazione  
+	ModuleAX_J : POINTER TO TFModulePalletizer_AxJ_Lastre;//Modulo Asse rotazione
+	
+	IngombroX_Pos : POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroY_Pos : POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y
+	
+	IngombroX_Neg : POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroY_Neg : POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y
+	
+	IngombroY_Tot : POINTER TO LREAL;//Ingombro totale In direzione Y
+	
+	IngombroZ_Pos : POINTER TO LREAL;//Ingombro della pinza lungo Z Positivo (sopra al fulcro)
+	IngombroZ_Neg : POINTER TO LREAL;//Ingombro della pinza lungo Z Negativo (sotto al fulcro)
+	
+	IngombroDestinazioneX_Pos : POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroDestinazioneY_Pos : POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y
+	
+	IngombroDestinazioneX_Neg : POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroDestinazioneY_Neg : POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y
+	
+	IngombroDestinazioneZ_Pos : POINTER TO LREAL;//Ingombro della pinza lungo Z Positivo (sopra al fulcro)
+	IngombroDestinazioneZ_Neg : POINTER TO LREAL;//Ingombro della pinza lungo Z Negativo (sotto al fulcro)
+	
+	IngombroMaxX_Pos : POINTER TO LREAL;//Ingombro MASSIMO della pinza nella Metà POSITIVA della pinza lungo X
+	IngombroMaxY_Pos : POINTER TO LREAL;//Ingombro MASSIMO della pinza nella Metà POSITIVA della pinza lungo Y
+	
+	IngombroMaxX_Neg : POINTER TO LREAL;//Ingombro MASSIMO della pinza nella Metà NEGATIVA della pinza lungo X
+	IngombroMaxY_Neg : POINTER TO LREAL;//Ingombro MASSIMO della pinza nella Metà NEGATIVA della pinza lungo Y
+	
+	IngombroMaxZ_Pos : POINTER TO LREAL;//Ingombro MASSIMO della pinza lungo Z Positivo (sopra al fulcro)
+	IngombroMaxZ_Neg : POINTER TO LREAL;//Ingombro MASSIMO della pinza lungo Z Negativo (sotto al fulcro)
+
+	IngombroY_Pos_0 	: POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y nella posizione 0°
+	IngombroY_Neg_180 	: POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y nella posizione 180°
+	IngombroY_Neg_0 	: POINTER TO LREAL;//Ingombro della pinza nella Metà POSITIVA della pinza lungo Y nella posizione 0°
+	IngombroY_Pos_180 	: POINTER TO LREAL;//Ingombro della pinza nella Metà NEGATIVA della pinza lungo Y nella posizione 180°
+	
+	ScostamentoVerticalePuntoCentrale : POINTER TO LREAL; //Valore che rappresenta quanto il punto centrale si è spostato rispetto allo zero orizzontale (lungo Z crescente)
+END_VAR
+
+VAR
+	LunghezzaMAX 	: LREAL;//LunghezzaMAX Totale pinza
+	LarghezzaMAX 	: LREAL;//Larghezza Totale pinza
+	SpessoreMAX  	: LREAL;//Spessore Totale pinza	
+	DimTraveVerticale : LREAL; //Dimensione Trave/Ingombro Centrale
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Calcolo delle dimensioni della pinza in base al tipo di ciclo in corso *)
+
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP,
+	
+	WAMANAGER_CICLO_RIPOSO_INIT:
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+		
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+															
+	WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+
+	WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:
+		
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);
+
+	WAMANAGER_CICLO_LASTRA_WA_INIT:
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);
+										
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_WA_RUN:
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+					
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_SU_PAREGGIATORE_RUN:
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);
+					
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_DA_PAREGGIATORE_RUN:
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+								
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN:
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);
+
+	WAMANAGER_CICLO_LASTRA_PP_INIT:
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+						
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_PP_RUN:
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+						
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_PP_RUN:
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);
+
+	(* Ciclo lastra per depalettizzare da postazioni senza formature, con autoapprndimenti*)
+	WAMANAGER_CICLO_PRELIEVO_LASTRA_DEPAL_RUN :
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= Dimensioni_Pinza.Lunghezza;
+		LarghezzaMAX    := Dimensioni_Pinza.Larghezza;
+																				
+	(* Ciclo lastra deposito su rulliera *)
+	WAMANAGER_CICLO_DEPOSITO_LASTRA_DEPAL_RUN :
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);
+													
+	(* Ciclo deposito FALDA su magazzino dedicato *)
+	WAMANAGER_CICLO_DEPOSITO_FALDA_DEPAL_RUN :
+	
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);
+ELSE
+		SpessoreMAX 	:= Dimensioni_Pinza.Spessore;
+		LunghezzaMAX 	:= MAX(Dimensioni_Pinza.Lunghezza,Mission^.XDim);
+		LarghezzaMAX    := MAX(Dimensioni_Pinza.Larghezza,Mission^.YDim);				
+END_CASE
+
+DimTraveVerticale := Dimensioni_Pinza.DimTraveVerticale;
+
+(* Calcolo gli ingombri in base al'angolo di rotazione della pinza *)
+IngombroX_Pos^ 	:=  LunghezzaMAX/2;
+IngombroX_Neg^ 	:=  LunghezzaMAX/2;
+
+IngombroY_Neg^ 	:= MAX((LarghezzaMAX/2 * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)) +
+					SpessoreMAX * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos))),DimTraveVerticale/2);
+					
+IngombroY_Pos^ 	:= ABS(MIN((-LarghezzaMAX/2 * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)) +
+					SpessoreMAX * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos))),DimTraveVerticale/2));	
+
+(* In base a come la pinza è ruotata inverto il positivo con il negativo in modo da avere sempre i valori corretti *)
+IF AngoloRotazioneDestinazionePinza < 90 THEN	                         
+	IngombroZ_Pos^	:= ABS(((LarghezzaMAX/2) * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))+
+									(SpessoreMAX * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))-SpessoreMAX);
+
+	IngombroZ_Neg^	:= ABS((-(LarghezzaMAX/2) * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos))) +
+									(SpessoreMAX * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))-SpessoreMAX);
+
+ELSIF  AngoloRotazioneDestinazionePinza > 90 THEN					
+	IngombroZ_Pos^	:= ABS((-(LarghezzaMAX/2) * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos))) +
+									(SpessoreMAX * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))-SpessoreMAX);	
+	(*IngombroZ_Neg^	:= ABS(((LarghezzaMAX/2) * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))+
+								(SpessoreMAX * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))-SpessoreMAX); *)
+	IngombroZ_Neg^	:= ABS((-(LarghezzaMAX/2) * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))+
+								(SpessoreMAX * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))-SpessoreMAX);
+ELSE
+	IngombroZ_Pos^	:= ABS(((LarghezzaMAX/2) * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))+
+									(SpessoreMAX * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))-SpessoreMAX);
+
+	IngombroZ_Neg^	:= ABS((-(LarghezzaMAX/2) * SIN(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos))) +
+									(SpessoreMAX * COS(deg_to_rad(-90+ModuleAX_J^.Ax^.AxRef^.NcToPlc.ActPos)))-SpessoreMAX);
+END_IF
+IngombroY_Tot := IngombroY_Pos + IngombroY_Neg;//Ingombro TOTALE in direzione Y
+
+
+(* Calcolo gli ingombri in base al'angolo di rotazione FINALE *)
+IngombroDestinazioneX_Pos^ 	:=  LunghezzaMAX/2;
+IngombroDestinazioneX_Neg^ 	:=  LunghezzaMAX/2;
+
+IngombroDestinazioneY_Neg^ 	:= MAX((LarghezzaMAX/2 * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)) +
+									SpessoreMAX * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza))),DimTraveVerticale/2);
+					
+IngombroDestinazioneY_Pos^ 	:= ABS(MIN((-LarghezzaMAX/2 * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)) +
+									SpessoreMAX * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza))),DimTraveVerticale/2));
+	
+(* In base a come la pinza è ruotata inverto il positivo con il negativo in modo da avere sempre i valori corretti *)
+IF AngoloRotazioneDestinazionePinza < 90 THEN	                         
+	IngombroDestinazioneZ_Pos^	:= ABS(((LarghezzaMAX/2) * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))+
+									(SpessoreMAX * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))-SpessoreMAX);
+
+	IngombroDestinazioneZ_Neg^	:= ABS((-(LarghezzaMAX/2) * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza))) +
+									(SpessoreMAX * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))-SpessoreMAX);
+
+ELSIF  AngoloRotazioneDestinazionePinza > 90.9 THEN		
+	//AlPosDestinoBandelCavaleta := Mission^.YDim / 2 + WorkAreaState^[Mission^.PPlace].Supporto.ZDim + WorkAreaState^[Mission^.PPick].Supporto.HMAX;			
+	IngombroDestinazioneZ_Pos^	:= ABS((-(LarghezzaMAX/2) * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza))) +
+									(SpessoreMAX * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))-SpessoreMAX);	
+	IngombroDestinazioneZ_Neg^	:= ABS(((LarghezzaMAX/2) * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))+
+								(SpessoreMAX * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))-SpessoreMAX) ;
+	
+	
+ELSE
+	IngombroDestinazioneZ_Pos^	:= ABS(((LarghezzaMAX/2) * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))+
+									(SpessoreMAX * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))-SpessoreMAX);
+
+	IngombroDestinazioneZ_Neg^	:= ABS((-(LarghezzaMAX/2) * SIN(deg_to_rad(-90+AngoloRotazioneDestinazionePinza))) +
+									(SpessoreMAX * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza)))-SpessoreMAX);
+END_IF
+
+(* Calcolo degli ingombri massimi nelle varie dimensioni *)
+IngombroMaxX_Pos^ := MAX(IngombroX_Pos^,IngombroDestinazioneX_Pos^);//Ingombro MASSIMO della pinza nella Metà POSITIVA della pinza lungo X
+IngombroMaxY_Pos^ := MAX(IngombroY_Pos^,IngombroDestinazioneY_Pos^);//Ingombro MASSIMO della pinza nella Metà POSITIVA della pinza lungo Y
+
+IngombroMaxX_Neg^ := MAX(IngombroX_Neg^,IngombroDestinazioneX_Neg^);//Ingombro MASSIMO della pinza nella Metà NEGATIVA della pinza lungo X
+IngombroMaxY_Neg^ := MAX(IngombroY_Neg^,IngombroDestinazioneY_Neg^);//Ingombro MASSIMO della pinza nella Metà NEGATIVA della pinza lungo Y
+
+IngombroMaxZ_Pos^ := MAX(IngombroZ_Pos^,IngombroDestinazioneZ_Pos^);//Ingombro MASSIMO della pinza lungo Z Positivo (sopra al fulcro)
+IngombroMaxZ_Neg^ := MAX(IngombroZ_Neg^,IngombroDestinazioneZ_Neg^);//Ingombro MASSIMO della pinza lungo Z Negativo (sotto al fulcro)
+
+//IngombroMaxZ_Pos^ := MIN( MAX(IngombroZ_Pos^,IngombroDestinazioneZ_Pos^),(LarghezzaMAX/2)+ SpessoreMAX);//Ingombro MASSIMO della pinza lungo Z Positivo (sopra al fulcro)
+//IngombroMaxZ_Neg^ := MIN( MAX(IngombroZ_Neg^,IngombroDestinazioneZ_Neg^),(LarghezzaMAX/2)+ SpessoreMAX);//Ingombro MASSIMO della pinza lungo Z Negativo (sotto al fulcro)
+
+
+
+
+/////////////////////////////
+
+IngombroY_Pos_0^ := ABS(MIN(SpessoreMAX * SIN(deg_to_rad(-90)),DimTraveVerticale/2));
+IngombroY_Neg_180^ := ABS(MAX(SpessoreMAX * SIN(deg_to_rad(-90+180)),DimTraveVerticale/2));
+
+IngombroY_Neg_0^ := ABS(MAX(SpessoreMAX * SIN(deg_to_rad(-90)),DimTraveVerticale/2));
+IngombroY_Pos_180^ := ABS(MIN(SpessoreMAX * SIN(deg_to_rad(-90+180)),DimTraveVerticale/2));
+								
+ScostamentoVerticalePuntoCentrale^ := ABS(SpessoreMAX * COS(deg_to_rad(-90+AngoloRotazioneDestinazionePinza))-SpessoreMAX);
+																
+TFCalcoliIngombroPinza := TRUE;]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcoliIngombroPinza">
+      <LineId Id="307" Count="0" />
+      <LineId Id="1083" Count="0" />
+      <LineId Id="1081" Count="0" />
+      <LineId Id="309" Count="2" />
+      <LineId Id="771" Count="2" />
+      <LineId Id="312" Count="17" />
+      <LineId Id="959" Count="0" />
+      <LineId Id="955" Count="3" />
+      <LineId Id="330" Count="1" />
+      <LineId Id="333" Count="4" />
+      <LineId Id="339" Count="14" />
+      <LineId Id="786" Count="0" />
+      <LineId Id="782" Count="3" />
+      <LineId Id="354" Count="33" />
+      <LineId Id="961" Count="2" />
+      <LineId Id="388" Count="0" />
+      <LineId Id="791" Count="1" />
+      <LineId Id="389" Count="0" />
+      <LineId Id="630" Count="8" />
+      <LineId Id="767" Count="0" />
+      <LineId Id="748" Count="12" />
+      <LineId Id="1200" Count="1" />
+      <LineId Id="761" Count="5" />
+      <LineId Id="645" Count="8" />
+      <LineId Id="726" Count="0" />
+      <LineId Id="655" Count="1" />
+      <LineId Id="727" Count="0" />
+      <LineId Id="769" Count="0" />
+      <LineId Id="768" Count="0" />
+      <LineId Id="728" Count="7" />
+      <LineId Id="1021" Count="0" />
+      <LineId Id="736" Count="3" />
+      <LineId Id="1017" Count="0" />
+      <LineId Id="1020" Count="0" />
+      <LineId Id="740" Count="5" />
+      <LineId Id="664" Count="0" />
+      <LineId Id="770" Count="0" />
+      <LineId Id="665" Count="8" />
+      <LineId Id="1143" Count="1" />
+      <LineId Id="1142" Count="0" />
+      <LineId Id="1139" Count="2" />
+      <LineId Id="892" Count="0" />
+      <LineId Id="895" Count="6" />
+      <LineId Id="451" Count="0" />
+      <LineId Id="468" Count="0" />
+      <LineId Id="841" Count="0" />
+      <LineId Id="221" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

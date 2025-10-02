@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TFUpsVariables" Id="{ee1035bd-3a08-48fd-8038-eb654c7e8805}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL
+	
+	(* UPS *)
+	fbUPS			: FB_S_UPS_CX51x0;			(* UPS-FB instance *)
+					(* Default Values of FB_S_UPS_CX51x0-Inputs:
+						sNetID 			:= '' ==> local netid
+						iPLCPort 		:= AMSPORT_R0_PLC_RTS1 ==> 801 = 1st Runtime System
+						iUPSPort		:= 16#588 ==> Port for reading Power State of UPS
+						tTimeout 		:= DEFAULT_ADS_TIMEOUT ==> 5S
+						eUpsMode 		:= eSUPS_WrPersistData_Shutdown ==> writing persistent data + shutdown
+						ePersistentMode := SPDM_2PASS ==> All data is from same plc cycle, cycletime exceeds possible. Plc stops with the shutdown, a few cycles after writing persistent data. 
+						tRecoverTime 	:= T#10s ==> 10s power to recover from short power failure before eSUPS_PowerOK is reported (in mode eSUPS_WrPersistData_NoShutdown/eSUPS_CheckPowerStatus)
+					*)
+	eUpsMode		: E_S_UPS_Mode	:= eSUPS_WrPersistData_Shutdown; (* UPS mode (writing persistent data + shutdown) *)
+
+END_VAR
+
+VAR_GLOBAL PERSISTENT
+	
+	iPowerCounter			: UDINT;			(* Power Counter *)
+	iPowerFailureCounter	: UDINT;			(* Power Failures Counter *)
+	
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

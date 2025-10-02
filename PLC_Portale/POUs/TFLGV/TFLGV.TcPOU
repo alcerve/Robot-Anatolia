@@ -1,0 +1,404 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFLGV" Id="{4e1cd762-fdf8-46e4-9a35-5227e49a4419}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFLGV
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	PX_WorkArea : ARRAY [1..MAXAREA] OF BOOL;
+	LGV_REQIN : BOOL;
+	LGV_FOOTPRINT : BOOL;
+	LGV_ReqIN_HW : BOOL;
+	LGV_Footprint_HW : BOOL;
+	LGV_ReqIN_SW : BOOL;
+	LGV_Footprint_SW : BOOL;
+	LGV_HW_SW_SWITCH : BOOL;
+	MachineCmd : POINTER TO CommandBuffer;
+	MachineCmdExe : POINTER TO CommandExe;
+	MachineState : POINTER TO State;
+	MachineError : POINTER TO Error;
+	RobotError : POINTER TO Error;
+	MachineMode : POINTER TO Mode;
+	Power : BOOL;
+	TimeBase : REAL;
+	GateAccessActive : BOOL;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	ModuloAsp  : POINTER TO	TFModulePalletizer_Aspirazione;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	SecurityGateStatus : BOOL;
+	ControlGateSecurity : POINTER TO BOOL;
+	TilterPhaseStopDone : BOOL;	
+END_VAR
+VAR_OUTPUT
+	LGV_Req : BOOL;
+	LGV_LetIn : BOOL;
+	LGVAccessLamp : BOOL; (* Access Lamp: 	OFF = No Access Consent,
+										ON = Access Consent,
+										FLASH (1sec) = Access Requested (Machine Stopping)
+										FLASH (0.5sec) = Waiting Restart
+										FLASH (0.1sec) = Access Error *)
+										
+	LGVAccesActive : BOOL; (* Gate Acces Sequence in Execution *)
+	ClearWorkAreaLGVDone : BOOL;	
+	TilterPhaseStop : BOOL;	
+	LGVErrorCode : UINT;
+	LGVResetHSKSUPNAV : BOOL;	
+	LGV_ResetSW_RicIng : BOOL;
+	LGVAccessOK : BOOL; (* Segnalazione accesso consentito *)
+	ErrAck : BOOL; //Error Acknowledge Safaty
+	ErrAckDriver : BOOL; //Error Acknowledge Drive
+END_VAR
+VAR
+	LGVCase : INT;
+	j : UINT;
+	k : UINT; 
+	
+	ParametersArray : ParametersArray;
+	//LGVAccessOK : BOOL;
+	LGVAccessERROR : BOOL;	
+	LGVAccessReqIN : BOOL;
+	MachineWasRunning : BOOL;
+	Timer100 : REAL;
+	Timer200 : REAL;
+	Timer1000 : REAL;
+	Clock100 : BOOL;
+	Clock200 : BOOL;
+	Clock1000 : BOOL;
+	TimerMachineWaitRunning : REAL;
+	TimerPowerOFF : REAL;
+	TimeoutControlloBarriereSicurezza : REAL;
+	TimerOkBarriereSicurezze : REAL;
+	TimeoutAnomaliaConsensi : REAL;
+	TimerRitardoPower:REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFTimerCall(ADR(Timer100),TimeBase);
+TFTimerCall(ADR(Timer200),TimeBase);
+TFTimerCall(ADR(Timer1000),TimeBase);
+TFTimerCall(ADR(TimerMachineWaitRunning),TimeBase);
+TFTimerCall(ADR(TimerPowerOFF),TimeBase);
+TFTimerCall(ADR(TimeoutControlloBarriereSicurezza),TimeBase);
+TFTimerCall(ADR(TimerOkBarriereSicurezze),TimeBase);
+TFTimerCall(ADR(TimeoutAnomaliaConsensi),TimeBase);
+TFTimerCall(ADR(TimerRitardoPower),TimeBase);
+
+IF LGV_HW_SW_SWITCH THEN
+	LGV_REQIN := LGV_ReqIN_HW;
+	LGV_FOOTPRINT := LGV_Footprint_HW;
+ELSE	
+	LGV_REQIN := LGV_ReqIN_SW;
+	LGV_FOOTPRINT := LGV_Footprint_SW;
+END_IF
+
+LGV_Req := FALSE;
+FOR j:=1 TO MAXAREA DO
+	IF WorkAreaState^[j].State = WORKAREA_STATE_OCCUPIED_LGVREQ AND WorkArea^[j].Enable = 1 AND  WorkAreaState^[j].LGV_Req = 1 THEN
+		LGV_Req := TRUE;
+	END_IF
+END_FOR
+
+CASE LGVCase OF
+
+	(* Case 0 *)
+	0:	LGVErrorCode := 0;
+		LGVResetHSKSUPNAV := false;
+		LGVAccesActive := FALSE;
+		LGVAccessOK := FALSE;
+		LGVAccessReqIN := FALSE;
+		TilterPhaseStop := FALSE;
+		//LGV_Req := FALSE;
+		(*FOR j:=1 TO MAXAREA DO
+			IF WorkAreaState^[j].State = WORKAREA_STATE_OCCUPIED_LGVREQ AND WorkArea^[j].Enable = 1 AND  WorkArea^[j].LGV_Req = 1 THEN
+				LGV_Req := TRUE;
+			END_IF
+		END_FOR*)
+		
+		// Command Case = 15 is WorkFlowsRunning after Homing WorkFlow NOTES: State=DO_RUN+1 it will be better!!!!
+		MachineWasRunning := MachineCmdExe^.Code = CmdDO AND MachineCmdExe^.CmdCase = 15 AND MachineCmdExe^.PhaseStopRequest = 0 AND MachineCmdExe^.RapidStopRequest = 0;
+		TFTimerSet(ADR(TimerMachineWaitRunning),1000,NOT MachineWasRunning);
+		
+		IF LGV_REQIN AND LGV_Req AND NOT GateAccessActive AND MachineWasRunning AND TFTimerDone(ADR(TimerMachineWaitRunning)) THEN
+			LGVAccesActive := TRUE;
+			LGVAccessERROR := FALSE;
+			LGVAccessReqIN := TRUE;
+			(* Machine Was Running if CmdDO and No Stop Request *)
+			LGVCase := LGVCase + 1;
+		END_IF	
+			
+	(* Case 1 - Phase Stop *)
+	1:	TFParametersArrayClear(ADR(ParametersArray));
+		TFCommandSend(CmdSTOPPHASE,ParametersArray,MachineCmd^);
+		//TilterPhaseStop := TRUE;
+		LGVCase := LGVCase + 1;
+		
+	(* Case 2 - Cmd DO END *)	
+	2:	IF ((TFStateCodeGet(MachineState^) = StateDO_END AND NOT
+			TFIsModuleError(MachineError^)) OR
+			MachineCmdExe^.Code = CmdNOP)  THEN
+			TilterPhaseStop := TRUE;
+			TFTimerSet(ADR(TimerPowerOFF),1000,TRUE);
+			LGVCase := LGVCase + 1;
+		ELSIF TFIsModuleError(MachineError^) OR 
+			ModuleAX_X^.Error.Code <> 0 OR
+			ModuleAX_Y^.Error.Code <> 0 OR
+			ModuleAX_Z^.Error.Code <> 0 OR
+			ModuleAX_K^.Error.Code <> 0 OR
+			ModuleAX_J^.Error.Code <> 0 OR
+			ModuloAsp^.Error.Code <> 0 THEN
+			LGVCase := 0; 
+		END_IF
+
+	(* Case 3 - Power Off *)
+	3:	IF TFTimerDone(ADR(TimerPowerOFF)) AND TilterPhaseStopDone THEN
+			TFParametersArrayClear(ADR(ParametersArray));
+			ParametersArray.Parameters[0] := '0';
+			TFCommandSend(CmdPOWER,ParametersArray,MachineCmd^);
+			LGVCase := LGVCase + 1;
+		END_IF	
+
+	(* Case 4 - Power Off OK *)	
+	4:	(*IF TFStateCodeGet(MachineState^) = StatePOWER_END OR
+			TFIsModuleError(MachineError^) THEN
+			LGVCase := LGVCase + 1;
+		END_IF*)
+		IF (TFStateCodeGet(MachineState^) = StatePOWER_END)AND// OR NOT Power) AND
+			NOT TFIsModuleError(MachineError^) AND 
+			NOT ModuleAX_X^.Error.Code <> 0 AND 
+			NOT ModuleAX_Y^.Error.Code <> 0 AND
+			NOT ModuleAX_Z^.Error.Code <> 0 AND
+			NOT ModuleAX_K^.Error.Code <> 0 AND
+			NOT ModuleAX_J^.Error.Code <> 0 AND
+			NOT ModuloAsp^.Error.Code <> 0  AND 
+			NOT GateAccessActive  AND TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,Mission) THEN
+			LGVCase := LGVCase + 1;
+		ELSIF NOT LGV_REQIN THEN
+			LGVCase := 6;
+		ELSIF TFIsModuleError(MachineError^) OR 
+			 (NOT TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,Mission) AND (TFStateCodeGet(MachineState^) = StatePOWER_END OR NOT Power)) THEN
+			LGVCase := 0;
+		END_IF
+		TFTimerSet(ADR(TimeoutAnomaliaConsensi),120000,TRUE);
+		
+	(* Case 5  LGV IN *)
+	5:	
+		IF LGV_REQIN AND LGV_Req AND NOT TFIsModuleError(MachineError^)THEN
+			LGV_LetIn := TRUE;
+			LGVAccessReqIN := FALSE;
+			LGVAccessOK := TRUE;
+			TFTimerSet(ADR(TimeoutAnomaliaConsensi),300000,TRUE);
+		ELSIF TFIsModuleError(MachineError^) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		ELSE
+			LGV_LetIn := FALSE;
+			LGVAccessOK := FALSE;
+			LGVAccessReqIN := FALSE;
+		END_IF
+		
+		IF NOT LGV_REQIN AND NOT LGV_FOOTPRINT THEN
+			LGV_LetIn := FALSE;
+			LGVCase := LGVCase + 1;
+		ELSIF TFTimerDone(ADR(TimeoutAnomaliaConsensi)) AND ((LGV_REQIN AND NOT LGV_FOOTPRINT) OR (NOT LGV_REQIN AND LGV_FOOTPRINT)) THEN
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_ANOMALIA_CONSENSI_SUPNAVETTE;
+			LGVCase := 0;
+		ELSIF TFIsModuleError(MachineError^) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF	
+		TFTimerSet(ADR(TimeoutControlloBarriereSicurezza),20000,TRUE);
+
+	(* Case 6 - Clear / Setup WorkArea *)
+	6:	
+		FOR k:= 1 TO 6 DO
+			IF NOT PX_WorkArea[k] (*OR 
+				(WorkAreaState^[k].State = WORKAREA_STATE_OCCUPIED_LGVREQ AND WorkArea^[k].Enable = 1 AND  WorkArea^[k].LGV_Req = 1)*) THEN
+				// Pulisco piazzola in seguito ad estrazione
+				TFClearWorkArea(WorkArea,WorkAreaState,k);
+				I_PHPresenzaPalletVirtuale[k]:=FALSE;
+			ELSE
+				// preparo la piazzola solo se di tipo catasta pallet o layer	
+				//IF WorkArea^[k].Typology = TYPOLOGY_STACK OR WorkArea^[k].Typology = TYPOLOGY_LAYER THEN
+				//	TFClearWorkAreaStack(WorkArea,WorkAreaState,k);
+				;//END_IF
+			END_IF
+		END_FOR
+		LGVCase := LGVCase + 1;	
+		
+		
+		IF TFIsModuleError(MachineError^) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF
+	
+	7:
+		FOR k:= 6 TO MAXAREAPRESENT DO
+			IF NOT PX_WorkArea[k] (*OR 
+				(WorkAreaState^[k].State = WORKAREA_STATE_OCCUPIED_LGVREQ AND WorkArea^[k].Enable = 1 AND  WorkArea^[k].LGV_Req = 1)*) THEN
+				// Pulisco piazzola in seguito ad estrazione
+				TFClearWorkArea(WorkArea,WorkAreaState,k);
+				I_PHPresenzaPalletVirtuale[k]:=FALSE;
+			ELSE
+				// preparo la piazzola solo se di tipo catasta pallet o layer	
+				//IF WorkArea^[k].Typology = TYPOLOGY_STACK OR WorkArea^[k].Typology = TYPOLOGY_LAYER THEN
+				//	TFClearWorkAreaStack(WorkArea,WorkAreaState,k);
+				;//END_IF
+			END_IF
+		END_FOR
+		ClearWorkAreaLGVDone := TRUE;
+		LGVAccessOK := FALSE;
+		LGVCase := 10;	
+		TFTimerSet(ADR(TimerOkBarriereSicurezze),1000, TRUE);	
+		IF TFIsModuleError(MachineError^) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF
+		
+	(* Case 7 - Power ON *)
+	10:	//TFTimerSet(ADR(TimerOkBarriereSicurezze),5000, NOT SecurityGateStatus);
+		IF NOT GateAccessActive AND TFTimerDone(ADR(TimerOkBarriereSicurezze))  THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			LGVCase := LGVCase + 1;	
+		ELSIF TFTimerDone(ADR(TimeoutControlloBarriereSicurezza)) THEN
+			LGVErrorCode := ErrMACHINEPALLETIZER_BARRIEREOCCUPATE_LGVREQ_OFF;
+			LGVCase := 0;
+		ELSIF TFIsModuleError(MachineError^) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF
+(**************************************************************************)
+(**************** Error Acknowledge Safety + AZIONAMENTI ***************************)
+	11:
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAck := TRUE;
+			LGVCase := LGVCase + 1;	
+		END_IF
+		
+	12:	
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAck := FALSE;
+			LGVCase := LGVCase + 1;	
+		END_IF
+
+	13:
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAckDriver := TRUE;
+			LGVCase := LGVCase+1;
+		END_IF
+		
+	14:
+		IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			TFTimerSet(ADR(TimerRitardoPower),100,TRUE);
+			ErrAckDriver := FALSE;
+			LGVCase := LGVCase+1;
+		END_IF
+
+	15: IF TFTimerDone(ADR(TimerRitardoPower)) THEN
+			LGVCase := 20;
+		END_IF
+(**************************************************************************)
+(**************************************************************************)		
+	(* Case 20 - Power ON *)
+	20:	//TFTimerSet(ADR(TimerOkBarriereSicurezze),5000, NOT SecurityGateStatus);
+		IF NOT GateAccessActive AND TFTimerDone(ADR(TimerOkBarriereSicurezze))  THEN
+			TFParametersArrayClear(ADR(ParametersArray));
+			ParametersArray.Parameters[0] := '1';
+			TFCommandSend(CmdPOWER,ParametersArray,MachineCmd^);
+			LGV_ResetSW_RicIng := TRUE;
+			LGVCase := LGVCase + 1;	
+		ELSIF TFTimerDone(ADR(TimeoutControlloBarriereSicurezza)) THEN
+			LGVErrorCode := ErrMACHINEPALLETIZER_BARRIEREOCCUPATE_LGVREQ_OFF;
+			LGVCase := 0;
+		END_IF	
+			
+	(* Case 21 - Power On OK *)
+	21:	IF TFStateCodeGet(MachineState^) = StatePOWER_END OR
+			TFIsModuleError(MachineError^) THEN
+			LGV_ResetSW_RicIng := FALSE;
+			LGVCase := LGVCase + 1;	
+		END_IF
+		
+	(* Case 22 - Cmd DO *)
+	22:	
+		IF MachineWasRunning AND
+			MachineMode^.Auto AND
+			NOT MachineMode^.StopRequest AND
+			NOT MachineMode^.RapidStopRequest AND NOT GateAccessActive THEN
+			(*AND (SecurityGateStatus OR NOT ControlGateSecurity^*) 
+			TFParametersArrayClear(ADR(ParametersArray));
+			TFCommandSend(CmdDO,ParametersArray,MachineCmd^);
+			TilterPhaseStop := FALSE;
+		END_IF
+		LGVCase := 0;
+	
+	ELSE
+		LGVAccessERROR := TRUE;
+		LGVCase := 0;
+	
+END_CASE
+
+(* Clocks *)
+IF TFTimerDone(ADR(Timer100)) THEN
+	TFTimerSet(ADR(Timer100),100,TRUE);
+	Clock100 := NOT Clock100;
+END_IF
+IF TFTimerDone(ADR(Timer200)) THEN
+	TFTimerSet(ADR(Timer200),200,TRUE);
+	Clock200 := NOT Clock200;
+END_IF
+IF TFTimerDone(ADR(Timer1000)) THEN
+	TFTimerSet(ADR(Timer1000),1000,TRUE);
+	Clock1000 := NOT Clock1000;
+END_IF
+
+(* Access Lamp *)
+LGVAccessLamp := ((LGVAccessOK AND Clock200) OR
+				//(AccessReqOUT AND Clock500) OR
+				(LGVAccessReqIN AND Clock1000))AND
+				NOT LGVAccessERROR OR (LGVAccessERROR AND Clock100);
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFLGV">
+      <LineId Id="2277" Count="316" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

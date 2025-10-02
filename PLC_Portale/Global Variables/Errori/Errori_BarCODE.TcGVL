@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="Errori_BarCODE" Id="{4abf5bee-ce43-46d4-af3b-575ce76fbfe5}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+	(* Errori BARCODE - CLASSE 6000 *)
+	Err_TimeOUT_CmdBARCODE 	: INT := 6000;
+	Err_TimeOUT_Lettura		: INT := 6001;
+
+	ErrBARCODE_START : UINT := 13000;
+	
+	ErrBARCODE_1 : UINT:= ErrBARCODE_START +1;//Barcode non pronto, verficare connessione
+	ErrBARCODE_2 : UINT:= ErrBARCODE_START +2;//Lettura Multipla, dato non valido
+	ErrBARCODE_3 : UINT:= ErrBARCODE_START +3;//Timeout comando, anomalia nel sistema Barcode-FTC
+	ErrBARCODE_4 : UINT:= ErrBARCODE_START +4;//Errore misurazione, lunghezza troppo corta
+	ErrBARCODE_5 : UINT:= ErrBARCODE_START +5;//Barcode non letto
+	ErrBARCODE_6 : UINT:= ErrBARCODE_START +6;//Scheduler ID mancante
+	ErrBARCODE_7 : UINT:= ErrBARCODE_START +7;//Barcode già transitato/letto
+	ErrBARCODE_8 : UINT:= ErrBARCODE_START +8;//Barcode non presente su DATABASE
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

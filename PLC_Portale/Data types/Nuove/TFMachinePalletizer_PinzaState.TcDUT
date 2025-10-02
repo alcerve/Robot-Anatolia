@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_PinzaState" Id="{0d397b78-d423-431b-a541-931cb147ede8}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_PinzaState :
+STRUCT
+	LatoDxAperto : BOOL; //Indica che la prolunga DX della pinza è aperta
+	LatoSxAperto : BOOL; //Indica che la prolunga SX della pinza è aperta
+	LatoDxChiuso : BOOL; //Indica che la prolunga DX della pinza è chiusa
+	LatoSxChiuso : BOOL; //Indica che la prolunga SX della pinza è chiusa
+	
+	LatoSxPiastrellaInPresa : BOOL; //Indica che sul lato SX ho in presa la piastrella
+	LatoDxPiastrellaInPresa : BOOL; //Indica che sul lato DX ho in presa la piastrella
+
+	LatoSxFaldaInPresa 		: BOOL; //Indica che sul lato SX ho in presa la FALDA
+	LatoDxFaldaInPresa 		: BOOL; //Indica che sul lato DX ho in presa la FALDA
+	
+	RotazioneSbloccata 	: BOOL; //Indica che la Rotazione lungo z è sbloccata
+	RotazioneBloccata	: BOOL; //Indica che la rotazione lungo z è bloccata
+	
+	ElementoPrelevato : BOOL;//Indica che l'elemento è stato prelevato
+	
+	LetturaFTC0 	: REAL;
+	LetturaFTC180 	: REAL;
+	
+	LetturaFTC0_2 	: REAL;
+	LetturaFTC180_2 : REAL;
+	
+	PianoInPresa : BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_HskFromSupervisor" Id="{83eaba78-72bf-4cb4-acfa-989efe5a00c1}">
+    <Declaration><![CDATA[TYPE ST_HskFromSupervisor :
+STRUCT
+	(* STATO RICHIESTA VEICOLO POSTAZIONE-MACCHINA *)
+	InfeedRequest			: BOOL;	// Richiesta ingresso DA LGV, TRUE= LGV è pronto per ingresso su posizione
+	Encumbrance				: BOOL;	// LGV in ingombro nella postazione
+	WD						: INT; 	//Whatc Dog comunicazione
+
+   	//InfeedRequest_HW		: BOOL;	// FTC Richiesta ingresso DA LGV, TRUE = LGV è pronto per ingresso su posizione
+	//OperationState 			: INT; 	// Indica il Tipo dell'operazione svolta dalla navetta: 0=Nessuna Operazione in corso
+									// 1 = Prelievo in corso (valorizzato per tutta la operazione)
+									// 2 = Deposito in corso (valorizzato per tutta la operazione)
+	//OperationEnd 			: BOOL; // Indica la fine dell'operazione svolta dalla navetta: 1 = Operazione conclusa
+									// LGV attenda la (OperationEnd_Echo)  che conferma di fine operazione da parte del PLC 
+									// alla ricezione della ECHO, PC-LGV azzera : Stato Operazione =0  , Fine OPerazione =0
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

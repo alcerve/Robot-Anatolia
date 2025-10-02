@@ -1,0 +1,1844 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{F5E1106F-7BEA-4E24-8B06-B4FF587F31D3}</ProjectGuid>
+    <Name>PLC_Portale</Name>
+    <Application>{df9583fe-ae2c-495f-a004-2f7f6cdfa423}</Application>
+    <TypeSystem>{48345e71-32d7-4a7c-8957-845ac85e8156}</TypeSystem>
+    <Implicit_Task_Info>{0930d6a0-35c4-49ff-9681-48aec4b94082}</Implicit_Task_Info>
+    <Implicit_KindOfTask>{9e6c8d24-f1e6-42f2-aa71-aa7820ddd8f9}</Implicit_KindOfTask>
+    <Implicit_Jitter_Distribution>{7acdf815-7be5-4220-b5b5-749b4de6d939}</Implicit_Jitter_Distribution>
+    <LibraryReferences>{fed84379-d046-4864-a57d-63b54290bccd}</LibraryReferences>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Title>TFPalletizer</Title>
+    <CombineIds>false</CombineIds>
+    <Released>false</Released>
+    <Author>Pugnaghi</Author>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="Data types" />
+    <Folder Include="Data types\DatiVari" />
+    <Folder Include="Data types\DatiVari\EAP" />
+    <Folder Include="Data types\DatiVari\Workorder" />
+    <Folder Include="Data types\Enum\Formatura" />
+    <Folder Include="Data types\Enum\Trasporti" />
+    <Folder Include="Data types\LGV" />
+    <Folder Include="Data types\Enum" />
+    <Folder Include="Data types\AlbertoPruevas" />
+    <Folder Include="Data types\Nuove" />
+    <Folder Include="Data types\Picking" />
+    <Folder Include="Data types\Programmi Movimento\Enum Programmi" />
+    <Folder Include="Data types\Scambio Dati Trasporti" />
+    <Folder Include="Data types\Strutture Aggiornate" />
+    <Folder Include="Data types\Programmi Movimento" />
+    <Folder Include="Data types\TF" />
+    <Folder Include="Data types\TF\Aggiornate_20230504" />
+    <Folder Include="Data types\TF\Handling" />
+    <Folder Include="Data types\TF\Barcode" />
+    <Folder Include="Data types\TF\Rulliere" />
+    <Folder Include="Data types\TF\Palletizer" />
+    <Folder Include="Data types\TF\Rulliere\Macchina" />
+    <Folder Include="Data types\TF\Rulliere\Moduli" />
+    <Folder Include="Data types\TF\Rulliere\Moduli\Cinghia" />
+    <Folder Include="Data types\TF\Rulliere\Moduli\RullieraPallet" />
+    <Folder Include="Global Variables">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Folder>
+    <Folder Include="Global Variables\Configurazione Impianto">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Folder>
+    <Folder Include="Global Variables\Errori">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Folder>
+    <Folder Include="Global Variables\BarCode">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Folder>
+    <Folder Include="Global Variables\TFVariable">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Folder>
+    <Folder Include="POUs\Check" />
+    <Folder Include="POUs\TFCicliDiLavoro" />
+    <Folder Include="POUs\TFCicliDiLavoro\Lastre" />
+    <Folder Include="POUs\TFCicliDiLavoro\Lastre\Cicli Depallettizzatore" />
+    <Folder Include="POUs\TFCicliDiLavoro\Lastre\Cicli di Deposito Lastre" />
+    <Folder Include="POUs\TFCicliDiLavoro\Lastre\Cicli di Prelievo Lastre" />
+    <Folder Include="POUs\TFCicliDiLavoro\ProgrammiMovimento" />
+    <Folder Include="POUs\TFMachines\Utility" />
+    <Folder Include="POUs\TFModules\DataBase">
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Folder>
+    <Folder Include="POUs\TFModules\Misurazione Ingresso" />
+    <Folder Include="POUs\TFModules\Misurazione Ingresso\Keyence" />
+    <Folder Include="POUs\TFModules\Utility" />
+    <Folder Include="POUs\TFPalletizerDataTF\FunzionePerNuovaGestioneTrasporti" />
+    <Folder Include="POUs\TFPalletizerDataTF\NON_USATE" />
+    <Folder Include="POUs\TFPalletizerDataTF\Utility Varie" />
+    <Folder Include="POUs\TFPalletizerData\NON_USATE" />
+    <Folder Include="POUs\TFPalletizerData_Lastre" />
+    <Folder Include="POUs\TFPalletizerData_Lastre\Formatura" />
+    <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\Utility" />
+    <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\Utility\CSV read_write in text mode" />
+    <Folder Include="POUs\TFGateAccess" />
+    <Folder Include="POUs\TFPalletizerDataTF" />
+    <Folder Include="POUs" />
+    <Folder Include="POUs\TFModules\Moduli TF" />
+    <Folder Include="POUs\TFLGV" />
+    <Folder Include="POUs\TFVisuText" />
+    <Folder Include="POUs\TFPalletizerData" />
+    <Folder Include="POUs\TFPrograms" />
+    <Folder Include="POUs\TFMachines" />
+    <Folder Include="POUs\TFModules" />
+    <Folder Include="Visualizations">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Folder>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Data types\AlbertoPruevas\Es_Ingombro_PorPosicion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\ProgramaEjecucion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPAxeState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPCylinderState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPMachineState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPModuleState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPOvemStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPPinzaVenstoseStateComplete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPPinzaVentoseDeviceState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\EAP\ST_EAPStatoPortaleVisu.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\e_StatoMacchinaWMS.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\e_SupportTypeAriostea.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\ST_HskFromSupervisor.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\ST_HskToSupervisor.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\ST_StatisticData.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\ST_SupervisorData.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\Workorder\ST_DataWorkArea.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\Workorder\ST_DimensionElement.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\Workorder\ST_LayerData.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\Workorder\ST_SlabData.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\Workorder\ST_SupportData.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\Workorder\ST_WorkOrder.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\DatiVari\Workorder\ST_WorkOrder_Premium.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Disposizione_FTC_WA.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Disposizione_Postazioni.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_PosizionePinza.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_RiferimentoPostazione.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_OrdinamentoPostazione.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_StatoWorkOrder.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Apprendimento.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_ElementoLista.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Missione.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_PickPoint.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Pareggiatura_Lastra.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_LetturaBarCode.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Prodotto_Su_PickPoint.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Prelievo.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Ingombro_EE.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Layer.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_Prodotto_Generico.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_WAManager.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Priorita_PickPoint.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_WorkArea.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Stato_ListaDiProduzione.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_TipologiaAreaLaser.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipologia_Rul_Prel.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_Elemento_Da_Lavorare.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_Magazzino_Falde.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_ChiusuraAsseK.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_Funzionamento.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_WorkArea.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_Ribaltino.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_PickPoint.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_Falda.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_Pallet.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_PresaEndEffector.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Tipo_Traiettoria.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\e_Verso_Pallettizzatore.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\Formatura\e_TipologiaDeposito.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\Trasporti\e_ElementZone.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\Trasporti\e_PosizioneRullieraMobile.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\Trasporti\e_StatoCentratura.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Enum\Trasporti\e_TipoMacchinaTrasporti.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\LGV\e_Tipo_Richiesta_LGV.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\LGV\e_Stato_Richiesta_LGV_1.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\LGV\LGV_Stato_Formatura.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\LGV\LGV_Stato_Pallettizzatore.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\LGV\LGV_Stato_Postazione.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\LGV\e_Stato_Operazione_LGV.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\ST_OffsetAllDirection.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_ListaProduzione_WAM_HMI.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkAreaTransport_State.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPlacePointToPalletizer.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPlacePointFromPalletizer.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Picking\e_TypologySupDataPicking.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Picking\ST_DataManualPicking.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Picking\ST_WorkAreaDataPicking.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFModulePortaleStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\StatoPostazioneHMI.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFCodiciPerFormatura.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFError_WAM.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_DataElementMP.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_PinzaVentoseManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_ApprendimentoQuota.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_CoordinateApprendimento.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_LatoApprendimento.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_DataElement.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_EndEffector.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_BarCode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_ListaProduzione.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_ListaProduzione_WAM.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_OffsetElement.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_PickPlaceParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_PinzaState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMAchinePalletizer_PinzaVentoseStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_PinzaVentose_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_PlaceElement.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_PlaceElementList.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPickPointOffset.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPickPoint_State.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPickPointRoller_State_DaLinea.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPickPointRoller_State_ALinea.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPickPointStore_State.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMachinePalletizer_WorkPickPointSlab.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TF_CylinderState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFMchinePalletizer_PinzaVentose_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Nuove\TFPalletizerModules.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\AxHomingParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Ax_Palletizer_Basic_Parameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Ax_Palletizer_Nominal_Parameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Enum Programmi\e_ProgrammiMovimentoX.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Enum Programmi\e_ProgrammiMovimentoJ.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Enum Programmi\e_ProgrammiMovimentoY.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Enum Programmi\e_ProgrammiMovimentoZ.TcTLEO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\GestioneEncoderEsterno.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\MissionStateCase.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Module_Palletizer_Aspirazione_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Module_Palletizer_Aspirazione_ManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Module_Palletizer_AX_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Module_Palletizer_AX_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Ax_Program_Parameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Descrittore_Programma.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Ax_Palletizer_Parameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Module_Palletizer_Aspirazione_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\OffsetSicurezzaIngombro.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\OffsetDistacco.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Offset_Pass_Mode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Offset_Prelievi_Lenti.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Offeset_Apprendimento.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Offset_Sicurezza.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Offset_Sicurezza_Anticipo_Movimenti.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Overide_Dinamico.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\ProgrammaLog.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Stato_Ciclo_Lavoro.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\StrutturaGenericaQuotaAssi.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFDimensioniPinza.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFMachinePalletizer_ModuleState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFMachinePalletizer_MachineState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFMachinePalletizer_VelocityOverride_TF.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFModulePalletizerRobot_Point_TF.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFModulePalletizerSTATUS_TF.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFTraiettoria.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\TFWorkAreaManager.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Programmi Movimento\Work_PickPoint_Dimension.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Scambio Dati Trasporti\DUT_ArrayPacchi.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Scambio Dati Trasporti\DUT_Lista_Pacchi_In_Pila.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Scambio Dati Trasporti\DUT_Struttura_Dati_Pacco.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\StatoLineaDepal.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_FormingForSlab.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_Layer.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_Mission.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_Pallet.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_PalletSlabOld.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_WorkAreaState_VECCHIO.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_WorkAreaState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_WorkArea.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_WorkPickPoint.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_WorkArea_VECCHIO.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\Strutture Aggiornate\TFMachinePalletizer_FormingPack.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TFDatiDaLineaAPal.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TFSlab.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_BarcodeReaderReply.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_BarcodeReaderRequest.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_MachinePalletizerAxeManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_MachinePalletizerAxeState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_MachinePalletizerMachineState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_MachinePalletizerModuleState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_MachinePalletizerPinzaDeviceState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_MachinePalletizerPinzaStateComplete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_MachinePalletizerPinzaVentoseManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Aggiornate_20230504\ST_StatoPostazioneHMI.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\BarcodeStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\InputDataLogic.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\InputKeyence.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\OutputDataLogic.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\OutputKeyence.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\StatusDataLogic.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\ST_ManCmdBarcode.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Barcode\TFDeviceBCStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Handling\TFHandlingPack.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_AxeState_TF.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_AxeState_weintek.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_GatesAccess.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_ManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_ParametersFromHMI.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkAreaOffset.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkAreaSort.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkAreaZone.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkPickPointState_OLD.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkPPOffset.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_Zone.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFModulePalletizerRobot_TCPPar.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFModulePalletizerRobot_Point.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFModulePalletizerRobot_ManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_AxeParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_AxeManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_AxeState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFModulePalletizerRobot_AxisPar.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_Forming_OLD.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_FormingPack_OLD.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_Layer_OLD.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_Pallet_OLD.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_VelocityOverride.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkArea_OLD.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkFootprint.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkPickPoint_OLD.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFMachinePalletizer_WorkSpace.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFModulePalletizerRobot_Status.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFModulePalletizerRobot_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Palletizer\TFModulePalletizerRobot_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Macchina\TFMachineTransportIN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Macchina\TFMachineTransportManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Macchina\TFMachineTransportOUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\Cinghia\TFCinghiaManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\Cinghia\TFCinghia_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\Cinghia\TFBancoScelta_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\Cinghia\TFCinghia_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\Cinghia\TFCinghiaParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\Cinghia\TFBancoScelta_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\Cinghia\TFMoveParAXCinghia.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFAxCentratoreManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFAxTraslazioneRulliera.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFCentratoreManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFCentratoreParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFCentratoreStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFCentratore_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFCentratore_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFMoveParAXCentratore.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFMoveParAXRulliera.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFMoveParAXTraslazioneRulliera.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFRullieraManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFRullieraMobileManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFRullieraMobileStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFRullieraParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFRullieraStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFRulliera_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFRulliera_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFTraslazioneRullieraParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\RullieraPallet\TFTraslazioneRulliera_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFAxManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFAxParameters.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFPortaStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFPortaManCmd.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFGestioneFTC_Misura_OUT.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFBarcodeStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFTransportModules.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\Moduli\TFTransportModuleStatus.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\TFDimensionElement.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\TFMachinePalletizer_Pallet_Weintek.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\TFMachineTransportElement.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\TFMachineTransportElementWeintek.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\TF\Rulliere\TFMachineTransport_GatesAccess.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Global Variables\BarCode\BarCODE.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="Global Variables\Comandi_1.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Global Variables\Configurazione Impianto\Configurazione_Impianto.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\Errori\Errori_BarCODE.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+      <External>false</External>
+    </Compile>
+    <Compile Include="Global Variables\Errori\Errori_CalcoloFormatura.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\Errori\Errori_WAManager.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+      <External>false</External>
+    </Compile>
+    <Compile Include="Global Variables\Safety.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\DATA_LOGGER.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\Dati_Per_Linea.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\FROM_HMI_PAL.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\HMI_COMMAND_PAL.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\HMI_Formatura.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\IO_TRASPORTI.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\IO_Virtuali.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\LGV_Data.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\Picking.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\Pinza.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\QE_BORDO.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\QE_TERRA.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\Supervisor_Variable.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\TFGlobal.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\TFMotion_Program.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TFMachinesErrors.TcGVL">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="Global Variables\TFMachinePalletizerVariables.TcGVL">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="Global Variables\TFMachinePalletizerErrors.TcGVL">
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="Global Variables\TFCmdStates.TcGVL">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="Global Variables\TFUpsVariables.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="Global Variables\TFVariable\TF_CambioProduzione.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Global Variables\TO_HMI.TcGVL">
+      <SubType>Code</SubType>
+      <LinkAlways>true</LinkAlways>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="GlobalTextList.TcGTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Plc_Portale.TcTTO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckBounds.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckDivDInt.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckDivLInt.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckDivLReal.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckDivReal.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckLRangeSigned.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckLRangeUnsigned.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckPointer.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckRangeSigned.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\Check\CheckRangeUnsigned.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\Cicli Depallettizzatore\TFCiclo_Deposito_Falda_Depal.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\Cicli Depallettizzatore\TFCiclo_Deposito_Lastra_Depal.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\Cicli Depallettizzatore\TFCiclo_Prelievo_Lastra_Depal.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\Cicli di Deposito Lastre\TFCiclo_Deposito_Falda.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\Cicli di Deposito Lastre\TFCiclo_Deposito_Lastra.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\Cicli di Prelievo Lastre\TFCiclo_Prelievo_Falda.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\Cicli di Prelievo Lastre\TFCiclo_Prelievo_Lastra.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\Lastre\TFCiclo_Di_Riposo_Lastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\ProgrammiMovimento\TFProgramma_Ciclo_Falda_Lastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\ProgrammiMovimento\TFProgramma_Ciclo_Lastra.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFCicliDiLavoro\ProgrammiMovimento\TFProgramma_Ciclo_Riposo_Lastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFGateAccess\TFGateAccess.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFGateAccess\TFGateAccessDoppiaMacchina.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFGateAccess\TFGateAccessNoStop.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFLGV\GateAccessLGV.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFLGV\TFLGV.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFLGV\TFLGV_NEW.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFMachines\TFMachinePalletizer_TF.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFMachines\Utility\TFIsWorkflowError.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFMachines\Utility\TFIsWorkflowDisableOrEndedOrError.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFMachines\Utility\TFWorkflowsAllEnableOrDisable.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFMachines\Utility\TFWorkflowsCheckState.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\DataBase\Record_From_DB.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\DataBase\StoredProcedureState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\DataBase\TFSPRicavaDatiDaBarcodeUDC.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\DataBase\TFSPRichiestaIngressoMateriale.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\DataBase\TFVerificaLetturaBarcodeConDatiDB.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Misurazione Ingresso\Keyence\Keyence_LRTB2000C.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Misurazione Ingresso\TFGestioneFTC_Misura.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Misurazione Ingresso\TFGestioneFTC_Misura_IN.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFModulePalletizer_Aspirazione.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFModulePalletizer_AxJ_Lastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFModulePalletizer_Pinza.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFModulePalletizer_Pinza_mag.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFModulePalletizer_Pinza_2Ovem.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFModulePalletizer_Ax.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFModulePalletizer_Pinza_Semplice.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Moduli TF\TFProgramLogUpdate.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFClearAllCmdModulePinza.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFClearAllCmdModulePinzaCompleta.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFCylinder_ClearAllCommand.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFOVEMClearAllCommand.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFCylinder_HasCommand.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFPalletizerModulesCheckPowerActive.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFPalletizerModulesCommandSend.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFPalletizerModulesCheckState.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFModules\Utility\TFPalletizerIsModuleError.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\FunzionePerNuovaGestioneTrasporti\TFNumeroPacchiSuLinea.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\FunzionePerNuovaGestioneTrasporti\TFNumeroUltimi_N_TrasportiOccupati.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\FunzionePerNuovaGestioneTrasporti\TFPackCodePresenteInWAJolly.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\FunzionePerNuovaGestioneTrasporti\TFPackCodePresenteInZona.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\FunzionePerNuovaGestioneTrasporti\TFPackCodePresenteInZona_old.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFCalcoliFuoriIngombriColonne.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFCalcoliFuoriIngombriColonne_old.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFCodicePaccoPresenteInFormatura.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFCodicePaccoPresenteInFormaturaAll.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFDepositoContinuoPalletConsentito.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFNumeroPacchiSuLinea_OLD.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFNumeroUltimi_N_TrasportiOccupati_OLD.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFPalletizerWorkAreaManagerTF.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFPalletizer_CalcolaCoordinataPrelievo_WorkArea.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFValutaFormatureMultipleAttivate.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFValutaSeFormaturaMista.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\NON_USATE\TFWAconCodiceWPPPresente.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFCalcoliFuoriIngombri.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFCalcoliIngombroPinza_ConAsseK.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFCalcoloOverrideDinamico.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFCalcoloPuntiDiAnticipoDinamici.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFCalcoloVelocita.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFConsentiDepositoPaccoSuWA.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFCoppiaPinzaOk.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFControlloInterferenza.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFCalcoloTraiettoria_pacchi.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFFuoriIngombroVerticaleOK.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFPalletizerInPosizioneRiposo.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFPinzaInFuoriIngombroColonne_DirezioneX.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\TFValutaAssiInFinestraDiPassMode.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFAsseInFinestra.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFCalcolaFuoriIngombroY_oo.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFCalcolaNumeroPostazioneDXSX.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFCalcolaQuotaIngombroColonneLastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFCalcoliIngombroPinza.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFCalcoloIngombroOttimizzatoPinza.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFCalcoloTraiettoriaLastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFDirezioneAssePositiva.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerDataTF\Utility Varie\TFInverterV1000.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFCheckPalletFull.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFClearWorkAreaStack.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFGetEnableCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFGetNearestWA.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFGripperNearTilter.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFLeastUsedCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFMostUsedCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFNextCommandToTilter.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPackCodeOnWPP.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPackCodePresentToJollyWorkArea.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPackCodePresentToZone.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPackOnPickPoint.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerCheckPalletLayerCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerGetFormingFromCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerGetUnassignedCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerGetWAFromTypeCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerGetWPPFromPackCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerIsCodeAssigned.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerIsFormingAssigned.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerIsStackAvailable.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFPalletizerPackValidation.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFRefreshUsedCode.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\NON_USATE\TFWorkareaConPacchiComplete.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\TFCheckPalletPresence.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\RestoringCWA.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\TFCheckLayerPresence.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\TFClearWorkArea.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\TFClearWorkAreaArray.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\TFClearWorkAreaStateSlab.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData\TFPalletizerIsWorkAreaIntoZone.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Back.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Utility\CSV read_write in text mode\P_TextModeRead.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Utility\CSV read_write in text mode\P_TextModeWrite.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFAggiuntaSupportoManuale.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFClearWorkAreaBCRead.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFClearApprendimento.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFGetEnableCode_Lastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizerGestione_PickPoint_Rulliere.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizerGetFormingFromCodeSlab.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizerPackValidationSlab.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizerPickRollerPriority.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizer_CalcolaCoordinataPrelievo_PickPoint.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizerGetNumPickPointForLayerCode.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizerGetWPPFromLastraCode.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFPalletizerWorkAreaManagerTF_Lastre.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFWAM_CreaMissione_DepPrelElemento.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\TFWAM_RicavaListaInLavoro.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\HandlingModulesCmd.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\HandlingModulesState.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\KPickMode.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\KUnLoadMode.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\KPickType.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\KLoadMode.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\KProduct.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\KPlaceMode.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\MissionText.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\PXExitYesNo.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\WorkAreaLearn.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\WorkAreaLGVLetIn.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\WorkAreaLGVReq.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\WorkAreaStatePN.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\WorkAreaTypology.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPrograms\TFMachinePalletizerMain.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>false</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFPrograms\TFUps.TcPOU">
+      <SubType>Code</SubType>
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\WorkAreaYesNo.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFVisuText\WorkAreaState.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Visualization Manager.TcVMO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Visualizations\Pallettizzatore.TcVIS">
+      <SubType>Code</SubType>
+      <DependentUpon>Visualization Manager.TcVMO</DependentUpon>
+    </Compile>
+    <Compile Include="Visualizations\Stato_Missione.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Visualizations\Stato_WAM.TcTLO">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <PlaceholderReference Include="System_VisuElemMeter">
+      <DefaultResolution>VisuElemMeter, 3.5.13.0 (System)</DefaultResolution>
+      <Namespace>VisuElemMeter</Namespace>
+      <SystemLibrary>true</SystemLibrary>
+      <ResolverGuid>2717eb6a-dd07-4c66-8d8d-cacebd7b18ae</ResolverGuid>
+    </PlaceholderReference>
+    <PlaceholderReference Include="System_VisuElems">
+      <DefaultResolution>VisuElems, 3.5.13.40 (System)</DefaultResolution>
+      <Namespace>VisuElems</Namespace>
+      <SystemLibrary>true</SystemLibrary>
+      <ResolverGuid>2717eb6a-dd07-4c66-8d8d-cacebd7b18ae</ResolverGuid>
+    </PlaceholderReference>
+    <PlaceholderReference Include="System_VisuElemsSpecialControls">
+      <DefaultResolution>VisuElemsSpecialControls, 3.5.13.0 (System)</DefaultResolution>
+      <Namespace>VisuElemsSpecialControls</Namespace>
+      <SystemLibrary>true</SystemLibrary>
+      <ResolverGuid>2717eb6a-dd07-4c66-8d8d-cacebd7b18ae</ResolverGuid>
+    </PlaceholderReference>
+    <PlaceholderReference Include="System_VisuElemsWinControls">
+      <DefaultResolution>VisuElemsWinControls, 3.5.13.20 (System)</DefaultResolution>
+      <Namespace>VisuElemsWinControls</Namespace>
+      <SystemLibrary>true</SystemLibrary>
+      <ResolverGuid>2717eb6a-dd07-4c66-8d8d-cacebd7b18ae</ResolverGuid>
+    </PlaceholderReference>
+    <PlaceholderReference Include="System_VisuElemTextEditor">
+      <DefaultResolution>VisuElemTextEditor, 3.5.13.0 (System)</DefaultResolution>
+      <Namespace>VisuElemTextEditor</Namespace>
+      <SystemLibrary>true</SystemLibrary>
+      <ResolverGuid>2717eb6a-dd07-4c66-8d8d-cacebd7b18ae</ResolverGuid>
+    </PlaceholderReference>
+    <PlaceholderReference Include="system_visuinputs">
+      <DefaultResolution>visuinputs, 3.5.13.0 (system)</DefaultResolution>
+      <Namespace>visuinputs</Namespace>
+      <SystemLibrary>true</SystemLibrary>
+      <ResolverGuid>2717eb6a-dd07-4c66-8d8d-cacebd7b18ae</ResolverGuid>
+    </PlaceholderReference>
+    <PlaceholderReference Include="System_VisuNativeControl">
+      <DefaultResolution>VisuNativeControl, 3.5.13.0 (System)</DefaultResolution>
+      <Namespace>VisuNativeControl</Namespace>
+      <SystemLibrary>true</SystemLibrary>
+      <ResolverGuid>2717eb6a-dd07-4c66-8d8d-cacebd7b18ae</ResolverGuid>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Math">
+      <DefaultResolution>Tc2_Math, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Math</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_MC2">
+      <DefaultResolution>Tc2_MC2, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_MC2</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_MC2_Drive">
+      <DefaultResolution>Tc2_MC2_Drive, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_MC2_Drive</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Standard">
+      <DefaultResolution>Tc2_Standard, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Standard</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_SUPS">
+      <DefaultResolution>Tc2_SUPS, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_SUPS</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_System">
+      <DefaultResolution>Tc2_System, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_System</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Utilities">
+      <DefaultResolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Utilities</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_Module">
+      <DefaultResolution>Tc3_Module, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_Module</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_Standard">
+      <DefaultResolution>Tc3_Standard, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_Standard</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="TFDataLogger">
+      <DefaultResolution>TFDataLogger, * (Tecnoferrari)</DefaultResolution>
+      <Namespace>TFDataLogger</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="TFInterpolazioneAssi">
+      <DefaultResolution>TFInterpolazioneAssi, * (TecnoFerrari)</DefaultResolution>
+      <Namespace>TFInterpolazioneAssi</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="TFPlc">
+      <DefaultResolution>TFPLC, * (Tecnoferrari)</DefaultResolution>
+      <Namespace>TFPlc</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="TF_CambioProduzioneLinea">
+      <DefaultResolution>TF_CambioProduzioneLinea, * (Tecnoferrari)</DefaultResolution>
+      <Namespace>TF_CambioProduzioneLinea</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="TF_Ovem">
+      <DefaultResolution>TF_Ovem, * (Tecnoferrari)</DefaultResolution>
+      <Namespace>TF_Ovem</Namespace>
+    </PlaceholderReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="PLC_Portale.tmc">
+      <SubType>Content</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PlaceholderResolution Include="Tc2_Math">
+      <Resolution>Tc2_Math, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_MC2">
+      <Resolution>Tc2_MC2, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_MC2_Drive">
+      <Resolution>Tc2_MC2_Drive, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_Standard">
+      <Resolution>Tc2_Standard, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_SUPS">
+      <Resolution>Tc2_SUPS, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_System">
+      <Resolution>Tc2_System, 3.4.24.0 (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc2_Utilities">
+      <Resolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc3_Module">
+      <Resolution>Tc3_Module, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc3_Standard">
+      <Resolution>Tc3_Standard, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="Tc3_System">
+      <Resolution>Tc3_System, * (Beckhoff Automation GmbH)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="TFDataLogger">
+      <Resolution>TFDataLogger, * (Tecnoferrari)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="TFPlc">
+      <Resolution>TFPLC, 1.1.0.9 (Tecnoferrari)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="TF_CambioProduzioneLinea">
+      <Resolution>TF_CambioProduzioneLinea, * (Tecnoferrari)</Resolution>
+    </PlaceholderResolution>
+    <PlaceholderResolution Include="TF_Ovem">
+      <Resolution>TF_Ovem, 1.0.1.4 (Tecnoferrari)</Resolution>
+    </PlaceholderResolution>
+  </ItemGroup>
+  <ItemGroup>
+    <PinnedGlobalDataType Include="EAPBuffer" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="SuddivisioneWF.txt">
+      <SubType>Content</SubType>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <SubObject Include="TFMachinePalletizerMain._11_CalcolaListaProduzioneold">
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </SubObject>
+  </ItemGroup>
+  <ProjectExtensions>
+    <PlcProjectOptions>
+      <XmlArchive>
+        <Data>
+          <o xml:space="preserve" t="OptionKey">
+						<v n="Name">"&lt;ProjectRoot&gt;"</v>
+						<d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
+							<v>{8F99A816-E488-41E4-9FA3-846536012284}</v>
+							<o>
+								<v n="Name">"{8F99A816-E488-41E4-9FA3-846536012284}"</v>
+								<d n="SubKeys" t="Hashtable" />
+								<d n="Values" t="Hashtable" />
+							</o>
+							<v>{29BD8D0C-3586-4548-BB48-497B9A01693F}</v>
+							<o>
+								<v n="Name">"{29BD8D0C-3586-4548-BB48-497B9A01693F}"</v>
+								<d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
+									<v>Rules</v>
+									<o>
+										<v n="Name">"Rules"</v>
+										<d n="SubKeys" t="Hashtable" />
+										<d n="Values" t="Hashtable" />
+									</o>
+								</d>
+								<d n="Values" t="Hashtable" />
+							</o>
+							<v>{40450F57-0AA3-4216-96F3-5444ECB29763}</v>
+							<o>
+								<v n="Name">"{40450F57-0AA3-4216-96F3-5444ECB29763}"</v>
+								<d n="SubKeys" t="Hashtable" />
+								<d n="Values" t="Hashtable" ckt="String">
+									<v>ActiveVisuExtensionsLength</v>
+									<v>0</v>
+									<v>ActiveVisuProfile</v>
+									<v>"IR0whWr8bwfwBwAAiD2qpQAAAABVAgAA37x72QAAAAABAAAAAAAAAAEaUwB5AHMAdABlAG0ALgBTAHQAcgBpAG4AZwACTHsAZgA5ADUAYgBiADQAMgA2AC0ANQA1ADIANAAtADQAYgA0ADUALQA5ADQAMAAwAC0AZgBiADAAZgAyAGUANwA3AGUANQAxAGIAfQADCE4AYQBtAGUABDBUAHcAaQBuAEMAQQBUACAAMwAuADEAIABCAHUAaQBsAGQAIAA0ADAAMgA0AC4ANwAFFlAAcgBvAGYAaQBsAGUARABhAHQAYQAGTHsAMQA2AGUANQA1AGIANgAwAC0ANwAwADQAMwAtADQAYQA2ADMALQBiADYANQBiAC0ANgAxADQANwAxADMAOAA3ADgAZAA0ADIAfQAHEkwAaQBiAHIAYQByAGkAZQBzAAhMewAzAGIAZgBkADUANAA1ADkALQBiADAANwBmAC0ANABkADYAZQAtAGEAZQAxAGEALQBhADgAMwAzADUANgBhADUANQAxADQAMgB9AAlMewA5AGMAOQA1ADgAOQA2ADgALQAyAGMAOAA1AC0ANAAxAGIAYgAtADgAOAA3ADEALQA4ADkANQBmAGYAMQBmAGUAZABlADEAYQB9AAoOVgBlAHIAcwBpAG8AbgALBmkAbgB0AAwKVQBzAGEAZwBlAA0KVABpAHQAbABlAA4aVgBpAHMAdQBFAGwAZQBtAE0AZQB0AGUAcgAPDkMAbwBtAHAAYQBuAHkAEAxTAHkAcwB0AGUAbQARElYAaQBzAHUARQBsAGUAbQBzABIwVgBpAHMAdQBFAGwAZQBtAHMAUwBwAGUAYwBpAGEAbABDAG8AbgB0AHIAbwBsAHMAEyhWAGkAcwB1AEUAbABlAG0AcwBXAGkAbgBDAG8AbgB0AHIAbwBsAHMAFCRWAGkAcwB1AEUAbABlAG0AVABlAHgAdABFAGQAaQB0AG8AcgAVIlYAaQBzAHUATgBhAHQAaQB2AGUAQwBvAG4AdAByAG8AbAAWFHYAaQBzAHUAaQBuAHAAdQB0AHMAFwxzAHkAcwB0AGUAbQAYGFYAaQBzAHUARQBsAGUAbQBCAGEAcwBlABkmRABlAHYAUABsAGEAYwBlAGgAbwBsAGQAZQByAHMAVQBzAGUAZAAaCGIAbwBvAGwAGyJQAGwAdQBnAGkAbgBDAG8AbgBzAHQAcgBhAGkAbgB0AHMAHEx7ADQAMwBkADUAMgBiAGMAZQAtADkANAAyAGMALQA0ADQAZAA3AC0AOQBlADkANAAtADEAYgBmAGQAZgAzADEAMABlADYAMwBjAH0AHRxBAHQATABlAGEAcwB0AFYAZQByAHMAaQBvAG4AHhRQAGwAdQBnAGkAbgBHAHUAaQBkAB8WUwB5AHMAdABlAG0ALgBHAHUAaQBkACBIYQBmAGMAZAA1ADQANAA2AC0ANAA5ADEANAAtADQAZgBlADcALQBiAGIANwA4AC0AOQBiAGYAZgBlAGIANwAwAGYAZAAxADcAIRRVAHAAZABhAHQAZQBJAG4AZgBvACJMewBiADAAMwAzADYANgBhADgALQBiADUAYwAwAC0ANABiADkAYQAtAGEAMAAwAGUALQBlAGIAOAA2ADAAMQAxADEAMAA0AGMAMwB9ACMOVQBwAGQAYQB0AGUAcwAkTHsAMQA4ADYAOABmAGYAYwA5AC0AZQA0AGYAYwAtADQANQAzADIALQBhAGMAMAA2AC0AMQBlADMAOQBiAGIANQA1ADcAYgA2ADkAfQAlTHsAYQA1AGIAZAA0ADgAYwAzAC0AMABkADEANwAtADQAMQBiADUALQBiADEANgA0AC0ANQBmAGMANgBhAGQAMgBiADkANgBiADcAfQAmFk8AYgBqAGUAYwB0AHMAVAB5AHAAZQAnVFUAcABkAGEAdABlAEwAYQBuAGcAdQBhAGcAZQBNAG8AZABlAGwARgBvAHIAQwBvAG4AdgBlAHIAdABpAGIAbABlAEwAaQBiAHIAYQByAGkAZQBzACgQTABpAGIAVABpAHQAbABlACkUTABpAGIAQwBvAG0AcABhAG4AeQAqHlUAcABkAGEAdABlAFAAcgBvAHYAaQBkAGUAcgBzACs4UwB5AHMAdABlAG0ALgBDAG8AbABsAGUAYwB0AGkAbwBuAHMALgBIAGEAcwBoAHQAYQBiAGwAZQAsEnYAaQBzAHUAZQBsAGUAbQBzAC1INgBjAGIAMQBjAGQAZQAxAC0AZAA1AGQAYwAtADQAYQAzAGIALQA5ADAANQA0AC0AMgAxAGYAYQA3ADUANgBhADMAZgBhADQALihJAG4AdABlAHIAZgBhAGMAZQBWAGUAcgBzAGkAbwBuAEkAbgBmAG8AL0x7AGMANgAxADEAZQA0ADAAMAAtADcAZgBiADkALQA0AGMAMwA1AC0AYgA5AGEAYwAtADQAZQAzADEANABiADUAOQA5ADYANAAzAH0AMBhNAGEAagBvAHIAVgBlAHIAcwBpAG8AbgAxGE0AaQBuAG8AcgBWAGUAcgBzAGkAbwBuADIMTABlAGcAYQBjAHkAMzBMAGEAbgBnAHUAYQBnAGUATQBvAGQAZQBsAFYAZQByAHMAaQBvAG4ASQBuAGYAbwA0MEwAbwBhAGQATABpAGIAcgBhAHIAaQBlAHMASQBuAHQAbwBQAHIAbwBqAGUAYwB0ADUaQwBvAG0AcABhAHQAaQBiAGkAbABpAHQAeQDQAAIaA9ADAS0E0AUGGgfQBwgaAUUHCQjQAAkaBEUKCwQDAAAABQAAAA0AAAAAAAAA0AwLrQIAAADQDQEtDtAPAS0Q0AAJGgRFCgsEAwAAAAUAAAANAAAAKAAAANAMC60BAAAA0A0BLRHQDwEtENAACRoERQoLBAMAAAAFAAAADQAAAAAAAADQDAutAgAAANANAS0S0A8BLRDQAAkaBEUKCwQDAAAABQAAAA0AAAAUAAAA0AwLrQIAAADQDQEtE9APAS0Q0AAJGgRFCgsEAwAAAAUAAAANAAAAAAAAANAMC60CAAAA0A0BLRTQDwEtENAACRoERQoLBAMAAAAFAAAADQAAAAAAAADQDAutAgAAANANAS0V0A8BLRDQAAkaBEUKCwQDAAAABQAAAA0AAAAAAAAA0AwLrQIAAADQDQEtFtAPAS0X0AAJGgRFCgsEAwAAAAUAAAANAAAAKAAAANAMC60EAAAA0A0BLRjQDwEtENAZGq0BRRscAdAAHBoCRR0LBAMAAAAFAAAADQAAAAAAAADQHh8tINAhIhoCRSMkAtAAJRoFRQoLBAMAAAADAAAAAAAAAAoAAADQJgutAAAAANADAS0n0CgBLRHQKQEtENAAJRoFRQoLBAMAAAADAAAAAAAAAAoAAADQJgutAQAAANADAS0n0CgBLRHQKQEtEJoqKwFFAAEC0AABLSzQAAEtF9AAHy0t0C4vGgPQMAutAQAAANAxC60XAAAA0DIarQDQMy8aA9AwC60CAAAA0DELrQMAAADQMhqtANA0Gq0A0DUarQA="</v>
+								</d>
+							</o>
+							<v>{A3BBA713-63D7-4de6-BEC2-E3BAAD8789F8}</v>
+							<o>
+								<v n="Name">"{A3BBA713-63D7-4de6-BEC2-E3BAAD8789F8}"</v>
+								<d n="SubKeys" t="Hashtable" />
+								<d n="Values" t="Hashtable" />
+							</o>
+							<v>{C70B7845-2722-4a9b-A0EA-88C877A4B36F}</v>
+							<o>
+								<v n="Name">"{C70B7845-2722-4a9b-A0EA-88C877A4B36F}"</v>
+								<d n="SubKeys" t="Hashtable" />
+								<d n="Values" t="Hashtable" ckt="String">
+									<v>MaxAuthenticationTrials</v>
+									<v>3</v>
+									<v>UserList</v>
+									<o t="UserList">
+										<a n="Users" cet="User">
+											<o>
+												<v n="Id">{6e3c6b03-118a-4a45-b8de-eea3f525fccd}</v>
+												<v n="Name">"Owner"</v>
+												<v n="FullName">""</v>
+												<v n="Description">""</v>
+												<v n="Active">true</v>
+											</o>
+										</a>
+									</o>
+									<v>MaxTimeOfInactivity</v>
+									<v>10</v>
+									<v>EnableMaxTimeOfInactivity</v>
+									<v>true</v>
+									<v>GroupList</v>
+									<o t="GroupList">
+										<a n="Groups" cet="Group">
+											<o>
+												<v n="Id">{17124650-16ee-4a06-b449-26639b4fd6de}</v>
+												<v n="Name">"Owner"</v>
+												<v n="Description">""</v>
+												<v n="IsEveryoneGroup">false</v>
+												<v n="IsOwnerGroup">true</v>
+												<l n="UserMembers" t="ArrayList" cet="Guid">
+													<v>6e3c6b03-118a-4a45-b8de-eea3f525fccd</v>
+												</l>
+												<l n="GroupMembers" t="ArrayList" />
+											</o>
+											<o>
+												<v n="Id">{4120e6c7-2e61-4646-9809-52bb4b57af00}</v>
+												<v n="Name">"Everyone"</v>
+												<v n="Description">""</v>
+												<v n="IsEveryoneGroup">true</v>
+												<v n="IsOwnerGroup">false</v>
+												<l n="UserMembers" t="ArrayList" cet="Guid">
+													<v>6e3c6b03-118a-4a45-b8de-eea3f525fccd</v>
+												</l>
+												<l n="GroupMembers" t="ArrayList" />
+											</o>
+										</a>
+									</o>
+									<v>UserAuthentication</v>
+									<o t="UserAuthentication">
+										<d n="UserToPasswordHash" t="Hashtable" ckt="Guid" cvt="String">
+											<v>6e3c6b03-118a-4a45-b8de-eea3f525fccd</v>
+											<v>d41d8cd98f00b204e9800998ecf8427e</v>
+										</d>
+									</o>
+									<v>EnableMaxAuthenticationTrials</v>
+									<v>true</v>
+								</d>
+							</o>
+							<v>{192FAD59-8248-4824-A8DE-9177C94C195A}</v>
+							<o>
+								<v n="Name">"{192FAD59-8248-4824-A8DE-9177C94C195A}"</v>
+								<d n="SubKeys" t="Hashtable" />
+								<d n="Values" t="Hashtable" />
+							</o>
+							<v>{F66C7017-BDD8-4114-926C-81D6D687E35F}</v>
+							<o>
+								<v n="Name">"{F66C7017-BDD8-4114-926C-81D6D687E35F}"</v>
+								<d n="SubKeys" t="Hashtable" />
+								<d n="Values" t="Hashtable" />
+							</o>
+							<v>{246001F4-279D-43AC-B241-948EB31120E1}</v>
+							<o>
+								<v n="Name">"{246001F4-279D-43AC-B241-948EB31120E1}"</v>
+								<d n="SubKeys" t="Hashtable" />
+								<d n="Values" t="Hashtable" ckt="String" cvt="String">
+									<v>SymbolLibraryConfiguration</v>
+									<v>VisuSymbols (System);True
+</v>
+									<v>GlobalVisuImageFilePath</v>
+									<v>%APPLICATIONPATH%\</v>
+								</d>
+							</o>
+						</d>
+						<d n="Values" t="Hashtable" />
+					</o>
+        </Data>
+        <TypeList>
+          <Type n="ArrayList">System.Collections.ArrayList</Type>
+          <Type n="Boolean">System.Boolean</Type>
+          <Type n="Group">{daecd4be-1e2b-4335-a125-4a1ac83ea49f}</Type>
+          <Type n="GroupList">{bf4dffda-f055-446d-9d7a-5f126720896b}</Type>
+          <Type n="Guid">System.Guid</Type>
+          <Type n="Hashtable">System.Collections.Hashtable</Type>
+          <Type n="Int32">System.Int32</Type>
+          <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
+          <Type n="String">System.String</Type>
+          <Type n="User">{cd83029e-13b0-491e-9e4b-921adda0d86b}</Type>
+          <Type n="UserAuthentication">{3635a671-97f5-41bb-9e29-0ebb9795975c}</Type>
+          <Type n="UserList">{9fe6b547-6bc8-4f11-b589-b517860c5891}</Type>
+        </TypeList>
+      </XmlArchive>
+    </PlcProjectOptions>
+  </ProjectExtensions>
+</Project>

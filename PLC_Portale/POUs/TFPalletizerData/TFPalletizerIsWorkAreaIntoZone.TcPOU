@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerIsWorkAreaIntoZone" Id="{c19a1ee5-d5f2-48f2-a104-da79c6a4a5d9}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFPalletizerIsWorkAreaIntoZone : BOOL
+
+VAR_INPUT
+	WorkAreaZone : POINTER TO TFMachinePalletizer_WorkAreaZone;
+	WorkArea : INT;
+END_VAR
+VAR
+	n : INT;
+	i : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFPalletizerIsWorkAreaIntoZone := FALSE;
+
+FOR n:=1 TO MAXZONE DO
+	FOR i:=1 TO MAXAREA DO
+		(* Verifico se la WorkArea appartiena ad una Zona *)
+		IF WorkAreaZone^.Zone[n].WorkArea[i] = WorkArea THEN
+			TFPalletizerIsWorkAreaIntoZone := TRUE;
+			RETURN;
+		END_IF
+	END_FOR
+END_FOR
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerIsWorkAreaIntoZone">
+      <LineId Id="88" Count="0" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

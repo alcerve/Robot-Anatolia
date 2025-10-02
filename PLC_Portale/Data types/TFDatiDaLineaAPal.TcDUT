@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="TFDatiDaLineaAPal" Id="{37a08e06-5cdd-46e7-8131-6cb92c6629f7}">
+    <Declaration><![CDATA[TYPE TFDatiDaLineaAPal :
+STRUCT
+
+	LastraProntaSuPrelievo 		AT %I* : BOOL;//Lastra pronta sul prelievo i-esimo
+	LastraPrelevataDaPrelievo  	AT %Q* : BOOL;//Lastra prelevata da pallettizzatore
+	DatiLastraSuPrelievo		AT %I* : TFSlab;
+	StatoPrelievo				AT %I* : INT;//Stato rulliera prelievo
+	StatoPalettizzatore			AT %Q* : INT;//STtao pallettizzatore
+	PinzaInIngombro				AT %Q* : BOOL; //Pinza in ongombro
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

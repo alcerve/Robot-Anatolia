@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Overide_Dinamico" Id="{dec3beaf-1951-44a7-92ef-c11aa9392099}">
+    <Declaration><![CDATA[TYPE Overide_Dinamico :
+STRUCT
+	NTrasportiOccupati : ARRAY[1..MAXSOGLIEOVERRIDE] OF UINT;	// N° Trasporti occupati paertendo dal ribaltino che stabilisce la soglia i-esima di velocità
+	Override : ARRAY[1..MAXSOGLIEOVERRIDE] OF REAL; //Ovverride Relativo alla soglia i-esima
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

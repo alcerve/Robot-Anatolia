@@ -1,0 +1,574 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFLGV_NEW" Id="{8f814bac-5173-4e97-944b-53d056017f17}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFLGV_NEW
+VAR_INPUT
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	PH_WorkArea : ARRAY [1..MAXAREA] OF BOOL;
+
+	MachineCmd : POINTER TO CommandBuffer;
+	MachineCmdExe : POINTER TO CommandExe;
+	MachineState : POINTER TO State;
+	MachineError : POINTER TO Error;
+	RobotError : POINTER TO Error;
+	MachineMode : POINTER TO Mode;
+	Power : BOOL;
+	TimeBase : REAL;
+	GateAccessActive : BOOL;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	ModuloAsp  : POINTER TO	TFModulePalletizer_Aspirazione;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	BarriereSicurezzaEsterneOK : BOOL; // Stato delle barriere di sicurezza, TRUE=Barriere OK 
+	ControlGateSecurity : POINTER TO BOOL;
+	TilterPhaseStopDone : BOOL;	
+	
+	LGV_Stato_Operazione  : POINTER TO ARRAY [1..MAXAREA] OF e_Stato_Operazione_LGV; // Indica lo stato dell'operazione svolta dalla navetta: 0=Dato ricevuto e azzerato da PLC,1= Deposito Concluso,2= Prelievo Concluso,
+	LGV_RichiestaIngresso : ARRAY [1..MAXAREA] OF BOOL; 	// Chiamata ingresso DA LGV,TRUE= La postazione è nello stato di chiamata navetta
+	LGV_InIngombro		  : ARRAY [1..MAXAREA] OF BOOL; 	// Segnale di LGV in ingombro da supervisione navette 
+	
+END_VAR
+VAR_OUTPUT
+	
+	LGV_ChiamataDaPostazione	: ARRAY [1..MAXAREA] OF BOOL; 	// Chiamata ingresso a LGV,TRUE=La una postazione è nello stato di chiamata navetta
+	LGV_OkIngressoInPostazione 	: ARRAY [1..MAXAREA] OF BOOL; 	// TRUE = OK Ingresso Nella Postazione 
+	
+	MEM_LGV_InIngombro		  : ARRAY [1..MAXAREA] OF BOOL; 	// Memoria LGV in INGOMBRO
+
+	
+	LGVAccessLamp : BOOL; (* Access Lamp: 	OFF = No Access Consent,
+										ON = Access Consent,
+										FLASH (1sec) = Access Requested (Machine Stopping)
+										FLASH (0.5sec) = Waiting Restart
+										FLASH (0.1sec) = Access Error *)
+										
+	LGVAccesActive : BOOL; (* Gate Acces Sequence in Execution *)
+	ClearWorkAreaLGVDone : BOOL;	
+	TilterPhaseStop : BOOL;	
+	LGVErrorCode : UINT;
+	LGVResetHSKSUPNAV : BOOL;	
+	LGV_ResetSW_RicIng : BOOL;
+	LGVAccessOK : BOOL; (* Segnalazione accesso consentito *)
+END_VAR
+VAR
+	LGVCase : INT;
+	j : UINT;
+	k : UINT; 
+	i : UINT;
+	
+	ParametersArray : ParametersArray;
+	
+	LGVAccessERROR : BOOL;	
+	LGVAccessReqIN : ARRAY [1..MAXAREA] OF BOOL;
+	MachineWasRunning : BOOL;
+	Timer100 : REAL;
+	Timer200 : REAL;
+	Timer1000 : REAL;
+	Clock100 : BOOL;
+	Clock200 : BOOL;
+	Clock1000 : BOOL;
+	TimerMachineWaitRunning : REAL;
+	TimerPowerOFF : REAL;
+	TimeoutControlloBarriereSicurezza : REAL;
+	TimerOkBarriereSicurezze : REAL;
+	TimeoutAnomaliaConsensi : REAL;
+	LampadaIngressoInCorso : BOOL;//Se almeno una postazione è in chiamata e la navetta ha fatto la richiesta di ingresso
+	iPost:UINT;
+	iRichIngr:INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFTimerCall(ADR(Timer100),TimeBase);
+TFTimerCall(ADR(Timer200),TimeBase);
+TFTimerCall(ADR(Timer1000),TimeBase);
+TFTimerCall(ADR(TimerMachineWaitRunning),TimeBase);
+TFTimerCall(ADR(TimerPowerOFF),TimeBase);
+TFTimerCall(ADR(TimeoutControlloBarriereSicurezza),TimeBase);
+TFTimerCall(ADR(TimerOkBarriereSicurezze),TimeBase);
+TFTimerCall(ADR(TimeoutAnomaliaConsensi),TimeBase);
+
+(* Setto lo stato della chiamata *)
+FOR j:=1 TO MAXAREAPRESENT DO
+	IF WorkAreaState^[j].State = WORKAREA_STATE_OCCUPIED_LGVREQ AND WorkArea^[j].Enable = 1 AND  WorkAreaState^[j].LGV_Req = 1 THEN
+		LGV_ChiamataDaPostazione[j] := TRUE;
+	ELSE
+		LGV_ChiamataDaPostazione[j] := FALSE;
+	END_IF
+END_FOR
+
+CASE LGVCase OF
+
+	(* Case 0 *)
+	0:	LGVErrorCode := 0;
+		LGVResetHSKSUPNAV := false;
+		LGVAccesActive := FALSE;
+		LGVAccessOK := FALSE;
+		TilterPhaseStop := FALSE;
+		LampadaIngressoInCorso := FALSE;		
+		(* Se la macchina è in automatico da almeno un minuto verifico se ho una richiesta di ingresso e in questo caso attivo la procedura di richiesta ingresso *)
+		MachineWasRunning := MachineCmdExe^.Code = CmdDO AND MachineCmdExe^.CmdCase = 15 AND MachineCmdExe^.PhaseStopRequest = 0 AND MachineCmdExe^.RapidStopRequest = 0;
+		TFTimerSet(ADR(TimerMachineWaitRunning),1000,NOT MachineWasRunning);
+		FOR i:=1 TO MAXAREAPRESENT DO
+			IF LGV_RichiestaIngresso[i] AND //Richiesta ingresso DA NAVETTA
+				LGV_ChiamataDaPostazione[i] AND //Piazzola in Chiamata
+				NOT GateAccessActive AND //Richiesta di ingresso manuale NON ATTIVA
+				MachineWasRunning AND TFTimerDone(ADR(TimerMachineWaitRunning)) THEN //Macchina in automatico e senza errori per almeno un minuto
+					LGVAccesActive := TRUE; 	//Setto lo stato di richiesta ingresso in corso
+					LGVAccessERROR := FALSE;	//Resetto la memoria di errore durante una richiesta di ingresso
+					LGVAccessReqIN[i] := TRUE;	//Setto una memoria che mi indica quale sia la postazione che ha fatto la richiesta
+					LampadaIngressoInCorso := TRUE; //Lampada di segnalazione
+					LGVCase := LGVCase + 1;		//Vado allo stato successivo
+					EXIT;
+			ELSE
+				LGVAccessReqIN[i] := FALSE; 	//Resetto lo stato di richiesta ingresso in corso
+			END_IF	
+		END_FOR
+			
+	(* Case 1 - Lancio lo stop in fase del pallettizzatore *)
+	1:	TFParametersArrayClear(ADR(ParametersArray));
+		TFCommandSend(CmdSTOPPHASE,ParametersArray,MachineCmd^);
+		LGVCase := LGVCase + 1;
+		
+	(* Case 2 - Attendo che lo stop in fase sia avvenuto *)	
+	2:	IF ((TFStateCodeGet(MachineState^) = StateDO_END AND 
+			NOT TFIsModuleError(MachineError^)) OR
+			MachineCmdExe^.Code = CmdNOP)  THEN
+				TilterPhaseStop := TRUE;
+				TFTimerSet(ADR(TimerPowerOFF),1000,TRUE);
+				LGVCase := LGVCase + 1;
+		ELSIF TFIsModuleError(MachineError^) OR 
+			ModuleAX_X^.Error.Code <> 0 OR
+			ModuleAX_Y^.Error.Code <> 0 OR
+			ModuleAX_Z^.Error.Code <> 0 OR
+			ModuleAX_K^.Error.Code <> 0 OR
+			ModuleAX_J^.Error.Code <> 0 OR
+			ModuloAsp^.Error.Code <> 0 THEN
+			LGVCase := 0; 
+		END_IF
+
+	(* Case 3 - Richiesta di Power Off *)
+	3:	IF TFTimerDone(ADR(TimerPowerOFF)) THEN//AND TilterPhaseStopDone THEN
+			TilterPhaseStop := FALSE;
+			TFParametersArrayClear(ADR(ParametersArray));
+			ParametersArray.Parameters[0] := '0';
+			TFCommandSend(CmdPOWER,ParametersArray,MachineCmd^);
+			LGVCase := LGVCase + 1;
+		END_IF	
+
+	(* Case 4 - Power Off OK *)	
+	4:	
+		TFTimerSet(ADR(TimeoutAnomaliaConsensi),120000,TRUE);
+		IF (TFStateCodeGet(MachineState^) = StatePOWER_END OR NOT Power) AND
+			NOT TFIsModuleError(MachineError^) AND 
+			NOT ModuleAX_X^.Error.Code <> 0 AND 
+			NOT ModuleAX_Y^.Error.Code <> 0 AND
+			NOT ModuleAX_Z^.Error.Code <> 0 AND
+			NOT ModuleAX_K^.Error.Code <> 0 AND
+			NOT ModuleAX_J^.Error.Code <> 0 AND
+			NOT ModuloAsp^.Error.Code <> 0  AND 
+			NOT GateAccessActive  AND 
+			TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,Mission) THEN
+				LGVCase := LGVCase + 1;
+		ELSIF TFIsModuleError(MachineError^) OR 
+			 (NOT TFPalletizerInPosizioneRiposo(ModuleAX_X,ModuleAX_Y,ModuleAX_Z,ModuleAX_J,Mission) AND (TFStateCodeGet(MachineState^) = StatePOWER_END OR NOT Power)) THEN
+			LGVCase := 0;
+		END_IF
+		
+	(* Case 5 - Guardo se la postazione è in chiamata *)
+	5:	
+		TFTimerSet(ADR(TimeoutControlloBarriereSicurezza),20000,TRUE);
+		TFTimerSet(ADR(TimeoutAnomaliaConsensi),120000,((LGV_RichiestaIngresso[iPost] AND NOT LGV_InIngombro[iPost]) OR (NOT LGV_RichiestaIngresso[iPost] AND LGV_InIngombro[iPost])));		//Setto il timer per la rilevazione di eventuali anomalie nello scambio consensi
+
+		IF NOT TFIsModuleError(MachineError^) THEN //Se la macchina NON è in errore 
+			FOR iPost:=1 TO MAXAREAPRESENT DO	//Ciclo tutte le postazioni
+				IF LGV_ChiamataDaPostazione[iPost] AND LGV_RichiestaIngresso[iPost] AND NOT LGV_OkIngressoInPostazione[iPost] THEN //Se ho la postazione in chiamata e la richiesta di ingresso corrispondente PROCEDO con il ciclo
+					LGVAccessOK := TRUE;										//Setto memoria per gestione lampada
+					LGV_OkIngressoInPostazione[iPost] := TRUE;					//Setto a TRUE l'ok all'ingresso della postazione designata
+				ELSIF LGV_ChiamataDaPostazione[iPost] AND NOT LGV_RichiestaIngresso[iPost] AND LGV_OkIngressoInPostazione[iPost] THEN //Se HO la postazione in chiamata e è CADUTA la richiesta di ingresso alla postazione genero ERRORE e esco
+					LGVAccessOK := FALSE;
+					LGV_OkIngressoInPostazione[iPost] := FALSE;
+					LGVErrorCode := ErrMACHINEPALLETIZER_PERDITARICHIAMATAPOST;	
+					LGVCase := 0;
+				ELSIF NOT LGV_ChiamataDaPostazione[iPost] AND LGV_RichiestaIngresso[iPost] AND LGV_OkIngressoInPostazione[iPost] THEN //Se NON ho la postazione in chiamata e HO la richiesta di ingresso alla postazione genero ERRORE e esco
+					LGVAccessOK := FALSE;
+					LGV_OkIngressoInPostazione[iPost] := FALSE;
+					LGVErrorCode := ErrMACHINEPALLETIZER_PERDITARICINGRESSOPOST;
+					LGVCase := 0;
+				ELSE
+					;
+				END_IF
+	
+				(* Setto la memoria che mi indica che la navetta ha segnalato l'ingombro *)
+				IF LGV_OkIngressoInPostazione[iPost] AND LGV_RichiestaIngresso[iPost] AND LGV_InIngombro[iPost] THEN
+					MEM_LGV_InIngombro[iPost]:=TRUE;
+				END_IF
+						
+				(* Attendo che la navetta abbia finito il suo ciclo. Proseguo al riavvio della macchina SOLO quando mi cadono la richiesta di ingresso e l'ingombro *)
+				IF MEM_LGV_InIngombro[iPost] THEN
+					IF NOT LGV_RichiestaIngresso[iPost] AND NOT LGV_InIngombro[iPost] THEN //Se non ho più la richiesta di ingresso e ho NON HO PIU' l'ingombro della navetta, proseguo con il ciclo di restar macchina
+						MEM_LGV_InIngombro[iPost]:=FALSE;
+						LGVCase := LGVCase + 1;
+					ELSIF TFTimerDone(ADR(TimeoutAnomaliaConsensi)) THEN//((LGV_RichiestaIngresso[iPost] AND NOT LGV_InIngombro[iPost]) OR (NOT LGV_RichiestaIngresso[iPost] AND LGV_InIngombro[iPost])) THEN
+						LGVErrorCode := ErrMACHINEPALLETIZER_ANOMALIA_CONSENSI_SUPNAVETTE;
+						LGVCase := 0;
+					END_IF
+				END_IF
+		
+			END_FOR
+		ELSE							//Se la macchina è in ERRORE
+			LGVErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+		END_IF
+	
+	(*
+		IF LGV_RichiestaIngresso[i] AND LGV_ChiamataDaPostazione[i] AND NOT TFIsModuleError(MachineError^)THEN
+			LGV_LetIn := TRUE;
+			LGVAccessReqIN := FALSE;
+			LGVAccessOK := TRUE;
+			TFTimerSet(ADR(TimeoutAnomaliaConsensi),120000,TRUE);
+		ELSIF TFIsModuleError(MachineError^) THEN // se la macchina è in errore, forzo l'uscita da questo stato
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE;
+			LGVCase := 0;
+		ELSE
+			LGV_LetIn := FALSE;
+			LGVAccessOK := FALSE;
+			LGVAccessReqIN := FALSE;
+		END_IF
+		
+		IF NOT LGV_REQIN AND NOT LGV_FOOTPRINT THEN
+			LGV_LetIn := FALSE;
+			LGVCase := LGVCase + 1;
+		ELSIF TFTimerDone(ADR(TimeoutAnomaliaConsensi)) AND ((LGV_REQIN AND NOT LGV_FOOTPRINT) OR (NOT LGV_REQIN AND LGV_FOOTPRINT)) THEN
+			LGV_ReqIN_SW := FALSE;
+			LGV_Footprint_SW := FALSE;
+			LGV_REQIN := LGV_ReqIN_SW;
+			LGV_FOOTPRINT := LGV_Footprint_SW;
+			LGVResetHSKSUPNAV := TRUE;
+			LGVErrorCode := ErrMACHINEPALLETIZER_ANOMALIA_CONSENSI_SUPNAVETTE;
+			LGVCase := 0;
+		END_IF	*)
+		
+
+	(* Case 6 - Clear / Setup WorkArea *)
+	6:	
+	
+		ClearWorkAreaLGVDone := TRUE;
+		LGVAccessOK := FALSE;
+		LGVCase := LGVCase + 1;	
+		TFTimerSet(ADR(TimerOkBarriereSicurezze),5000, TRUE);	
+		FOR iPost:=1 TO MAXAREAPRESENT DO
+			IF LGV_Stato_Operazione^[k] = LGV_DEPOSITO_EFFETTUATO THEN  
+				LGV_Stato_Operazione^[k] := LGV_OPERAZIONE_VERIFICATA;
+				IF PH_WorkArea[k] THEN	//Se la fatocellula è ON
+					IF TFMachinePalletizerMain.TEST_ENABLE THEN//Se sono in simulazione setto a TRUE la fotocellula virtuale
+						I_PHPresenzaPalletVirtuale[k] := TRUE;
+					ELSE
+						//IF WorkArea^[k].Typology = TYPOLOGY_STACK OR WorkArea^[k].Typology = TYPOLOGY_LAYER THEN
+						//	TFClearWorkAreaStack(WorkArea,WorkAreaState,k);
+						//END_IF	
+					END_IF
+				ELSE 					//Se la fotocellula è OFF
+					IF TFMachinePalletizerMain.TEST_ENABLE THEN//Se sono in simulazione setto a TRUE la fotocellula virtuale
+						I_PHPresenzaPalletVirtuale[k] := TRUE;
+					ELSE
+						//IF WorkArea^[k].Typology = TYPOLOGY_STACK OR WorkArea^[k].Typology = TYPOLOGY_LAYER THEN
+						//	TFClearWorkAreaStack(WorkArea,WorkAreaState,k);
+						//END_IF	
+						LGVErrorCode := ErrMACHINEPALLETIZER_PHOFFDOPODEPOSITO;
+						LGVCase := 0;
+					END_IF
+				END_IF
+			ELSIF LGV_Stato_Operazione^[k] = LGV_PRELIEVO_EFFETTUATO AND PH_WorkArea[k] THEN  
+				LGV_Stato_Operazione^[k] := LGV_OPERAZIONE_VERIFICATA;
+				IF NOT PH_WorkArea[k] THEN //Se la fotocellula è OFF
+					IF TFMachinePalletizerMain.TEST_ENABLE THEN//Se sono in simulazione setto a FALSE la fotocellula virtuale
+						I_PHPresenzaPalletVirtuale[k] := FALSE;
+						TFClearWorkArea(WorkArea,WorkAreaState,k);
+					ELSE
+						TFClearWorkArea(WorkArea,WorkAreaState,k);
+					END_IF
+				ELSE					//Se la fotocellula è ON
+					IF TFMachinePalletizerMain.TEST_ENABLE THEN//Se sono in simulazione setto a FALSE la fotocellula virtuale
+						I_PHPresenzaPalletVirtuale[k] := FALSE;
+						TFClearWorkArea(WorkArea,WorkAreaState,k);
+					ELSE
+						TFClearWorkArea(WorkArea,WorkAreaState,k);
+					END_IF
+					LGVErrorCode := ErrMACHINEPALLETIZER_PHONDOPOPRELIEVO;
+					LGVCase := 0;
+				END_IF
+			ELSIF LGV_Stato_Operazione^[k] = LGV_OPERAZIONE_VERIFICATA THEN
+				LGVErrorCode := ErrMACHINEPALLETIZER_MANCATOAGGIORNAMENTOSTATO;		
+				LGVCase := 0;	
+			END_IF
+		END_FOR
+			
+	(* Case 7 - Power ON *)
+	7:	
+		IF BarriereSicurezzaEsterneOK THEN
+			TFParametersArrayClear(ADR(ParametersArray));
+			ParametersArray.Parameters[0] := '1';
+			TFCommandSend(CmdPOWER,ParametersArray,MachineCmd^);
+			LGV_ResetSW_RicIng := TRUE;
+			LGVCase := LGVCase + 1;	
+		ELSIF TFTimerDone(ADR(TimeoutControlloBarriereSicurezza)) THEN
+			LGVErrorCode := ErrMACHINEPALLETIZER_BARRIEREOCCUPATE_LGVREQ_OFF;
+			LGVCase := 0;
+		END_IF	
+			
+	(* Case 8 - Power On OK *)
+	8:	IF TFStateCodeGet(MachineState^) = StatePOWER_END OR
+			TFIsModuleError(MachineError^) THEN
+			LGV_ResetSW_RicIng := FALSE;
+			LGVCase := LGVCase + 1;	
+		END_IF
+		
+	(* Case 9 - Cmd DO *)
+	9:	
+		IF MachineWasRunning AND
+			MachineMode^.Auto AND
+			NOT MachineMode^.StopRequest AND
+			NOT MachineMode^.RapidStopRequest AND NOT GateAccessActive THEN
+			(*AND (SecurityGateStatus OR NOT ControlGateSecurity^*) 
+			TFParametersArrayClear(ADR(ParametersArray));
+			TFCommandSend(CmdDO,ParametersArray,MachineCmd^);
+		END_IF
+		LGVCase := 0;
+	
+	ELSE
+		LGVAccessERROR := TRUE;
+		LGVCase := 0;
+	
+END_CASE
+
+(* Clocks *)
+IF TFTimerDone(ADR(Timer100)) THEN
+	TFTimerSet(ADR(Timer100),100,TRUE);
+	Clock100 := NOT Clock100;
+END_IF
+IF TFTimerDone(ADR(Timer200)) THEN
+	TFTimerSet(ADR(Timer200),200,TRUE);
+	Clock200 := NOT Clock200;
+END_IF
+IF TFTimerDone(ADR(Timer1000)) THEN
+	TFTimerSet(ADR(Timer1000),1000,TRUE);
+	Clock1000 := NOT Clock1000;
+END_IF
+
+(* Se ho un errore durante la richiesta di ingresso, resetto esternamente gli HandShake *)
+IF LGVErrorCode <> 0 THEN
+	LGVResetHSKSUPNAV := TRUE;
+END_IF
+
+
+(* Access Lamp *)
+LGVAccessLamp := ((LGVAccessOK AND Clock200) OR
+				(LampadaIngressoInCorso AND Clock1000))AND
+				NOT LGVAccessERROR OR (LGVAccessERROR AND Clock100);
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFLGV_NEW">
+      <LineId Id="680" Count="0" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="799" Count="0" />
+      <LineId Id="915" Count="0" />
+      <LineId Id="800" Count="0" />
+      <LineId Id="1338" Count="1" />
+      <LineId Id="1425" Count="0" />
+      <LineId Id="1890" Count="0" />
+      <LineId Id="457" Count="0" />
+      <LineId Id="1405" Count="2" />
+      <LineId Id="1891" Count="1" />
+      <LineId Id="1408" Count="0" />
+      <LineId Id="1403" Count="0" />
+      <LineId Id="674" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="32" Count="1" />
+      <LineId Id="1429" Count="0" />
+      <LineId Id="1426" Count="0" />
+      <LineId Id="235" Count="1" />
+      <LineId Id="234" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="795" Count="1" />
+      <LineId Id="801" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="238" Count="0" />
+      <LineId Id="1902" Count="2" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="2089" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="1901" Count="0" />
+      <LineId Id="1896" Count="1" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="1895" Count="0" />
+      <LineId Id="116" Count="4" />
+      <LineId Id="186" Count="0" />
+      <LineId Id="121" Count="2" />
+      <LineId Id="1156" Count="0" />
+      <LineId Id="914" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="1216" Count="1" />
+      <LineId Id="125" Count="3" />
+      <LineId Id="1096" Count="0" />
+      <LineId Id="917" Count="0" />
+      <LineId Id="129" Count="2" />
+      <LineId Id="918" Count="0" />
+      <LineId Id="132" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="133" Count="3" />
+      <LineId Id="620" Count="1" />
+      <LineId Id="677" Count="0" />
+      <LineId Id="682" Count="0" />
+      <LineId Id="1899" Count="0" />
+      <LineId Id="797" Count="0" />
+      <LineId Id="1277" Count="0" />
+      <LineId Id="976" Count="0" />
+      <LineId Id="1278" Count="1" />
+      <LineId Id="798" Count="0" />
+      <LineId Id="623" Count="0" />
+      <LineId Id="64" Count="1" />
+      <LineId Id="1898" Count="0" />
+      <LineId Id="66" Count="0" />
+      <LineId Id="242" Count="0" />
+      <LineId Id="244" Count="0" />
+      <LineId Id="1410" Count="0" />
+      <LineId Id="1505" Count="0" />
+      <LineId Id="1411" Count="0" />
+      <LineId Id="1414" Count="0" />
+      <LineId Id="1412" Count="0" />
+      <LineId Id="1975" Count="0" />
+      <LineId Id="2178" Count="1" />
+      <LineId Id="1915" Count="0" />
+      <LineId Id="1905" Count="0" />
+      <LineId Id="1910" Count="0" />
+      <LineId Id="1922" Count="0" />
+      <LineId Id="1932" Count="0" />
+      <LineId Id="1925" Count="0" />
+      <LineId Id="1935" Count="0" />
+      <LineId Id="1933" Count="0" />
+      <LineId Id="1923" Count="0" />
+      <LineId Id="1938" Count="0" />
+      <LineId Id="1924" Count="0" />
+      <LineId Id="1936" Count="0" />
+      <LineId Id="1934" Count="0" />
+      <LineId Id="1926" Count="0" />
+      <LineId Id="1937" Count="0" />
+      <LineId Id="1927" Count="1" />
+      <LineId Id="1921" Count="0" />
+      <LineId Id="1918" Count="0" />
+      <LineId Id="1963" Count="0" />
+      <LineId Id="1952" Count="0" />
+      <LineId Id="1960" Count="1" />
+      <LineId Id="1973" Count="0" />
+      <LineId Id="1965" Count="0" />
+      <LineId Id="1959" Count="0" />
+      <LineId Id="1970" Count="0" />
+      <LineId Id="1967" Count="0" />
+      <LineId Id="1969" Count="0" />
+      <LineId Id="1971" Count="0" />
+      <LineId Id="1950" Count="1" />
+      <LineId Id="1972" Count="0" />
+      <LineId Id="1940" Count="0" />
+      <LineId Id="2173" Count="0" />
+      <LineId Id="2175" Count="2" />
+      <LineId Id="2174" Count="0" />
+      <LineId Id="1906" Count="1" />
+      <LineId Id="1327" Count="0" />
+      <LineId Id="67" Count="1" />
+      <LineId Id="1506" Count="0" />
+      <LineId Id="1576" Count="7" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="1328" Count="0" />
+      <LineId Id="1416" Count="1" />
+      <LineId Id="1420" Count="0" />
+      <LineId Id="1419" Count="0" />
+      <LineId Id="1418" Count="0" />
+      <LineId Id="1428" Count="0" />
+      <LineId Id="1422" Count="0" />
+      <LineId Id="78" Count="3" />
+      <LineId Id="1298" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="518" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="519" Count="0" />
+      <LineId Id="1796" Count="0" />
+      <LineId Id="520" Count="1" />
+      <LineId Id="570" Count="1" />
+      <LineId Id="2224" Count="0" />
+      <LineId Id="2226" Count="2" />
+      <LineId Id="2225" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="1998" Count="0" />
+      <LineId Id="2180" Count="1" />
+      <LineId Id="2213" Count="5" />
+      <LineId Id="2182" Count="0" />
+      <LineId Id="2184" Count="0" />
+      <LineId Id="2190" Count="0" />
+      <LineId Id="2196" Count="0" />
+      <LineId Id="2191" Count="0" />
+      <LineId Id="2194" Count="1" />
+      <LineId Id="2193" Count="0" />
+      <LineId Id="2219" Count="0" />
+      <LineId Id="2223" Count="0" />
+      <LineId Id="2192" Count="0" />
+      <LineId Id="2183" Count="0" />
+      <LineId Id="2006" Count="0" />
+      <LineId Id="2009" Count="0" />
+      <LineId Id="2203" Count="0" />
+      <LineId Id="2198" Count="1" />
+      <LineId Id="2202" Count="0" />
+      <LineId Id="2197" Count="0" />
+      <LineId Id="2200" Count="1" />
+      <LineId Id="2205" Count="0" />
+      <LineId Id="2208" Count="4" />
+      <LineId Id="2207" Count="0" />
+      <LineId Id="2220" Count="0" />
+      <LineId Id="2222" Count="0" />
+      <LineId Id="2204" Count="0" />
+      <LineId Id="2010" Count="0" />
+      <LineId Id="2007" Count="0" />
+      <LineId Id="2221" Count="0" />
+      <LineId Id="2000" Count="0" />
+      <LineId Id="1994" Count="0" />
+      <LineId Id="1332" Count="0" />
+      <LineId Id="1336" Count="0" />
+      <LineId Id="685" Count="0" />
+      <LineId Id="684" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="1724" Count="0" />
+      <LineId Id="1313" Count="0" />
+      <LineId Id="151" Count="2" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="154" Count="1" />
+      <LineId Id="1320" Count="0" />
+      <LineId Id="345" Count="0" />
+      <LineId Id="1725" Count="0" />
+      <LineId Id="346" Count="1" />
+      <LineId Id="857" Count="0" />
+      <LineId Id="348" Count="3" />
+      <LineId Id="176" Count="5" />
+      <LineId Id="190" Count="20" />
+      <LineId Id="182" Count="0" />
+      <LineId Id="2095" Count="0" />
+      <LineId Id="2090" Count="1" />
+      <LineId Id="2093" Count="1" />
+      <LineId Id="2092" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="1430" Count="1" />
+      <LineId Id="1433" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

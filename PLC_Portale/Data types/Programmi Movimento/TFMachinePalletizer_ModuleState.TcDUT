@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_ModuleState" Id="{b36a8a4a-f578-44aa-b0d8-90a27b91d5ad}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_ModuleState :
+STRUCT
+	Cmd	  : UDINT;
+	CmdCase : UDINT;
+	Error : UDINT;
+	ErrorExtra : UDINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

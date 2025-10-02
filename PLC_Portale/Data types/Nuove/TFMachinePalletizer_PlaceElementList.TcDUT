@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_PlaceElementList" Id="{cbad59de-5c3f-402f-96dc-8cd31f9a25c3}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_PlaceElementList :
+STRUCT
+	
+	Stato 			: e_Stato_ElementoLista; (* Stato dell'elemento della lista*)
+	
+	PElement 		: TFMachinePalletizer_PlaceElement; (* Elemento Da Movimentare *)
+	SlabData     	: TFMachinePalletizer_DataElement; (* Dati Elemento da depositare*)
+
+	WA_PRELIEVO		: UINT	:= 0;	(* WA DOVE VIENE FATTO IL PRELIEVO *)
+	WA_DEPOSITO		: UINT	:= 0;	(* WA DOVE VIENE FATTO IL DEPOSITO *)
+	PP_PRELIEVO     : UINT	:= 0;	(* PICK-POINT DOVE VIENE FATTO IL PRELIEVO *)	
+	
+	Pareggiatura    : e_Stato_Pareggiatura_Lastra  := PAREGGIATURA_DISABILITATA;	(* Pareggiatura Lastra da eseguire Prima del deposito 0:NON ESEGUIRE, 1: DA ESEGUIRE, 2:ESEGUITA *)
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

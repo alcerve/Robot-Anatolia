@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TF_CylinderState" Id="{19b83eef-fc39-4191-a0ba-e938cc7219bf}">
+    <Declaration><![CDATA[TYPE TF_CylinderState :
+STRUCT
+	Active : BOOL;
+	Inactive : BOOL;
+	Error : UDINT;
+	SensorActive : BOOL;
+	SensorInactive : BOOL;
+	StatusToHMI	: uint; //0= Null; 1= Active ; 2= Inactive; 3= Idle; 9 = Error ; 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

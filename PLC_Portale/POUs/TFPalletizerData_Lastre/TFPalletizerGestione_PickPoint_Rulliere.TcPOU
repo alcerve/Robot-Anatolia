@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFPalletizerGestione_PickPoint_Rulliere" Id="{6b7f2e3a-6811-4036-8adc-b1d0325d64be}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFPalletizerGestione_PickPoint_Rulliere
+(* Valorizza e aggiorna le variabili di stato del Pick-Point sulla base dei valori ricevuti dalla linea e dai valori inviati alla linea *)
+VAR_INPUT
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointSlab;
+	WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint_State;
+	WorkPickPointStateDaLinea : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointRoller_State_DaLinea;
+	WorkPickPointStateALinea : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointRoller_State_ALinea;
+
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	wpp : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+FOR wpp:= 1 TO MAXPICKPOINT DO 
+(******************* Valorizzazione da LINEA a PALLETTIZZATORE *********************)
+	(* Set stato *)
+	IF WorkPickPointStateDaLinea^[wpp].Automatico THEN
+		WorkPickPointState^[wpp].State := WORKPICKPOINT_STATE_AUTO;
+	ELSIF NOT WorkPickPointStateDaLinea^[wpp].Automatico THEN
+		WorkPickPointState^[wpp].State := WORKPICKPOINT_STATE_MAN;
+	ELSIF WorkPickPointStateDaLinea^[wpp].Errore THEN
+		WorkPickPointState^[wpp].State := WORKPICKPOINT_STATE_ERROR;
+	END_IF
+	(* Set Marcia Presente/Assente *)
+	IF WorkPickPointStateDaLinea^[wpp].PowerOK THEN
+		WorkPickPointState^[wpp].PowerOK := TRUE;
+	ELSE
+		WorkPickPointState^[wpp].PowerOK := FALSE;
+	END_IF
+	(* Set Lastra Presente/Assente *)
+	IF WorkPickPointStateDaLinea^[wpp].Occupato THEN
+		WorkPickPointState^[wpp].ProdPresence := PROD_PRESENTE;
+	ELSE
+		WorkPickPointState^[wpp].ProdPresence := PROD_ASSENTE;
+	END_IF
+	(* Set Lastra Pronta/Non Pronta *)
+	IF WorkPickPointStateDaLinea^[wpp].LastraPronta THEN
+		WorkPickPointState^[wpp].LastraPronta := TRUE;
+	ELSE
+		WorkPickPointState^[wpp].LastraPronta := FALSE;
+	END_IF
+	(* Set CODICE *)
+	WorkPickPointState^[wpp].Code := WorkPickPointStateDaLinea^[wpp].Codice; 
+	(* Set Priorità *)
+	IF WorkPickPointStateDaLinea^[wpp].Priority THEN
+		WorkPickPointState^[wpp].Priority := MAX_PRIORITY;
+	ELSE
+		WorkPickPointState^[wpp].Priority := Min_PRIORITY;
+	END_IF
+	
+(******************* Valorizzazione da PALLETTIZZATORE a LINEA *********************)	
+	(* Set stato ingombro *)
+	IF WorkPickPointState^[wpp].StatoIngombroEE = EE_IN_INGOMBRO THEN
+		WorkPickPointStateALinea^[wpp].Ingombro 	:= TRUE;
+	ELSIF WorkPickPointState^[wpp].StatoIngombroEE 	 = EE_FUORI_INGOMBRO THEN
+		WorkPickPointStateALinea^[wpp].Ingombro 	:= FALSE;
+	END_IF
+	(* Set stato Prelievo *)
+	IF WorkPickPointState^[wpp].StatoPrelievo = PRELIEVO_DA_EFFETTUARE THEN
+		WorkPickPointStateALinea^[wpp].Prelievo_Effettuato := FALSE;
+	ELSIF WorkPickPointState^[wpp].StatoPrelievo = PRELIEVO_EFFETTUATO THEN
+		WorkPickPointStateALinea^[wpp].Prelievo_Effettuato := TRUE;
+	END_IF
+
+END_FOR
+
+ 	]]></ST>
+    </Implementation>
+    <LineIds Name="TFPalletizerGestione_PickPoint_Rulliere">
+      <LineId Id="20" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="27" Count="2" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="35" Count="1" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="45" Count="4" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="50" Count="4" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="74" Count="1" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="113" Count="1" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="66" Count="1" />
+      <LineId Id="69" Count="1" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="103" Count="2" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="100" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

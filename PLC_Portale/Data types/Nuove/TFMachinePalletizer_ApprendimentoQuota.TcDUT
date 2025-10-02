@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_ApprendimentoQuota" Id="{19e4a5a8-4db1-425f-b5ff-3991251cc350}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_ApprendimentoQuota :
+STRUCT
+	Stato			: e_Stato_Apprendimento	:= e_Stato_Apprendimento.NOT_DEFINED;	(* Stato apprendimento Direzione X 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+	QuotaStart		: LREAL	:= 0.0;	(* (mm) Quota inizio Apprendimento Direzione X *)
+	QuotaRilevata	: LREAL	:= 0.0; (* Quota rilevata durante apprendimento Direzione X *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

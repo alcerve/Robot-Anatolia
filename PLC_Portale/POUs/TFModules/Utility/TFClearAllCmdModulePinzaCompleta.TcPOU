@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFClearAllCmdModulePinzaCompleta" Id="{425fdb93-6476-47ac-9b58-e97e07397307}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFClearAllCmdModulePinzaCompleta : bool
+VAR_INPUT
+	AspirazioneDX : POINTER TO TF_VacumOVEM;
+	AspirazioneSX : POINTER TO TF_VacumOVEM;
+	AspirazioneDX2 : POINTER TO TF_VacumOVEM;
+	AspirazioneSX2 : POINTER TO TF_VacumOVEM;
+
+	CilindroApertura 			: POINTER TO DC_Cylinder;
+	CilindroSbloccoRotazione 	: POINTER TO SC_Cylinder;
+	CilindroSbloccoBascolante 	: POINTER TO SC_Cylinder;
+	AspirazioneFaldaDX 			: POINTER TO SC_Cylinder;
+	AspirazioneFaldaSX 			: POINTER TO SC_Cylinder;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFOVEMClearAllCommand(AspirazioneDX^.Command);
+TFOVEMClearAllCommand(AspirazioneSX^.Command);
+TFOVEMClearAllCommand(AspirazioneDX2^.Command);
+TFOVEMClearAllCommand(AspirazioneSX2^.Command);
+TFCylinder_ClearAllCommand(ADR(CilindroApertura^.Command));
+TFCylinder_ClearAllCommand(ADR(CilindroSbloccoRotazione^.Command));
+TFCylinder_ClearAllCommand(ADR(AspirazioneFaldaDX^.Command));
+TFCylinder_ClearAllCommand(ADR(AspirazioneFaldaSX^.Command));
+TFCylinder_ClearAllCommand(ADR(CilindroSbloccoBascolante^.Command));
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFClearAllCmdModulePinzaCompleta">
+      <LineId Id="3" Count="7" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

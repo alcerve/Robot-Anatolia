@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCodicePaccoPresenteInFormaturaAll" Id="{4030ea4e-e652-44da-a0b2-72660ff1563d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCodicePaccoPresenteInFormaturaAll : BOOL // Se TRUE: codice del pacco presente in formatura, Se FALSE: codice non presente in formatura
+VAR_INPUT
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_Forming; // Struttura formatura
+	CodiceInValutazione : INT; //Codice del pacco da valutare
+END_VAR
+VAR
+	IndiceFormatura : INT;		// Indice della formatura da valutare
+	pp : INT;
+END_VAR
+// Se TRUE: codice del pacco presente in formatura, FALSE: codice non presente in formatura
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Se TRUE: codice del pacco presente in formatura, Se FALSE: codice non presente in formatura
+TFCodicePaccoPresenteInFormaturaAll := FALSE;
+FOR IndiceFormatura:=1 TO MAXFORMING DO
+	IF Forming^[IndiceFormatura].Enable = 1 THEN
+		(* Per tutti i codici di Pallettizzazione Validi *)		
+		FOR pp:=1 TO MAXFORMINGCODE DO
+			IF Forming^[IndiceFormatura].Code[pp] = CodiceInValutazione THEN
+				TFCodicePaccoPresenteInFormaturaAll := TRUE;
+				RETURN;
+			END_IF
+		END_FOR
+	END_IF
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="TFCodicePaccoPresenteInFormaturaAll">
+      <LineId Id="70" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="10" Count="3" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="33" Count="3" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

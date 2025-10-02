@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFRullieraManCmd" Id="{9b154f33-7bce-4bb7-b7a6-c2ab5ae0b711}">
+    <Declaration><![CDATA[TYPE TFRullieraManCmd :
+STRUCT
+	Ax 					: TFAxManCmd;
+	ResetModulo 		: BOOL;
+	Ax2 				: TFAxManCmd;
+	AbilitaCmdTandemRulliere	: BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

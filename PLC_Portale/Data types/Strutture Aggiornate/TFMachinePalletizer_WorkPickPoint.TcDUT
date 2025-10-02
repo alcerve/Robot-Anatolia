@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_WorkPickPoint" Id="{4f3d6490-af92-4acf-88dd-f9c25f2aab6a}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkPickPoint :
+STRUCT
+	
+	Tipologia			: e_Tipo_PickPoint 	:= -1;		(* READ	-	Tipologia del punto di prelievo 
+														Per pacchi 	= RIBALTINO;
+														Per lastre 	= RULLIERA;
+														Per Falde	= MAGAZZIONO_FALDE *)
+														
+	ID					: INT 	:= -1;		(* READ	-  Identifica il numero del PickPoint *)
+	Enable				: INT	:= -1;		(* READ	-  PickPoint Abilitata 0=no, 1=si, -1 dato non valido *)	
+(****************************************************** NO LASTRE: ELIMINARE!!! *****************************************************************************************)
+	Xv					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE - NON USATO PER LASTRE *)
+	Yv					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE - NON USATO PER LASTRE *)
+	Zv					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE - NON USATO PER LASTRE *)
+	Jv					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN VERTICALE - NON USATO PER LASTRE *)
+	ZvRaise				: REAL  := 0.0; 	(* READ	- (mm) Quota di salita per uscire dall'ingombro - CON RIBALTINO IN VERTICALE - NON USATO PER LASTRE *)
+(***********************************************************************************************************************************************)
+	Xh					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE - USATO PER LASTRE *)
+	Yh					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE - USATO PER LASTRE *)
+	Zh					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE - USATO PER LASTRE *) (*Caso di magazzino falde: è la quota della base di appoggio*)
+	Jh					: LREAL	:= 0.0;		(* READ	- (mm) Quota assoluta di impianto DA ORIGINE - CON RIBALTINO IN ORIZZONTALE - USATO PER LASTRE *)
+	ZhRaise				: REAL  := 0.0; 	(* READ	- (mm) Quota di salita per uscire dall'ingombro - CON RIBALTINO IN ORIZZONTALE - USATO PER LASTRE *)
+	
+	Lunghezza			: REAL := 0.0;		(* READ	- (mm) Ingombro in Lunghezza "X" rispetto il suo centro *)
+	Larghezza			: REAL := 0.0;		(* READ	- (mm) Ingombro in Larghezza "Y" rispetto il suo centro *)
+	Altezza				: REAL := 0.0;		(* READ	- (mm) Ingombro in Altezza "Z" rispetto il suo centro *)
+	
+	DoLearn_Z			: e_Stato_Apprendimento	:= -1;	(* READ/WRITE 	- Stato apprendimento Direzione Z 0=Disabilitato, 1=Abilitato da Eseguire, 2=Eseguito, -1 dato non valido *)
+	Learn_Z				: REAL	:= 0.0;	(* READ			- (mm) Quota inizio Apprendimento Direzione Z *)
+	Learned_Z			: LREAL	:= 0.0; (* WRITE		- Quota rilevata durante apprendimento Direzione Z *)
+			
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

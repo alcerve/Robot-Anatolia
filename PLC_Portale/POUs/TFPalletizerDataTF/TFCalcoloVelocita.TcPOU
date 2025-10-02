@@ -1,0 +1,504 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoloVelocita" Id="{1b2cbf53-f0ff-4571-b518-30bfc0d71da1}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFCalcoloVelocita : BOOL
+VAR_INPUT
+	AxisOverride : POINTER TO TFMachinePalletizer_VelocityOverride_TF;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	ArrayPacchi : POINTER TO DUT_ArrayPacchi; 					//Array contenente i pacchi sui trasporti				
+	DepositoPaccoInLenta : BOOL;
+END_VAR
+VAR
+	NUltimiTrasportiOccupati : UINT;
+	OverrideAutomatico	: REAL;
+	OverrideCicloPallet	: REAL;
+	OverrideCicloPacco	: REAL;
+	OverrideCicloFalda	: REAL;
+	OverrideCicloJog	: REAL;
+	OverrideCicloRiposo	: REAL;
+	
+	OverrideGlobaleCicloPallet  : REAL; 	
+	OverrideGlobaleCicloPacco 	: REAL;	
+	OverrideGlobaleCicloFalda 	: REAL; 	
+	OverrideGlobaleCicloJog 	: REAL;
+	OverrideGlobaleCicloAvuoto	: REAL;
+	
+	OverrideAutomaticoOLD: REAL;
+END_VAR	
+
+
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFCalcoloVelocita := FALSE;
+
+(* Trasferimento valori da variabile scritta da HMI a variabile Globale *)
+
+AxisOverride^.Auto := HMI_AxisOverride.Auto;
+AxisOverride^.Jog := HMI_AxisOverride.Jog;
+AxisOverride^.Layer := HMI_AxisOverride.Layer;
+IF Mission^.XDim >= 3100 THEN//se formato maggiore di 2900 seghiamo override al 80%
+	HMI_AxisOverride.Pack := MIN(80,HMI_AxisOverride.Pack);
+END_IF
+AxisOverride^.Pack := HMI_AxisOverride.Pack;
+AxisOverride^.Pallet := HMI_AxisOverride.Pallet;
+AxisOverride^.Riposo := HMI_AxisOverride.PickRip;
+
+IF FROM_HMI_PAL.HMI_AbilitaOverrideDinamico AND FALSE THEN
+	NUltimiTrasportiOccupati := TFNumeroUltimi_N_TrasportiOccupati(ArrayPacchi,7);;//TFNumeroUltimi_N_TrasportiOccupati(HandlingPackTable,7);
+	OverrideAutomatico := (AxisOverride^.Auto/100) * (TFCalcoloOverrideDinamico(NUltimiTrasportiOccupati,HMI_OverideDinamico)/100);
+	IF NUltimiTrasportiOccupati > 0 THEN
+		OverrideAutomaticoOLD := OverrideAutomatico;
+	END_IF
+	IF OverrideAutomatico = 0 THEN
+		IF OverrideAutomaticoOLD <= 0 THEN
+			OverrideAutomatico 	:= AxisOverride^.Auto/100;
+		ELSE
+			OverrideAutomatico := OverrideAutomaticoOLD;
+		END_IF
+	END_IF
+ELSE
+	OverrideAutomatico 	:= AxisOverride^.Auto/100;	
+END_IF
+
+IF OverrideAutomatico <= 0.01 THEN
+	OverrideAutomatico := 1;
+END_IF
+
+//OverrideAutomatico 	:= AxisOverride^.Auto/ 100;	
+OverrideCicloPallet := AxisOverride^.Pallet/ 100;	
+OverrideCicloPacco 	:= AxisOverride^.Pack/ 100;	
+OverrideCicloFalda 	:= AxisOverride^.Layer/ 100;	
+OverrideCicloJog 	:= AxisOverride^.Jog/ 100;	
+OverrideCicloRiposo	:= AxisOverride^.Riposo/ 100;	
+
+OverrideGlobaleCicloPallet  := OverrideAutomatico * OverrideCicloPallet;  	
+OverrideGlobaleCicloPacco 	:= OverrideAutomatico *	OverrideCicloPacco;
+OverrideGlobaleCicloFalda 	:= OverrideAutomatico *	OverrideCicloFalda;
+OverrideGlobaleCicloJog 	:= OverrideAutomatico * OverrideCicloJog;
+OverrideGlobaleCicloAvuoto 	:= OverrideAutomatico * OverrideCicloRiposo;
+
+
+HMI_ParametriAsseX_CicloFalda.Vel_Ridotta 	:= MIN(HMI_ParametriAsseX_CicloFalda.Vel_Ridotta,10);
+HMI_ParametriAsseX_CicloPacco.Vel_Ridotta 	:= MIN(HMI_ParametriAsseX_CicloPacco.Vel_Ridotta,10);
+HMI_ParametriAsseX_CicloPallet.Vel_Ridotta 	:= MIN(HMI_ParametriAsseX_CicloPallet.Vel_Ridotta,10);
+HMI_ParametriAsseX_CicloRiposo.Vel_Ridotta 	:= MIN(HMI_ParametriAsseX_CicloRiposo.Vel_Ridotta,10);
+
+HMI_ParametriAsseY_CicloFalda.Vel_Ridotta 	:= MIN(HMI_ParametriAsseY_CicloFalda.Vel_Ridotta,2);
+HMI_ParametriAsseY_CicloPacco.Vel_Ridotta 	:= MIN(HMI_ParametriAsseY_CicloPacco.Vel_Ridotta,2);
+HMI_ParametriAsseY_CicloPallet.Vel_Ridotta 	:= MIN(HMI_ParametriAsseY_CicloPallet.Vel_Ridotta,2);
+HMI_ParametriAsseY_CicloRiposo.Vel_Ridotta 	:= MIN(HMI_ParametriAsseY_CicloRiposo.Vel_Ridotta,2);
+
+HMI_ParametriAsseZ_CicloFalda.Vel_Ridotta 	:= MIN(HMI_ParametriAsseZ_CicloFalda.Vel_Ridotta,10);
+HMI_ParametriAsseZ_CicloPacco.Vel_Ridotta 	:= MIN(HMI_ParametriAsseZ_CicloPacco.Vel_Ridotta,10);
+HMI_ParametriAsseZ_CicloPallet.Vel_Ridotta 	:= MIN(HMI_ParametriAsseZ_CicloPallet.Vel_Ridotta,10);
+HMI_ParametriAsseZ_CicloRiposo.Vel_Ridotta 	:= MIN(HMI_ParametriAsseZ_CicloRiposo.Vel_Ridotta,10);
+
+HMI_ParametriAsseJ_CicloFalda.Vel_Ridotta 	:= MIN(HMI_ParametriAsseJ_CicloFalda.Vel_Ridotta,10);
+HMI_ParametriAsseJ_CicloPacco.Vel_Ridotta 	:= MIN(HMI_ParametriAsseJ_CicloPacco.Vel_Ridotta,10);
+HMI_ParametriAsseJ_CicloPallet.Vel_Ridotta 	:= MIN(HMI_ParametriAsseJ_CicloPallet.Vel_Ridotta,10);
+HMI_ParametriAsseJ_CicloRiposo.Vel_Ridotta 	:= MIN(HMI_ParametriAsseJ_CicloRiposo.Vel_Ridotta,10);
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////// CICLO DI RIPOSO ///////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	HMI_ParametriAsseX_CicloRiposo.Acc_Carico	:= MAX(1,HMI_ParametriAsseX_CicloRiposo.Acc_Carico);
+	HMI_ParametriAsseX_CicloRiposo.Acc_Vuoto	:= MAX(1,HMI_ParametriAsseX_CicloRiposo.Acc_Vuoto); 
+																						
+	HMI_ParametriAsseY_CicloRiposo.Acc_Carico	:= MAX(1,HMI_ParametriAsseY_CicloRiposo.Acc_Carico);
+	HMI_ParametriAsseY_CicloRiposo.Acc_Vuoto	:= MAX(1,HMI_ParametriAsseY_CicloRiposo.Acc_Vuoto); 
+																						
+	HMI_ParametriAsseZ_CicloRiposo.Acc_Carico	:= MAX(1,HMI_ParametriAsseZ_CicloRiposo.Acc_Carico);
+	HMI_ParametriAsseZ_CicloRiposo.Acc_Vuoto	:= MAX(1,HMI_ParametriAsseZ_CicloRiposo.Acc_Vuoto); 
+																						
+	HMI_ParametriAsseJ_CicloRiposo.Acc_Carico	:= MAX(1,HMI_ParametriAsseJ_CicloRiposo.Acc_Carico);
+	HMI_ParametriAsseJ_CicloRiposo.Acc_Vuoto	:= MAX(1,HMI_ParametriAsseJ_CicloRiposo.Acc_Vuoto); 
+																					   
+	HMI_ParametriAsseK_CicloRiposo.Acc_Carico	:= MAX(1,HMI_ParametriAsseK_CicloRiposo.Acc_Carico);
+	HMI_ParametriAsseK_CicloRiposo.Acc_Vuoto	:= MAX(1,HMI_ParametriAsseK_CicloRiposo.Acc_Vuoto); 
+
+	HMI_ParametriAsseX_CicloRiposo.Vel_Carico	:= MAX(1,HMI_ParametriAsseX_CicloRiposo.Vel_Carico);	
+	HMI_ParametriAsseX_CicloRiposo.Vel_Ridotta  := MAX(1,HMI_ParametriAsseX_CicloRiposo.Vel_Ridotta);
+		
+
+	HMI_ParametriAsseX_CicloRiposo.Dec_Carico 		:= HMI_ParametriAsseX_CicloRiposo.Acc_Carico;
+	HMI_ParametriAsseX_CicloRiposo.Dec_Vuoto  		:= HMI_ParametriAsseX_CicloRiposo.Acc_Vuoto;
+
+	HMI_ParametriAsseY_CicloRiposo.Dec_Carico 		:= HMI_ParametriAsseY_CicloRiposo.Acc_Carico;
+	HMI_ParametriAsseY_CicloRiposo.Dec_Vuoto  		:= HMI_ParametriAsseY_CicloRiposo.Acc_Vuoto;
+		
+	HMI_ParametriAsseZ_CicloRiposo.Dec_Carico 		:= HMI_ParametriAsseZ_CicloRiposo.Acc_Carico;
+	HMI_ParametriAsseZ_CicloRiposo.Dec_Vuoto  		:= HMI_ParametriAsseZ_CicloRiposo.Acc_Vuoto;
+	
+	HMI_ParametriAsseJ_CicloRiposo.Dec_Carico 		:= HMI_ParametriAsseJ_CicloRiposo.Acc_Carico;
+	HMI_ParametriAsseJ_CicloRiposo.Dec_Vuoto  		:= HMI_ParametriAsseJ_CicloRiposo.Acc_Vuoto;
+	
+	HMI_ParametriAsseK_CicloRiposo.Dec_Carico 		:= HMI_ParametriAsseK_CicloRiposo.Acc_Carico;
+	HMI_ParametriAsseK_CicloRiposo.Dec_Vuoto  		:= HMI_ParametriAsseK_CicloRiposo.Acc_Vuoto;
+	
+	(* ASSE X *)
+	
+	ParametriProgramma_X_CicloRiposo.Acc_Carico		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloRiposo.Acc_Carico/100);
+	ParametriProgramma_X_CicloRiposo.Acc_Vuoto		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloRiposo.Acc_Vuoto/100);
+	ParametriProgramma_X_CicloRiposo.Dec_Carico 	:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloRiposo.Dec_Carico/100);
+	ParametriProgramma_X_CicloRiposo.Dec_Vuoto  	:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloRiposo.Dec_Vuoto/100);
+	ParametriProgramma_X_CicloRiposo.Jerk_Carico  	:= AxisNominalPar_X.DefaultJerk * 		  (HMI_ParametriAsseX_CicloRiposo.Jerk_Carico/100);
+	ParametriProgramma_X_CicloRiposo.Jerk_Vuoto  	:= AxisNominalPar_X.DefaultJerk * 		  (HMI_ParametriAsseX_CicloRiposo.Jerk_Vuoto/100);
+	ParametriProgramma_X_CicloRiposo.Torque  		:= AxisNominalPar_X.DefaultTorque * 	  (HMI_ParametriAsseX_CicloRiposo.Torque/100);
+	ParametriProgramma_X_CicloRiposo.Vel_Carico  	:= AxisNominalPar_X.ReferenceVelocity *   (HMI_ParametriAsseX_CicloRiposo.Vel_Carico/100) * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_X_CicloRiposo.Vel_Ridotta  	:= AxisNominalPar_X.ReferenceVelocity *   (HMI_ParametriAsseX_CicloRiposo.Vel_Ridotta/100);// * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_X_CicloRiposo.Vel_Vuoto  	:= AxisNominalPar_X.ReferenceVelocity *   (HMI_ParametriAsseX_CicloRiposo.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	
+	(* ASSE Y *)
+		
+	ParametriProgramma_Y_CicloRiposo.Acc_Carico		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloRiposo.Acc_Carico/100);
+	ParametriProgramma_Y_CicloRiposo.Acc_Vuoto		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloRiposo.Acc_Vuoto/100);
+	ParametriProgramma_Y_CicloRiposo.Dec_Carico 	:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloRiposo.Dec_Carico/100);
+	ParametriProgramma_Y_CicloRiposo.Dec_Vuoto  	:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloRiposo.Dec_Vuoto/100);
+	ParametriProgramma_Y_CicloRiposo.Jerk_Carico  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloRiposo.Jerk_Carico/100);
+	ParametriProgramma_Y_CicloRiposo.Jerk_Vuoto  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloRiposo.Jerk_Vuoto/100);
+	ParametriProgramma_Y_CicloRiposo.Torque  		:= AxisNominalPar_Y.DefaultTorque * (HMI_ParametriAsseY_CicloRiposo.Torque/100);
+	ParametriProgramma_Y_CicloRiposo.Vel_Carico  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloRiposo.Vel_Carico/100) * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_Y_CicloRiposo.Vel_Ridotta  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloRiposo.Vel_Ridotta/100);// * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_Y_CicloRiposo.Vel_Vuoto  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloRiposo.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	
+	(* ASSE Z *)
+		
+	ParametriProgramma_Z_CicloRiposo.Acc_Carico		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloRiposo.Acc_Carico/100);
+	ParametriProgramma_Z_CicloRiposo.Acc_Vuoto		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloRiposo.Acc_Vuoto/100);
+	ParametriProgramma_Z_CicloRiposo.Dec_Carico 	:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloRiposo.Dec_Carico/100);
+	ParametriProgramma_Z_CicloRiposo.Dec_Vuoto  	:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloRiposo.Dec_Vuoto/100);
+	ParametriProgramma_Z_CicloRiposo.Jerk_Carico  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloRiposo.Jerk_Carico/100);
+	ParametriProgramma_Z_CicloRiposo.Jerk_Vuoto  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloRiposo.Jerk_Vuoto/100);
+	ParametriProgramma_Z_CicloRiposo.Torque  		:= AxisNominalPar_Z.DefaultTorque * (HMI_ParametriAsseZ_CicloRiposo.Torque/100);
+	ParametriProgramma_Z_CicloRiposo.Vel_Carico  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloRiposo.Vel_Carico/100) * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_Z_CicloRiposo.Vel_Ridotta  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloRiposo.Vel_Ridotta/100);// * OverrideGlobaleCicloRiposo;
+	ParametriProgramma_Z_CicloRiposo.Vel_Vuoto  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloRiposo.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	
+	(* ASSE J *)
+	
+	ParametriProgramma_J_CicloRiposo.Acc_Carico		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloRiposo.Acc_Carico/100);
+	ParametriProgramma_J_CicloRiposo.Acc_Vuoto		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloRiposo.Acc_Vuoto/100);
+	ParametriProgramma_J_CicloRiposo.Dec_Carico 	:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloRiposo.Dec_Carico/100);
+	ParametriProgramma_J_CicloRiposo.Dec_Vuoto  	:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloRiposo.Dec_Vuoto/100);
+	ParametriProgramma_J_CicloRiposo.Jerk_Carico  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloRiposo.Jerk_Carico/100);
+	ParametriProgramma_J_CicloRiposo.Jerk_Vuoto  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloRiposo.Jerk_Vuoto/100);
+	ParametriProgramma_J_CicloRiposo.Torque  		:= AxisNominalPar_J.DefaultTorque * (HMI_ParametriAsseJ_CicloRiposo.Torque/100);
+	ParametriProgramma_J_CicloRiposo.Vel_Carico  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloRiposo.Vel_Carico/100);// * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_J_CicloRiposo.Vel_Ridotta  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloRiposo.Vel_Ridotta/100);// * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_J_CicloRiposo.Vel_Vuoto  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloRiposo.Vel_Vuoto/100);// * OverrideGlobaleCicloAvuoto;
+	(* ASSE K *)
+	(*
+	ParametriProgramma_K_CicloRiposo.Acc_Carico		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloRiposo.Acc_Carico/100);
+	ParametriProgramma_K_CicloRiposo.Acc_Vuoto		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloRiposo.Acc_Vuoto/100);
+	ParametriProgramma_K_CicloRiposo.Dec_Carico 	:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloRiposo.Dec_Carico/100);
+	ParametriProgramma_K_CicloRiposo.Dec_Vuoto  	:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloRiposo.Dec_Vuoto/100);
+	ParametriProgramma_K_CicloRiposo.Jerk_Carico  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloRiposo.Jerk_Carico/100);
+	ParametriProgramma_K_CicloRiposo.Jerk_Vuoto  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloRiposo.Jerk_Vuoto/100);
+	//ParametriProgramma_K_CicloRiposo.Torque  		:= Mission^.KPickTorque;//AxisNominalPar_K.DefaultTorque * (HMI_ParametriAsseK_CicloRiposo.Torque/100);
+	ParametriProgramma_K_CicloRiposo.Vel_Carico  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloRiposo.Vel_Carico/100);// * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_K_CicloRiposo.Vel_Ridotta  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloRiposo.Vel_Ridotta/100);// * OverrideGlobaleCicloAvuoto;
+	ParametriProgramma_K_CicloRiposo.Vel_Vuoto  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloRiposo.Vel_Vuoto/100);//* OverrideGlobaleCicloAvuoto;
+	*)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////// CICLO FALDA //////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	HMI_ParametriAsseX_CicloFalda.Acc_Carico	:= MAX(1,HMI_ParametriAsseX_CicloFalda.Acc_Carico);
+	HMI_ParametriAsseX_CicloFalda.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseX_CicloFalda.Acc_Vuoto); 
+																				 
+	HMI_ParametriAsseY_CicloFalda.Acc_Carico	:= MAX(1,HMI_ParametriAsseY_CicloFalda.Acc_Carico);
+	HMI_ParametriAsseY_CicloFalda.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseY_CicloFalda.Acc_Vuoto); 
+																				 
+	HMI_ParametriAsseZ_CicloFalda.Acc_Carico	:= MAX(1,HMI_ParametriAsseZ_CicloFalda.Acc_Carico);
+	HMI_ParametriAsseZ_CicloFalda.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseZ_CicloFalda.Acc_Vuoto); 
+																				 
+	HMI_ParametriAsseJ_CicloFalda.Acc_Carico	:= MAX(1,HMI_ParametriAsseJ_CicloFalda.Acc_Carico);
+	HMI_ParametriAsseJ_CicloFalda.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseJ_CicloFalda.Acc_Vuoto); 
+																			     
+	HMI_ParametriAsseK_CicloFalda.Acc_Carico	:= MAX(1,HMI_ParametriAsseK_CicloFalda.Acc_Carico);
+	HMI_ParametriAsseK_CicloFalda.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseK_CicloFalda.Acc_Vuoto); 
+                                                                                 
+	HMI_ParametriAsseX_CicloFalda.Vel_Carico	:= MAX(1,HMI_ParametriAsseX_CicloFalda.Vel_Carico);	
+	HMI_ParametriAsseX_CicloFalda.Vel_Ridotta  	:= MAX(1,HMI_ParametriAsseX_CicloFalda.Vel_Ridotta);
+	
+
+	HMI_ParametriAsseX_CicloFalda.Dec_Carico 		:= HMI_ParametriAsseX_CicloFalda.Acc_Carico;
+	HMI_ParametriAsseX_CicloFalda.Dec_Vuoto  		:= HMI_ParametriAsseX_CicloFalda.Acc_Vuoto;
+
+	HMI_ParametriAsseY_CicloFalda.Dec_Carico 		:= HMI_ParametriAsseY_CicloFalda.Acc_Carico;
+	HMI_ParametriAsseY_CicloFalda.Dec_Vuoto  		:= HMI_ParametriAsseY_CicloFalda.Acc_Vuoto;
+		
+	HMI_ParametriAsseZ_CicloFalda.Dec_Carico 		:= HMI_ParametriAsseZ_CicloFalda.Acc_Carico;
+	HMI_ParametriAsseZ_CicloFalda.Dec_Vuoto  		:= HMI_ParametriAsseZ_CicloFalda.Acc_Vuoto;
+	
+	HMI_ParametriAsseJ_CicloFalda.Dec_Carico 		:= HMI_ParametriAsseJ_CicloFalda.Acc_Carico;
+	HMI_ParametriAsseJ_CicloFalda.Dec_Vuoto  		:= HMI_ParametriAsseJ_CicloFalda.Acc_Vuoto;
+	
+	HMI_ParametriAsseK_CicloFalda.Dec_Carico 		:= HMI_ParametriAsseK_CicloFalda.Acc_Carico;
+	HMI_ParametriAsseK_CicloFalda.Dec_Vuoto  		:= HMI_ParametriAsseK_CicloFalda.Acc_Vuoto;
+	
+	(* ASSE X *)
+	ParametriProgramma_X_CicloFalda.Acc_Carico		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloFalda.Acc_Carico/100);
+	ParametriProgramma_X_CicloFalda.Acc_Vuoto		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloFalda.Acc_Vuoto/100);
+	ParametriProgramma_X_CicloFalda.Dec_Carico 		:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloFalda.Dec_Carico/100);
+	ParametriProgramma_X_CicloFalda.Dec_Vuoto  		:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloFalda.Dec_Vuoto/100);
+	ParametriProgramma_X_CicloFalda.Jerk_Carico  	:= AxisNominalPar_X.DefaultJerk * (HMI_ParametriAsseX_CicloFalda.Jerk_Carico/100);
+	ParametriProgramma_X_CicloFalda.Jerk_Vuoto  	:= AxisNominalPar_X.DefaultJerk * (HMI_ParametriAsseX_CicloFalda.Jerk_Vuoto/100);
+	ParametriProgramma_X_CicloFalda.Torque  		:= AxisNominalPar_X.DefaultTorque * (HMI_ParametriAsseX_CicloFalda.Torque/100);
+	ParametriProgramma_X_CicloFalda.Vel_Carico  	:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloFalda.Vel_Carico/100) * OverrideGlobaleCicloFalda;
+	ParametriProgramma_X_CicloFalda.Vel_Ridotta  	:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloFalda.Vel_Ridotta/100);// * OverrideGlobaleCicloFalda;
+	ParametriProgramma_X_CicloFalda.Vel_Vuoto  		:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloFalda.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE Y *)
+	ParametriProgramma_Y_CicloFalda.Acc_Carico		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloFalda.Acc_Carico/100);
+	ParametriProgramma_Y_CicloFalda.Acc_Vuoto		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloFalda.Acc_Vuoto/100);
+	ParametriProgramma_Y_CicloFalda.Dec_Carico 		:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloFalda.Dec_Carico/100);
+	ParametriProgramma_Y_CicloFalda.Dec_Vuoto  		:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloFalda.Dec_Vuoto/100);
+	ParametriProgramma_Y_CicloFalda.Jerk_Carico  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloFalda.Jerk_Carico/100);
+	ParametriProgramma_Y_CicloFalda.Jerk_Vuoto  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloFalda.Jerk_Vuoto/100);
+	ParametriProgramma_Y_CicloFalda.Torque  		:= AxisNominalPar_Y.DefaultTorque * (HMI_ParametriAsseY_CicloFalda.Torque/100);
+	ParametriProgramma_Y_CicloFalda.Vel_Carico  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloFalda.Vel_Carico/100) * OverrideGlobaleCicloFalda;
+	ParametriProgramma_Y_CicloFalda.Vel_Ridotta  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloFalda.Vel_Ridotta/100);// * OverrideGlobaleCicloFalda;
+	ParametriProgramma_Y_CicloFalda.Vel_Vuoto  		:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloFalda.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE Z *)
+	ParametriProgramma_Z_CicloFalda.Acc_Carico		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloFalda.Acc_Carico/100);
+	ParametriProgramma_Z_CicloFalda.Acc_Vuoto		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloFalda.Acc_Vuoto/100);
+	ParametriProgramma_Z_CicloFalda.Dec_Carico 		:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloFalda.Dec_Carico/100);
+	ParametriProgramma_Z_CicloFalda.Dec_Vuoto  		:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloFalda.Dec_Vuoto/100);
+	ParametriProgramma_Z_CicloFalda.Jerk_Carico  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloFalda.Jerk_Carico/100);
+	ParametriProgramma_Z_CicloFalda.Jerk_Vuoto  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloFalda.Jerk_Vuoto/100);
+	ParametriProgramma_Z_CicloFalda.Torque  		:= AxisNominalPar_Z.DefaultTorque * (HMI_ParametriAsseZ_CicloFalda.Torque/100);
+	ParametriProgramma_Z_CicloFalda.Vel_Carico  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloFalda.Vel_Carico/100) * OverrideGlobaleCicloFalda;
+	ParametriProgramma_Z_CicloFalda.Vel_Ridotta  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloFalda.Vel_Ridotta/100); //* OverrideGlobaleCicloFalda;
+	ParametriProgramma_Z_CicloFalda.Vel_Vuoto  		:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloFalda.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE J *)
+	ParametriProgramma_J_CicloFalda.Acc_Carico		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloFalda.Acc_Carico/100);
+	ParametriProgramma_J_CicloFalda.Acc_Vuoto		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloFalda.Acc_Vuoto/100);
+	ParametriProgramma_J_CicloFalda.Dec_Carico 		:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloFalda.Dec_Carico/100);
+	ParametriProgramma_J_CicloFalda.Dec_Vuoto  		:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloFalda.Dec_Vuoto/100);
+	ParametriProgramma_J_CicloFalda.Jerk_Carico  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloFalda.Jerk_Carico/100);
+	ParametriProgramma_J_CicloFalda.Jerk_Vuoto  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloFalda.Jerk_Vuoto/100);
+	ParametriProgramma_J_CicloFalda.Torque  		:= AxisNominalPar_J.DefaultTorque * (HMI_ParametriAsseJ_CicloFalda.Torque/100);
+	ParametriProgramma_J_CicloFalda.Vel_Carico  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloFalda.Vel_Carico/100);// * OverrideGlobaleCicloFalda;
+	ParametriProgramma_J_CicloFalda.Vel_Ridotta  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloFalda.Vel_Ridotta/100);// * OverrideGlobaleCicloFalda;
+	ParametriProgramma_J_CicloFalda.Vel_Vuoto  		:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloFalda.Vel_Vuoto/100);// * OverrideGlobaleCicloAvuoto;
+	(* ASSE K *)
+	(*
+	ParametriProgramma_K_CicloFalda.Acc_Carico		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloFalda.Acc_Carico/100);
+	ParametriProgramma_K_CicloFalda.Acc_Vuoto		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloFalda.Acc_Vuoto/100);
+	ParametriProgramma_K_CicloFalda.Dec_Carico 		:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloFalda.Dec_Carico/100);
+	ParametriProgramma_K_CicloFalda.Dec_Vuoto  		:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloFalda.Dec_Vuoto/100);
+	ParametriProgramma_K_CicloFalda.Jerk_Carico  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloFalda.Jerk_Carico/100);
+	ParametriProgramma_K_CicloFalda.Jerk_Vuoto  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloFalda.Jerk_Vuoto/100);
+	//ParametriProgramma_K_CicloFalda.Torque  		:= Mission^.KPickTorque;//AxisNominalPar_K.DefaultTorque * (HMI_ParametriAsseK_CicloFalda.Torque/100);
+	ParametriProgramma_K_CicloFalda.Vel_Carico  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloFalda.Vel_Carico/100);// * OverrideGlobaleCicloFalda;
+	ParametriProgramma_K_CicloFalda.Vel_Ridotta  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloFalda.Vel_Ridotta/100);// * OverrideGlobaleCicloFalda;
+	ParametriProgramma_K_CicloFalda.Vel_Vuoto  		:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloFalda.Vel_Vuoto/100);// * OverrideGlobaleCicloAvuoto;
+	*)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////// CICLO PALLET //////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	HMI_ParametriAsseX_CicloPallet.Dec_Carico 		:= HMI_ParametriAsseX_CicloPallet.Acc_Carico;
+	HMI_ParametriAsseX_CicloPallet.Dec_Vuoto  		:= HMI_ParametriAsseX_CicloPallet.Acc_Vuoto;
+
+	HMI_ParametriAsseY_CicloPallet.Dec_Carico 		:= HMI_ParametriAsseY_CicloPallet.Acc_Carico;
+	HMI_ParametriAsseY_CicloPallet.Dec_Vuoto  		:= HMI_ParametriAsseY_CicloPallet.Acc_Vuoto;
+		
+	HMI_ParametriAsseZ_CicloPallet.Dec_Carico 		:= HMI_ParametriAsseZ_CicloPallet.Acc_Carico;
+	HMI_ParametriAsseZ_CicloPallet.Dec_Vuoto  		:= HMI_ParametriAsseZ_CicloPallet.Acc_Vuoto;
+	
+	HMI_ParametriAsseJ_CicloPallet.Dec_Carico 		:= HMI_ParametriAsseJ_CicloPallet.Acc_Carico;
+	HMI_ParametriAsseJ_CicloPallet.Dec_Vuoto  		:= HMI_ParametriAsseJ_CicloPallet.Acc_Vuoto;
+	
+	HMI_ParametriAsseK_CicloPallet.Dec_Carico 		:= HMI_ParametriAsseK_CicloPallet.Acc_Carico;
+	HMI_ParametriAsseK_CicloPallet.Dec_Vuoto  		:= HMI_ParametriAsseK_CicloPallet.Acc_Vuoto;
+	
+	(* ASSE X *)
+	ParametriProgramma_X_CicloPallet.Acc_Carico		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloPallet.Acc_Carico/100);
+	ParametriProgramma_X_CicloPallet.Acc_Vuoto		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloPallet.Acc_Vuoto/100);
+	ParametriProgramma_X_CicloPallet.Dec_Carico 	:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloPallet.Dec_Carico/100);
+	ParametriProgramma_X_CicloPallet.Dec_Vuoto  	:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloPallet.Dec_Vuoto/100);
+	ParametriProgramma_X_CicloPallet.Jerk_Carico  	:= AxisNominalPar_X.DefaultJerk * (HMI_ParametriAsseX_CicloPallet.Jerk_Carico/100);
+	ParametriProgramma_X_CicloPallet.Jerk_Vuoto  	:= AxisNominalPar_X.DefaultJerk * (HMI_ParametriAsseX_CicloPallet.Jerk_Vuoto/100);
+	ParametriProgramma_X_CicloPallet.Torque  		:= AxisNominalPar_X.DefaultTorque * (HMI_ParametriAsseX_CicloPallet.Torque/100);
+	ParametriProgramma_X_CicloPallet.Vel_Carico  	:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloPallet.Vel_Carico/100) * OverrideGlobaleCicloPallet;
+	ParametriProgramma_X_CicloPallet.Vel_Ridotta  	:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloPallet.Vel_Ridotta/100);
+	ParametriProgramma_X_CicloPallet.Vel_Vuoto  	:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloPallet.Vel_Vuoto/100) * OverrideGlobaleCicloPallet;
+	(* ASSE Y *)
+	ParametriProgramma_Y_CicloPallet.Acc_Carico		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloPallet.Acc_Carico/100);
+	ParametriProgramma_Y_CicloPallet.Acc_Vuoto		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloPallet.Acc_Vuoto/100);
+	ParametriProgramma_Y_CicloPallet.Dec_Carico 	:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloPallet.Dec_Carico/100);
+	ParametriProgramma_Y_CicloPallet.Dec_Vuoto  	:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloPallet.Dec_Vuoto/100);
+	ParametriProgramma_Y_CicloPallet.Jerk_Carico  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloPallet.Jerk_Carico/100);
+	ParametriProgramma_Y_CicloPallet.Jerk_Vuoto  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloPallet.Jerk_Vuoto/100);
+	ParametriProgramma_Y_CicloPallet.Torque  		:= AxisNominalPar_Y.DefaultTorque * (HMI_ParametriAsseY_CicloPallet.Torque/100);
+	ParametriProgramma_Y_CicloPallet.Vel_Carico  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloPallet.Vel_Carico/100) * OverrideGlobaleCicloPallet;
+	ParametriProgramma_Y_CicloPallet.Vel_Ridotta  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloPallet.Vel_Ridotta/100);// * OverrideGlobaleCicloPallet;
+	ParametriProgramma_Y_CicloPallet.Vel_Vuoto  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloPallet.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE Z *)
+	ParametriProgramma_Z_CicloPallet.Acc_Carico		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloPallet.Acc_Carico/100);
+	ParametriProgramma_Z_CicloPallet.Acc_Vuoto		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloPallet.Acc_Vuoto/100);
+	ParametriProgramma_Z_CicloPallet.Dec_Carico 	:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloPallet.Dec_Carico/100);
+	ParametriProgramma_Z_CicloPallet.Dec_Vuoto  	:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloPallet.Dec_Vuoto/100);
+	ParametriProgramma_Z_CicloPallet.Jerk_Carico  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloPallet.Jerk_Carico/100);
+	ParametriProgramma_Z_CicloPallet.Jerk_Vuoto  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloPallet.Jerk_Vuoto/100);
+	ParametriProgramma_Z_CicloPallet.Torque  		:= AxisNominalPar_Z.DefaultTorque * (HMI_ParametriAsseZ_CicloPallet.Torque/100);
+	ParametriProgramma_Z_CicloPallet.Vel_Carico  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloPallet.Vel_Carico/100) * OverrideGlobaleCicloPallet;
+	ParametriProgramma_Z_CicloPallet.Vel_Ridotta  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloPallet.Vel_Ridotta/100);// * OverrideGlobaleCicloPallet;
+	ParametriProgramma_Z_CicloPallet.Vel_Vuoto  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloPallet.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE J *)
+	ParametriProgramma_J_CicloPallet.Acc_Carico		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloPallet.Acc_Carico/100);
+	ParametriProgramma_J_CicloPallet.Acc_Vuoto		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloPallet.Acc_Vuoto/100);
+	ParametriProgramma_J_CicloPallet.Dec_Carico 	:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloPallet.Dec_Carico/100);
+	ParametriProgramma_J_CicloPallet.Dec_Vuoto  	:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloPallet.Dec_Vuoto/100);
+	ParametriProgramma_J_CicloPallet.Jerk_Carico  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloPallet.Jerk_Carico/100);
+	ParametriProgramma_J_CicloPallet.Jerk_Vuoto  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloPallet.Jerk_Vuoto/100);
+	ParametriProgramma_J_CicloPallet.Torque  		:= AxisNominalPar_J.DefaultTorque * (HMI_ParametriAsseJ_CicloPallet.Torque/100);
+	ParametriProgramma_J_CicloPallet.Vel_Carico  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloPallet.Vel_Carico/100);// * OverrideGlobaleCicloPallet;
+	ParametriProgramma_J_CicloPallet.Vel_Ridotta  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloPallet.Vel_Ridotta/100);// * OverrideGlobaleCicloPallet;
+	ParametriProgramma_J_CicloPallet.Vel_Vuoto  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloPallet.Vel_Vuoto/100);// * OverrideGlobaleCicloAvuoto;
+	(* ASSE K *)
+	(*
+	ParametriProgramma_K_CicloPallet.Acc_Carico		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloPallet.Acc_Carico/100);
+	ParametriProgramma_K_CicloPallet.Acc_Vuoto		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloPallet.Acc_Vuoto/100);
+	ParametriProgramma_K_CicloPallet.Dec_Carico 	:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloPallet.Dec_Carico/100);
+	ParametriProgramma_K_CicloPallet.Dec_Vuoto  	:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloPallet.Dec_Vuoto/100);
+	ParametriProgramma_K_CicloPallet.Jerk_Carico  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloPallet.Jerk_Carico/100);
+	ParametriProgramma_K_CicloPallet.Jerk_Vuoto  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloPallet.Jerk_Vuoto/100);
+	//ParametriProgramma_K_CicloPallet.Torque  		:= Mission^.KPickTorque;//AxisNominalPar_K.DefaultTorque * (HMI_ParametriAsseK_CicloPallet.Torque/100);
+	ParametriProgramma_K_CicloPallet.Vel_Carico  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloPallet.Vel_Carico/100);// * OverrideGlobaleCicloPallet;
+	ParametriProgramma_K_CicloPallet.Vel_Ridotta  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloPallet.Vel_Ridotta/100);// * OverrideGlobaleCicloPallet;
+	ParametriProgramma_K_CicloPallet.Vel_Vuoto  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloPallet.Vel_Vuoto/100);// * OverrideGlobaleCicloAvuoto;
+	*)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////// CICLO PACCO //////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	HMI_ParametriAsseX_CicloPacco.Acc_Carico	:= MAX(1,HMI_ParametriAsseX_CicloPacco.Acc_Carico);
+	HMI_ParametriAsseX_CicloPacco.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseX_CicloPacco.Acc_Vuoto); 
+																				 
+	HMI_ParametriAsseY_CicloPacco.Acc_Carico	:= MAX(1,HMI_ParametriAsseY_CicloPacco.Acc_Carico);
+	HMI_ParametriAsseY_CicloPacco.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseY_CicloPacco.Acc_Vuoto); 
+																				 
+	HMI_ParametriAsseZ_CicloPacco.Acc_Carico	:= MAX(1,HMI_ParametriAsseZ_CicloPacco.Acc_Carico);
+	HMI_ParametriAsseZ_CicloPacco.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseZ_CicloPacco.Acc_Vuoto); 
+																				 
+	HMI_ParametriAsseJ_CicloPacco.Acc_Carico	:= MAX(1,HMI_ParametriAsseJ_CicloPacco.Acc_Carico);
+	HMI_ParametriAsseJ_CicloPacco.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseJ_CicloPacco.Acc_Vuoto); 
+																			     
+	HMI_ParametriAsseK_CicloPacco.Acc_Carico	:= MAX(1,HMI_ParametriAsseK_CicloPacco.Acc_Carico);
+	HMI_ParametriAsseK_CicloPacco.Acc_Vuoto		:= MAX(1,HMI_ParametriAsseK_CicloPacco.Acc_Vuoto); 
+                                                                                 
+	HMI_ParametriAsseX_CicloPacco.Vel_Carico	:= MAX(1,HMI_ParametriAsseX_CicloPacco.Vel_Carico);	
+	HMI_ParametriAsseX_CicloPacco.Vel_Ridotta  	:= MAX(1,HMI_ParametriAsseX_CicloPacco.Vel_Ridotta);
+	
+
+	HMI_ParametriAsseX_CicloPacco.Dec_Carico 		:= HMI_ParametriAsseX_CicloPacco.Acc_Carico;
+	HMI_ParametriAsseX_CicloPacco.Dec_Vuoto  		:= HMI_ParametriAsseX_CicloPacco.Acc_Vuoto;
+
+	HMI_ParametriAsseY_CicloPacco.Dec_Carico 		:= HMI_ParametriAsseY_CicloPacco.Acc_Carico;
+	HMI_ParametriAsseY_CicloPacco.Dec_Vuoto  		:= HMI_ParametriAsseY_CicloPacco.Acc_Vuoto;
+		
+	HMI_ParametriAsseZ_CicloPacco.Dec_Carico 		:= HMI_ParametriAsseZ_CicloPacco.Acc_Carico;
+	HMI_ParametriAsseZ_CicloPacco.Dec_Vuoto  		:= HMI_ParametriAsseZ_CicloPacco.Acc_Vuoto;
+	
+	HMI_ParametriAsseJ_CicloPacco.Dec_Carico 		:= HMI_ParametriAsseJ_CicloPacco.Acc_Carico;
+	HMI_ParametriAsseJ_CicloPacco.Dec_Vuoto  		:= HMI_ParametriAsseJ_CicloPacco.Acc_Vuoto;
+	
+	HMI_ParametriAsseK_CicloPacco.Dec_Carico 		:= HMI_ParametriAsseK_CicloPacco.Acc_Carico;
+	HMI_ParametriAsseK_CicloPacco.Dec_Vuoto  		:= HMI_ParametriAsseK_CicloPacco.Acc_Vuoto;
+
+	(* ASSE X *)
+	ParametriProgramma_X_CicloLastra.Acc_Carico		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloPacco.Acc_Carico/100);
+	ParametriProgramma_X_CicloLastra.Acc_Vuoto		:= AxisNominalPar_X.MaximumAcceleration * (HMI_ParametriAsseX_CicloPacco.Acc_Vuoto/100);
+	ParametriProgramma_X_CicloLastra.Dec_Carico 	:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloPacco.Dec_Carico/100);
+	ParametriProgramma_X_CicloLastra.Dec_Vuoto  	:= AxisNominalPar_X.MaximumDeceleration * (HMI_ParametriAsseX_CicloPacco.Dec_Vuoto/100);
+	ParametriProgramma_X_CicloLastra.Jerk_Carico  	:= AxisNominalPar_X.DefaultJerk * (HMI_ParametriAsseX_CicloPacco.Jerk_Carico/100);
+	ParametriProgramma_X_CicloLastra.Jerk_Vuoto  	:= AxisNominalPar_X.DefaultJerk * (HMI_ParametriAsseX_CicloPacco.Jerk_Vuoto/100);
+	ParametriProgramma_X_CicloLastra.Torque  		:= AxisNominalPar_X.DefaultTorque * (HMI_ParametriAsseX_CicloPacco.Torque/100);
+	//IF DepositoPaccoInLenta THEN
+	//	ParametriProgramma_X_CicloLastra.Vel_Carico  := AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloPacco.Vel_Carico/100) * OverrideGlobaleCicloPacco * (HMI_VelocitaDepositoPrimoPaccoInLenta/100);
+	//ELSE
+		ParametriProgramma_X_CicloLastra.Vel_Carico  := AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloPacco.Vel_Carico/100) * OverrideGlobaleCicloPacco;
+	//END_IF
+	ParametriProgramma_X_CicloLastra.Vel_Ridotta  	:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloPacco.Vel_Ridotta/100);// * OverrideGlobaleCicloPacco;
+	ParametriProgramma_X_CicloLastra.Vel_Vuoto  		:= AxisNominalPar_X.ReferenceVelocity * (HMI_ParametriAsseX_CicloPacco.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE Y *)
+	ParametriProgramma_Y_CicloLastra.Acc_Carico		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloPacco.Acc_Carico/100);
+	ParametriProgramma_Y_CicloLastra.Acc_Vuoto		:= AxisNominalPar_Y.MaximumAcceleration * (HMI_ParametriAsseY_CicloPacco.Acc_Vuoto/100);
+	ParametriProgramma_Y_CicloLastra.Dec_Carico 		:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloPacco.Dec_Carico/100);
+	ParametriProgramma_Y_CicloLastra.Dec_Vuoto  		:= AxisNominalPar_Y.MaximumDeceleration * (HMI_ParametriAsseY_CicloPacco.Dec_Vuoto/100);
+	ParametriProgramma_Y_CicloLastra.Jerk_Carico  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloPacco.Jerk_Carico/100);
+	ParametriProgramma_Y_CicloLastra.Jerk_Vuoto  	:= AxisNominalPar_Y.DefaultJerk * (HMI_ParametriAsseY_CicloPacco.Jerk_Vuoto/100);
+	ParametriProgramma_Y_CicloLastra.Torque  		:= AxisNominalPar_Y.DefaultTorque * (HMI_ParametriAsseY_CicloPacco.Torque/100);
+	//IF DepositoPaccoInLenta THEN
+	//	ParametriProgramma_Y_CicloLastra.Vel_Carico  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloPacco.Vel_Carico/100) * OverrideGlobaleCicloPacco * (HMI_VelocitaDepositoPrimoPaccoInLenta/100);
+	//ELSE
+		ParametriProgramma_Y_CicloLastra.Vel_Carico  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloPacco.Vel_Carico/100) * OverrideGlobaleCicloPacco;
+	//END_IF
+	ParametriProgramma_Y_CicloLastra.Vel_Ridotta  	:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloPacco.Vel_Ridotta/100);// * OverrideGlobaleCicloPacco;
+	ParametriProgramma_Y_CicloLastra.Vel_Vuoto  		:= AxisNominalPar_Y.ReferenceVelocity * (HMI_ParametriAsseY_CicloPacco.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE Z *)
+	ParametriProgramma_Z_CicloLastra.Acc_Carico		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloPacco.Acc_Carico/100);
+	ParametriProgramma_Z_CicloLastra.Acc_Vuoto		:= AxisNominalPar_Z.MaximumAcceleration * (HMI_ParametriAsseZ_CicloPacco.Acc_Vuoto/100);
+	ParametriProgramma_Z_CicloLastra.Dec_Carico 		:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloPacco.Dec_Carico/100);
+	ParametriProgramma_Z_CicloLastra.Dec_Vuoto  		:= AxisNominalPar_Z.MaximumDeceleration * (HMI_ParametriAsseZ_CicloPacco.Dec_Vuoto/100);
+	ParametriProgramma_Z_CicloLastra.Jerk_Carico  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloPacco.Jerk_Carico/100);
+	ParametriProgramma_Z_CicloLastra.Jerk_Vuoto  	:= AxisNominalPar_Z.DefaultJerk * (HMI_ParametriAsseZ_CicloPacco.Jerk_Vuoto/100);
+	ParametriProgramma_Z_CicloLastra.Torque  		:= AxisNominalPar_Z.DefaultTorque * (HMI_ParametriAsseZ_CicloPacco.Torque/100);
+	IF DepositoPaccoInLenta THEN
+		ParametriProgramma_Z_CicloLastra.Vel_Carico  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloPacco.Vel_Carico/100) * OverrideGlobaleCicloPacco * (HMI_VelocitaDepositoPrimoPaccoInLenta/100);
+	ELSE
+		ParametriProgramma_Z_CicloLastra.Vel_Carico  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloPacco.Vel_Carico/100) * OverrideGlobaleCicloPacco;		
+	END_IF
+	ParametriProgramma_Z_CicloLastra.Vel_Ridotta  	:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloPacco.Vel_Ridotta/100);// * OverrideGlobaleCicloPacco;
+	ParametriProgramma_Z_CicloLastra.Vel_Vuoto  		:= AxisNominalPar_Z.ReferenceVelocity * (HMI_ParametriAsseZ_CicloPacco.Vel_Vuoto/100) * OverrideGlobaleCicloAvuoto;
+	(* ASSE J *)
+	ParametriProgramma_J_CicloLastra.Acc_Carico		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloPacco.Acc_Carico/100);
+	ParametriProgramma_J_CicloLastra.Acc_Vuoto		:= AxisNominalPar_J.MaximumAcceleration * (HMI_ParametriAsseJ_CicloPacco.Acc_Vuoto/100);
+	ParametriProgramma_J_CicloLastra.Dec_Carico 		:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloPacco.Dec_Carico/100);
+	ParametriProgramma_J_CicloLastra.Dec_Vuoto  		:= AxisNominalPar_J.MaximumDeceleration * (HMI_ParametriAsseJ_CicloPacco.Dec_Vuoto/100);
+	ParametriProgramma_J_CicloLastra.Jerk_Carico  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloPacco.Jerk_Carico/100);
+	ParametriProgramma_J_CicloLastra.Jerk_Vuoto  	:= AxisNominalPar_J.DefaultJerk * (HMI_ParametriAsseJ_CicloPacco.Jerk_Vuoto/100);
+	ParametriProgramma_J_CicloLastra.Torque  		:= AxisNominalPar_J.DefaultTorque * (HMI_ParametriAsseJ_CicloPacco.Torque/100);
+	//IF DepositoPaccoInLenta THEN
+	//	ParametriProgramma_J_CicloLastra.Vel_Carico  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloPacco.Vel_Carico/100) * OverrideGlobaleCicloPacco * (HMI_VelocitaDepositoPrimoPaccoInLenta/100);
+	//ELSE
+		ParametriProgramma_J_CicloLastra.Vel_Carico  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloPacco.Vel_Carico/100);// * OverrideGlobaleCicloPacco;		
+	//END_IF
+	ParametriProgramma_J_CicloLastra.Vel_Ridotta  	:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloPacco.Vel_Ridotta/100);// * OverrideGlobaleCicloPacco;
+	ParametriProgramma_J_CicloLastra.Vel_Vuoto  		:= AxisNominalPar_J.ReferenceVelocity * (HMI_ParametriAsseJ_CicloPacco.Vel_Vuoto/100);// * OverrideGlobaleCicloAvuoto;
+	(* ASSE K *)
+	(*ParametriProgramma_K_CicloLastra.Acc_Carico		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloPacco.Acc_Carico/100);
+	ParametriProgramma_K_CicloLastra.Acc_Vuoto		:= AxisNominalPar_K.MaximumAcceleration * (HMI_ParametriAsseK_CicloPacco.Acc_Vuoto/100);
+	ParametriProgramma_K_CicloLastra.Dec_Carico 		:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloPacco.Dec_Carico/100);
+	ParametriProgramma_K_CicloLastra.Dec_Vuoto  		:= AxisNominalPar_K.MaximumDeceleration * (HMI_ParametriAsseK_CicloPacco.Dec_Vuoto/100);
+	ParametriProgramma_K_CicloLastra.Jerk_Carico  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloPacco.Jerk_Carico/100);
+	ParametriProgramma_K_CicloLastra.Jerk_Vuoto  	:= AxisNominalPar_K.DefaultJerk * (HMI_ParametriAsseK_CicloPacco.Jerk_Vuoto/100);
+	//ParametriProgramma_K_CicloLastra.Torque  		:= Mission^.KPickTorque;//AxisNominalPar_K.DefaultTorque * (HMI_ParametriAsseK_CicloPacco.Torque/100);
+	ParametriProgramma_K_CicloLastra.Vel_Carico  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloPacco.Vel_Carico/100);//* OverrideGlobaleCicloPacco;
+	ParametriProgramma_K_CicloLastra.Vel_Ridotta  	:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloPacco.Vel_Ridotta/100);// * OverrideGlobaleCicloPacco;
+	ParametriProgramma_K_CicloLastra.Vel_Vuoto  		:= AxisNominalPar_K.ReferenceVelocity * (HMI_ParametriAsseK_CicloPacco.Vel_Vuoto/100);//* OverrideGlobaleCicloAvuoto;
+	*)
+
+TFCalcoloVelocita := TRUE;	
+
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcoloVelocita">
+      <LineId Id="6287" Count="453" />
+      <LineId Id="6750" Count="0" />
+      <LineId Id="6280" Count="6" />
+      <LineId Id="6277" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

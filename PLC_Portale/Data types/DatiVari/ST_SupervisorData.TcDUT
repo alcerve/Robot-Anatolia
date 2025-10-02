@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_SupervisorData" Id="{7a268300-b8e1-4769-b263-4db3f458c1d4}">
+    <Declaration><![CDATA[TYPE ST_SupervisorData :
+STRUCT
+	
+	HskToSupervisor 			: ST_HskToSupervisor;	//HSK da PLC a SUPERVISORE
+	HskFromSupervisor 			: ST_HskFromSupervisor;	//HSK da SUPERVISORE a PLC
+	DataElementToSupervisor		: ST_DataWorkArea;		//Dati elemento da PLC a SUPERVISORE
+	DataElementFromSupervisor	: ST_DataWorkArea;		//Dati elemento da SUPERVISORE a PLC
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

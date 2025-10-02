@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="QE_BORDO" Id="{43bed6db-5e73-4cda-bd91-00f336988f2e}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL		
+
+I_SicurezzaCinghia_Y	(*AT %I*) : BOOL;	// = Sicurezza Cinghia Y
+I_SicurezzaCinghia_Z	(*AT %I*) : BOOL;	// = Sicurezza Cinghia Z
+
+(* Ingressi su azionamenti *)
+(* X-Y*)
+I_ExtraCorsaNegativo_X 	(*AT %I*) : BOOL;  // 0 = Extra CorSa Negativo Asse X
+I_ExtraCorsaPositivo_X 	(*AT %I*) : BOOL;  // 1 = Extra CorSa Negativo Asse X
+I_ResetAsse_X 			(*AT %I*) : BOOL;  // 2 = Reset Asse X
+
+I_ExtraCorsaNegativo_Y 	(*AT %I*) : BOOL;  // 4 = Extra CorSa Negativo Asse Y
+I_ExtraCorsaPositivo_Y 	(*AT %I*) : BOOL;  // 5 = Extra CorSa Negativo Asse Y
+I_ResetAsse_Y			(*AT %I*) : BOOL;  // 6 = Reset Asse Y
+
+(* Z-K *)
+I_ZKDriveDigitalInput							AT %I* : UINT;
+
+I_ExtraCorsaNegativo_Z  (*AT %I*) : BOOL;  // 0 = Extra CorSa Negativo Asse Z
+I_ExtraCorsaPositivo_Z  (*AT %I*) : BOOL;  // 1 = Extra CorSa Negativo Asse Z
+I_ResetAsse_Z		    (*AT %I*) : BOOL;  // 2 = Reset Asse Z
+
+I_ExtraCorsaNegativo_J  (*AT %I*) : BOOL;  // 0 = Extra CorSa Negativo Asse Z
+I_ExtraCorsaPositivo_J  (*AT %I*) : BOOL;  // 1 = Extra CorSa Negativo Asse Z
+I_ResetAsse_J		    (*AT %I*) : BOOL;  // 2 = Reset Asse Z
+
+(* Singoli assi *)
+I_XDriveDigitalInput	AT %I* : UDINT;
+I_YDriveDigitalInput	AT %I* : UDINT;
+I_ZDriveDigitalInput	AT %I* : UDINT;
+I_JDriveDigitalInput	AT %I* : UDINT;
+
+I_XDriveError			AT %I* : DWORD;
+I_YDriveError			AT %I* : DWORD;
+I_ZDriveError			AT %I* : DWORD;
+I_JDriveError			AT %I* : DWORD;
+
+O_XDriveDigitalOutput	AT %Q* : UINT;
+O_YDriveDigitalOutput	AT %Q* : UINT;
+O_ZDriveDigitalOutput	AT %Q* : UINT;
+O_JDriveDigitalOutput	AT %Q* : UINT;
+
+I_FermoSicurezzaRilasciato 	: BOOL;
+O_SbloccoFermoSicurezza 	: BOOL; 
+
+I_RotazioneColonnaBloccata 	: BOOL;
+I_TastatoreBascolante		: BOOL;
+
+////////// Ciabatte Bordo Pinza /////////////
+
+(* J16 *)
+O_AperturaPinza : BOOL; // X1.0 pin 4
+O_ChiusuraPinza : BOOL; // X1.0 pin 2
+O_SbloccoPinza 	: BOOL; // X1.1 pin 4
+
+I_PinzaApertaDX	: BOOL; // 
+I_PinzaChiusaDX	: BOOL; // 
+I_PinzaApertaSX	: BOOL; // 
+I_PinzaChiusaSX	: BOOL; // 
+I_BascolantePinzaBloccato 	: BOOL; //K516-X1.4 pin 4
+I_TasteggioCinghiaAsseZ 	: BOOL; //K516-X1.7 PIN 2
+
+O_AspirazioneCartoneESTSX : BOOL; // X1.5 pin 4 - Aspirazione Cartone Esterno Lato SX
+O_AspirazioneCartoneINTSX : BOOL; // X1.6 pin 4 - Aspirazione Cartone Interno Lato SX
+O_AspirazioneCartoneESTDX : BOOL; // X1.7 pin 4 - Aspirazione Cartone Esterno Lato DX
+
+I_TastoreCartone1 : BOOL; // X1.0 pin 4 - Presenza Falda Lato DX
+I_TastoreCartone2 : BOOL; // X1.0 pin 2 - Presenza Falda Lato SX
+
+I_TastatorePinza_1	(*AT %I*) : BOOL;	// X1.1 pin 4 - Tastatore Pinza 1
+I_TastatorePinza_2	(*AT %I*) : BOOL;	// X1.1 pin 2 - Tastatore Pinza 2
+I_TastatorePinza_3	(*AT %I*) : BOOL;	// X1.2 pin 4 - Tastatore Pinza 3
+I_TastatorePinza_4	(*AT %I*) : BOOL;	// X1.2 pin 2 - Tastatore Pinza 4
+I_TastatorePinza_5	(*AT %I*) : BOOL;	// X1.2 pin 4 - Tastatore Pinza 3
+I_TastatorePinza_6	(*AT %I*) : BOOL;	// X1.2 pin 2 - Tastatore Pinza 4
+
+I_TastatoreEmergenzaPinza_1	(*AT %I*) : BOOL;	// X1.3 pin 4 - Tastatore Emergenza Pinza 1
+I_TastatoreEmergenzaPinza_2	(*AT %I*) : BOOL;	// X1.3 pin 2 - Tastatore Emergenza Pinza 2
+I_TastatoreEmergenzaPinza_3	(*AT %I*) : BOOL;	// X1.4 pin 4 - Tastatore Emergenza Pinza 3
+I_TastatoreEmergenzaPinza_4 (*AT %I*) : BOOL;	// X1.4 pin 2 - Tastatore Emergenza Pinza 4
+I_TastatoreEmergenzaPinza_5	(*AT %I*) : BOOL;	// X1.4 pin 4 - Tastatore Emergenza Pinza 3
+I_TastatoreEmergenzaPinza_6 (*AT %I*) : BOOL;	// X1.4 pin 2 - Tastatore Emergenza Pinza 4
+
+I_PHPresenzaFaldaDX : BOOL; //J16 Porta 5 pin 2
+I_PHPresenzaFaldaSX : BOOL; //J16 Porta 5 pin 4
+
+I_ExtraCorsaPinzaSganciata : BOOL; // X1.6 pin 4 - Controllo della rotazione lungo z, extracora con pinza sganciata
+
+//O_AspirazioneCartoneINTDX 	: BOOL; // X1.7 pin 4 - Aspirazione Cartone Interno Lato DX 
+//O_AttivaTastatoriPinza		: BOOL; // X1.7 pin 2 - Aspirazione Cartone Interno Lato DX 
+
+I_Keyence0_Byte0 	AT %I* : BYTE;
+I_Keyence0_Byte1 	AT %I* : BYTE;
+I_Keyence180_Byte0 	AT %I* : BYTE;
+I_Keyence180_Byte1 	AT %I* : BYTE;
+
+I_Keyence0_Byte0_2 	AT %I* : BYTE;
+I_Keyence0_Byte1_2 	AT %I* : BYTE;
+I_Keyence180_Byte0_2 	AT %I* : BYTE;
+I_Keyence180_Byte1_2 	AT %I* : BYTE;
+
+
+I_CiabattaPinzaK515AMSADDR 		AT %I* : AMSADDR;
+I_TimeStampCiabattaPinzaK515 	AT %I* : ULINT;
+I_CiabattaPinzaK516AMSADDR 		AT %I* : AMSADDR;
+I_TimeStampCiabattaPinzaK516 	AT %I* : ULINT;
+I_CiabattaPinzaK517AMSADDR 		AT %I* : AMSADDR;
+I_TimeStampCiabattaPinzaK517 	AT %I* : ULINT;
+
+I_K515_XO3 AT %I* : ARRAY[0..3] OF BYTE;
+I_K515_XO4 AT %I* : ARRAY[0..3] OF BYTE;
+
+I_K516_XO3 AT %I* : ARRAY[0..3] OF BYTE;
+I_K516_XO4 AT %I* : ARRAY[0..3] OF BYTE;
+
+//Q_K515 AT %Q* : ARRAY[0..31] OF BYTE;
+//I_K516 AT %I* : ARRAY[0..31] OF BYTE;
+//Q_K516 AT %Q* : ARRAY[0..31] OF BYTE;
+I_K517 AT %I* : ARRAY[0..31] OF BYTE;
+Q_K517 AT %Q* : ARRAY[0..31] OF BYTE;
+
+I_PortQualCiabattaK515_X01 AT %I* : WORD;
+I_PortQualCiabattaK515_X02 AT %I* : WORD;
+I_PortQualCiabattaK515_X03 AT %I* : WORD;
+I_PortQualCiabattaK515_X04 AT %I* : WORD;
+I_PortQualCiabattaK515_X05 AT %I* : WORD;
+I_PortQualCiabattaK515_X06 AT %I* : WORD;
+I_PortQualCiabattaK515_X07 AT %I* : WORD;
+I_PortQualCiabattaK515_X08 AT %I* : WORD;
+
+I_PortQualCiabattaK516_X01 AT %I* : WORD;
+I_PortQualCiabattaK516_X02 AT %I* : WORD;
+I_PortQualCiabattaK516_X03 AT %I* : WORD;
+I_PortQualCiabattaK516_X04 AT %I* : WORD;
+I_PortQualCiabattaK516_X05 AT %I* : WORD;
+I_PortQualCiabattaK516_X06 AT %I* : WORD;
+I_PortQualCiabattaK516_X07 AT %I* : WORD;
+I_PortQualCiabattaK516_X08 AT %I* : WORD;
+
+I_PortQualCiabattaK517_X01 AT %I* : WORD;
+I_PortQualCiabattaK517_X02 AT %I* : WORD;
+I_PortQualCiabattaK517_X03 AT %I* : WORD;
+I_PortQualCiabattaK517_X04 AT %I* : WORD;
+I_PortQualCiabattaK517_X05 AT %I* : WORD;
+I_PortQualCiabattaK517_X06 AT %I* : WORD;
+I_PortQualCiabattaK517_X07 AT %I* : WORD;
+I_PortQualCiabattaK517_X08 AT %I* : WORD;
+
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

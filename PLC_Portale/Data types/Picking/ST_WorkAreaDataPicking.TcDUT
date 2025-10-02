@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_WorkAreaDataPicking" Id="{4af24c3a-5c43-4a95-b09d-c3237adfd4ce}">
+    <Declaration><![CDATA[TYPE ST_WorkAreaDataPicking :
+STRUCT
+	Destinazione		  : BOOL;	//Se TRUE=WA di destinazione materiale, FALSE=Postazione di prelievo materiale
+	NumElementiDaLavorare : UINT; 	//Numero elementi da depositare-prelevare
+	Typology			  : INT := 0; 	//Supporto disposto in verticale: e_TypologySupDataPicking: 0= Orrizzontale LEGNO,1= Orrizzontale Telaio , 2 = Bundle, 3 = A-FRAME 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

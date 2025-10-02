@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <GVL Name="TFMachinePalletizerErrors" Id="{bd65c20b-e65d-4777-aeab-426e2474fdaa}">
+    <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
+VAR_GLOBAL CONSTANT
+
+	(******************************************************************************************************************************************)
+	(* Machine Errors *)
+	(******************************************************************************************************************************************)
+	(* Machine Palletizer *)
+	ErrMACHINEPALLETIZER_HOME_HSKTO							: UINT := 2103; (* Machine - Handshake Timeout From Preparing/Sewing Machine *)
+	ErrMACHINEPALLETIZER_EMERGENCY							: UINT := 2104; (* Machine - Emergency not Ok *)
+	ErrMACHINEPALLETIZER_PHASE380							: UINT := 2105; (* Machine - Phase 380 not Ok *)
+	ErrMACHINEPALLETIZER_MAIN24V							: UINT := 2106; (* Machine - Main 24V not Ok *)
+	ErrMACHINEPALLETIZER_MOTOR24V							: UINT := 2107; (* Machine - Motor 24V not Ok *)
+	ErrMACHINEPALLETIZER_OUTPUT24V							: UINT := 2108; (* Machine - Output 24V not Ok *)
+	ErrMACHINEPALLETIZER_DRIVE								: UINT := 2110; (* Machine - Drive not Ok *)
+	ErrMACHINEPALLETIZER_CARTER								: UINT := 2111; (* Machine - Carter not Ok *)
+	ErrMACHINEPALLETIZER_THERMAL							: UINT := 2112; (* Machine - Thermal not Ok *)
+	ErrMACHINEPALLETIZER_CONDITIONER						: UINT := 2113; (* Machine - Conditioner not Ok *)
+	ErrMACHINEPALLETIZER_AIR								: UINT := 2114; (* Machine - Air not Ok *)
+	
+	ErrMACHINEPALLETIZER_MISSINGPOWER						: UINT := 2116; (* Mancanza Marcia o almeno un asse senza Marcia *)
+	
+	ErrMACHINEPALLETIZER_BARRIEREOCCUPATE_LGVREQ_OFF			: UINT := 2117; (* Barriere di sicurezza occupate su riattivazione GateAccess dopo Ingresso TGV*)
+	ErrMACHINEPALLETIZER_ANOMALIA_CONSENSI_SUPNAVETTE			: UINT := 2118; (* Avviene se ho un'anomalia della richiesta di ingresso e ingrombro dato dalla sup.Nav., solitamente in caso di manuale/emergenza della macchina *)
+	ErrMACHINEPALLETIZER_AZZERAMENTO_FORZATO_RICHIN_SUPNAVETTE	: UINT := 2119; (* Avviene se ho UN ERRORE della macchina durante una richiesta di ingresso del TGV *)
+    ErrMACHINEPALLETIZER_ERRORE_MACCHINA_IN_RICHIN				: UINT := 2120; (* Avviene se ho UN ERRORE della macchina durante una richiesta di ingresso *)
+	
+	ErrMACHINEPALLETIZER_PERDITARICHIAMATAPOST				: UINT := 2121;	(* Avviene se durante una richiesta di ingresso navetta si perde la CHIAMATA della postazione*)
+	ErrMACHINEPALLETIZER_PERDITARICINGRESSOPOST				: UINT := 2122;	(* Avviene se durante una richiesta di ingresso navetta si perde la RICHIESTA DI INGRESSO nella postazione*)
+	
+	ErrMACHINEPALLETIZER_PHOFFDOPODEPOSITO					: UINT := 2122; (* Avviene dopo un DEPOSITO da parte della navetta, se la fotocellula non risulta essere accesa *)
+	ErrMACHINEPALLETIZER_PHONDOPOPRELIEVO					: UINT := 2123; (* Avviene dopo un PRELIEVO da parte della navetta, se la fotocellula risulta essere accesa *)
+	ErrMACHINEPALLETIZER_MANCATOAGGIORNAMENTOSTATO			: UINT := 2124; (* Avviene dopo un PRELIEVO/DEPOSITO da parte della navetta, se NON ha modificato lo stato della piazzola in Prelievo/Deposito effettuato*)
+	
+
+	ErrCONFIGURAZIONEPINZASABGLIATA				: UINT := 2189; (* Codice pallet o layer non trovato *)
+	ErrMACHINEPALLETIZERTCALC					: UINT := 2190;	(* Machine - Trajectory Calculation Error *)
+	ErrMACHINEPALLETIZERPACKPOINTERNOTVALID		: UINT := 2191; (* Machine - Pack Pointer Added is not valid *)
+	ErrCYCLEPALLET								: UINT := 2192; (* Pallet Già Presente *)
+	ErrCYCLELAYER								: UINT := 2193; (* Pallet non Presente *)
+	ErrPACKCODEORDIMENSIONNOTVALID				: UINT := 2194; (* Codice o dimensioni Pacco presente su Ribaltino non Valide *)
+	ErrPALLETORLAYERCODENOTFOUND				: UINT := 2195; (* Codice pallet o layer non trovato *)
+	
+	ErrPACKCODENOTVALID							: UINT := 2196; (* Codice Pacco presente su Ribaltino non Valide *)
+	ErrPACKDIMENSIONNOTVALID					: UINT := 2197; (* Dimensioni Pacco presente su Ribaltino non Valide *)
+	ErrPALLETCODENOTFOUND						: UINT := 2198; (* Codice pallet non trovato *)
+	ErrLAYERCODENOTFOUND						: UINT := 2199; (* Codice layer non trovato *)
+	ErrPACKCODENOTFOUND							: UINT := 3000; (* Codice Pacco non trovato in nessuna Formatura *)
+	
+	(******************************************************************************************************************************************)
+	(* Modules Errors *)
+	(******************************************************************************************************************************************)
+	(* Palletizer *)
+	ErrTOADDAXIS								: UINT := 2200; (* Timeout Add Axis *)
+	ErrTOUNGROUPALLAXIS							: UINT := 2201; (* Timeout Ungroup All Axis *)
+	ErrTOENABLEGROUP							: UINT := 2202; (* Timeout Enable Group *)
+	ErrTODISABLEGROUP							: UINT := 2203; (* Timeout Disable Group *)
+	ErrTOSTOPGROUP								: UINT := 2004;
+	ErrTOUCHEMERGENCY							: UINT := 2205; (* Tastatori Pinza *)
+	ErrLOADLOST									: UINT := 2206; (* Perdita Carico Pinza *)
+	ErrYBELTSAFETY								: UINT := 2207; (* Sicurezza cinghia asse Y *)
+	ErrZBELTSAFETY								: UINT := 2208; (* Sicurezza cinghia asse Z *)
+	ErrCOMUNICAZTRASPORTI						: UINT := 2209; (* Mancanza comunicazione con i trasporti *)
+	
+	ErrMODULEPALLETIZERROBOT_EVSUCTIONUP_TO		: UINT := 2300; (* Timeout Ventose Alte *)
+	ErrMODULEPALLETIZERROBOT_EVSUCTIONDOWN_TO	: UINT := 2301; (* Timeout Ventose Basse *)
+	ErrMODULEPALLETIZERROBOT_PICKLAYER_TO		: UINT := 2302;
+	ErrMODULEPALLETIZERROBOT_EMPTYLAYERSTACK	: UINT := 2303;
+	ErrMODULEPALLETIZERROBOT_EMPTYPALLETSTACK	: UINT := 2304;	
+	ErrMODULEPALLETIZERROBOT_PRODUCTONGRIPPER	: UINT := 2305;	(* Presenze di materiale non ammesso nella pinza *)
+	ErrTOUCHSENSORNOTFREE						: UINT := 2306;
+	ErrPALLETNOTPRESENT							: UINT := 2307; (* Pallet non presente per deposito *)	
+	ErrPALLETALREADYPRESENT						: UINT := 2308; (* Pallet già presente *)
+		
+	ErrQUOTAZ_PACCOFUORIING_ELEVATA				: UINT := 2400; (* La quota calcolata di fuori ingombro con PACCO a bordo supera il valore massimo ammesso dall'asse*)
+	ErrQUOTAZ_PALLFUORIING_ELEVATA				: UINT := 2401; (* La quota calcolata di fuori ingombro con PALLET a bordo supera il valore massimo ammesso dall'asse*)
+	ErrQUOTAZ_VUOTOFUORIING_ELEVATA				: UINT := 2402; (* La quota calcolata di fuori ingombro A VUOTO a bordo supera il valore massimo ammesso dall'asse*)
+	ErrQUOTAZ_FALDAFUORIING_ELEVATA				: UINT := 2403; (* La quota calcolata di fuori ingombro con FALDA a bordo supera il valore massimo ammesso dall'asse*)
+
+	ErrPRESENZA_MATERIALE_SUPINZA_CICLO_RIPOSO		: UINT := 2410; (* Presnza materiale non previsto in fase di inizializzazione del ciclo di riposo *)
+	ErrPRESENZA_MATERIALE_SUPINZA_CICLO_PRELPALL	: UINT := 2411; (* Presnza materiale non previsto in fase di inizializzazione del ciclo di Prelievo Pallet *)
+	ErrPRESENZA_MATERIALE_SUPINZA_CICLO_PRELFALDA	: UINT := 2412; (* Presnza materiale non previsto in fase di inizializzazione del ciclo di Prelievo Falda *)
+	ErrPRESENZA_MATERIALE_SUPINZA_CICLO_PRELPACCO	: UINT := 2413; (* Presnza materiale non previsto in fase di inizializzazione del ciclo di Prelievo Pacco *)
+	
+	ErroreMANCATO_RESET_MISSIONI					: UINT := 2420; (* Errore dovuto al mancato reset della missione, avviene dopo un errore se non è stata aperta la pinza per resettare il tutto *)
+	
+	ErroreACT_POSX_NONCONFORME   					: UINT := 2421; (* La posizione attuale dell'asse X non rientra nei limiti imposti dal WorkSpace *)
+	ErroreACT_POSY_NONCONFORME   					: UINT := 2422; (* La posizione attuale dell'asse Y non rientra nei limiti imposti dal WorkSpace *)
+	ErroreACT_POSZ_NONCONFORME   					: UINT := 2423; (* La posizione attuale dell'asse X non rientra nei limiti imposti dal WorkSpace *)
+	ErroreACT_POSJ_NONCONFORME   					: UINT := 2424; (* La posizione attuale dell'asse J non rientra nei limiti imposti dal WorkSpace *)	
+	
+	ErrQUOTEDEPOSITO_NONCONFORMI					: uint := 2425; (* La posizione di deposito pacco non rientra all'interno dell'area di lavoro *)					
+	
+	ErrMALFUNZIONAMENTOTASTATORI_DURANTETASTEGGIO	: UINT := 2430; (* Durante la risalita dal tasteggio i sensori non leggono correttamente.. verificare l'integrità/il posizionamento dei sensori sulla pinza*)
+	
+	
+	ErrGENERICO : UINT := 9999;
+
+	ErrCYLINDER 						: UINT := 14; (* Cyclinder TF Error *)
+
+	(* Nella gestione errori utilizzare il livello base+l'errore dato dalla libreria*)
+	ErrBASEOVEM							: UINT := 30000;
+	
+	ErrMalfunzionamentoSensoriPresenzaPinza : UINT := 2500;(* Errore di presenza materiale sulla pinza in fase di prelievo, verificare i sensori: FTC/Ovem*)	
+
+	ErrPOSIZIONE_PINZA_ANOMALA				: UINT := 2426; (* La posizione della pionza è anomale per il tipo di movimento che deve svolgere la macchina, blocco per evitare collisioni *)					
+	ErrMANCATO_PRELIEVO 					: UINT := 2501;(* Errore di mancato prelievo del pezzo *)	
+	
+	ErrCOLLISIONE_PINZA						: UINT := 2427; (* La posizione della pinza è anomale per il tipo di movimento che deve svolgere la macchina, blocco per evitare collisioni *)					
+	ErrEsMisionSinDimesionPieza				: UINT := 6900 ; (*La Estructura mision no tiene las dimensiones de la pinza*)
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

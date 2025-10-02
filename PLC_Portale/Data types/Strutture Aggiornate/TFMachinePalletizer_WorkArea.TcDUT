@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="TFMachinePalletizer_WorkArea" Id="{4e0f4cd0-3f75-477f-bb79-61cc8e33f587}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_WorkArea :
+STRUCT
+
+	Enable			: INT	:= -1;	(* Postazione Abilitata 0=no, 1=si, -1 dato non valido *)
+	Typology		: e_Tipo_WorkArea	:= -1;	(* Tipologia 1=Catasta Vuoti, 2=Pallet Singolo, 3=Falda, -1 dato non valido *)
+	Typology_Desc   : INT := -1; (* Tipologia Descrittiva della WorkArea*)
+	
+	Jolly			: INT	:= -1;	(* (Definizione del Codice di Pall... A carico del PLC) (0=no, 1=si, -1= non valido) *)
+			
+	(* Posizione Assoluta Rispetto a Zero Macchina *)
+	X				: LREAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Y				: LREAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Z				: LREAL	:= 0.0;	(* READ			- (mm) Quota assoluta di impianto DA ORIGINE *)
+	Rx				: LREAL	:= 0.0;	(* READ			- (°) Angolo di rotazione della postazione Lungo rispetto Asse X *)
+	Ry				: LREAL	:= 0.0;	(* READ			- (°) Angolo di rotazione della postazione Lungo rispetto Asse Y *)
+	Rz				: LREAL	:= 0.0;	(* READ			- (°) Angolo di rotazione della postazione Lungo rispetto Asse Z *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

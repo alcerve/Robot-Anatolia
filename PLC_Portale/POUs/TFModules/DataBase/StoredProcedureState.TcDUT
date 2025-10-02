@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="StoredProcedureState" Id="{159ba5f8-f90f-4af3-9614-4e10afa10482}">
+    <Declaration><![CDATA[TYPE StoredProcedureState :
+STRUCT
+	NumeroRecordLetti	: UDINT;//Numero di record letti
+	ReadRun 		: BOOL;//Lettura in corso
+	ReadDone 		: BOOL;//Lettura terminata con successo
+	Error 			: BOOL;//Errore lettura
+	ErrorID 		: UDINT;//ID Errore
+	Sqlstate		: ST_DBSQLError;//State SQL
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

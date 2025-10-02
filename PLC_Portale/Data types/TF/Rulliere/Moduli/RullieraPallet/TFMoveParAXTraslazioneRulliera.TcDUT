@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMoveParAXTraslazioneRulliera" Id="{8c371da8-017f-4b6b-ba06-e496005985db}">
+    <Declaration><![CDATA[TYPE TFMoveParAXTraslazioneRulliera :
+STRUCT
+	AccCarico				: REAL := 20; // [mm/s2] Accelerazione Con carico a bordo
+	DecCarico				: REAL := 20; // [mm/s2] Decelerazione Con carico a bordo
+	VelocitaCarico			: REAL := 20; // [mm/s] Velocità Con carico a bordo
+	VelocitaVuoto			: REAL := 20; // [mm/s] Velocità Senza carico a bordo 
+	AccVuoto				: REAL := 20; // [mm/s2] Accelerazione Senza carico a bordo
+	DecVuoto				: REAL := 20; // [mm/s2] Decelerazione Senza carico a bordo
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

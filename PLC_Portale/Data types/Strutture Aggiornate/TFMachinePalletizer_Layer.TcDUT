@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_Layer" Id="{c28bd35b-cc72-4818-aeb8-b84a0415ec5e}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_Layer :
+STRUCT
+	Tipologia	: INT	:= -1;  (* Indica la tipologia dell'elemento *)
+	Code		: INT   := -1;  (* Indica il codice della falda *)
+	TPick		: INT	:= -1;	(* Tipologia di presa della falda,*)
+	XDim		: REAL	:= 0.0;	(* (mm) Dimensione X *)
+	YDim		: REAL	:= 0.0;	(* (mm) Dimensione Y *)
+	ZDim		: REAL	:= 0.0;	(* (mm) Dimensione Z *)
+	
+	//OffsetDep_0 	: TFMachinePalletizer_OffsetElement; (* OFFSET di deposito, utilizzato per lato 0-90 *)
+	//OffsetDep_90 	: TFMachinePalletizer_OffsetElement; (* OFFSET di deposito, utilizzato per CASSE *)
+	//OffsetDep_180 	: TFMachinePalletizer_OffsetElement; (* OFFSET di deposito, utilizzato per lato 90-180 *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

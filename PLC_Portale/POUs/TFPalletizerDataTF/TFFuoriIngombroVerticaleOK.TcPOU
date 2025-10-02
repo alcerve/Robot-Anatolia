@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFFuoriIngombroVerticaleOK" Id="{04056c1e-a816-4242-a546-74a651eaf43a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFFuoriIngombroVerticaleOK : BOOL
+VAR_INPUT
+	QuotaAsseZ : LREAL;
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Controllo Asse Z Fuori Ingombro *)
+CASE Mission^.TPick OF
+	TPICK_LAYER:
+					IF QuotaAsseZ >= QuotaFuoriIngombro_Z_AVUOTO OR 
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConFALDA THEN
+						TFFuoriIngombroVerticaleOK := TRUE;
+					ELSE
+						TFFuoriIngombroVerticaleOK := FALSE;
+					END_IF
+	TPICK_PACK :
+					IF QuotaAsseZ >= QuotaFuoriIngombro_Z_AVUOTO OR 
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConPEZZO THEN
+						TFFuoriIngombroVerticaleOK := TRUE;
+					ELSE
+						TFFuoriIngombroVerticaleOK := FALSE;
+					END_IF
+	TPICK_PALLET:
+					IF QuotaAsseZ >= QuotaFuoriIngombro_Z_AVUOTO OR 
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConPALLET THEN
+						TFFuoriIngombroVerticaleOK := TRUE;
+					ELSE
+						TFFuoriIngombroVerticaleOK := FALSE;
+					END_IF
+					
+	TPICK_NOT_DEFINED:
+					IF QuotaAsseZ >= QuotaFuoriIngombro_Z_AVUOTO OR 
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConPEZZO OR 
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConPALLET OR
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConFALDA THEN
+						TFFuoriIngombroVerticaleOK := TRUE;
+					ELSE
+						TFFuoriIngombroVerticaleOK := FALSE;
+					END_IF
+					
+	TPICK_LASTRA:
+					IF QuotaAsseZ >= QuotaFuoriIngombro_Z_AVUOTO OR 
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConPEZZO THEN
+						TFFuoriIngombroVerticaleOK := TRUE;
+					ELSE
+						TFFuoriIngombroVerticaleOK := FALSE;
+					END_IF
+					
+	TPICK_QUADROTTA:
+					IF QuotaAsseZ >= QuotaFuoriIngombro_Z_AVUOTO OR 
+					QuotaAsseZ >= QuotaFuoriIngombro_Z_ConPEZZO THEN
+						TFFuoriIngombroVerticaleOK := TRUE;
+					ELSE
+						TFFuoriIngombroVerticaleOK := FALSE;
+					END_IF
+					
+					
+					
+					
+					
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="TFFuoriIngombroVerticaleOK">
+      <LineId Id="8" Count="22" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="31" Count="8" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="54" Count="1" />
+      <LineId Id="58" Count="4" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="82" Count="4" />
+      <LineId Id="48" Count="5" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

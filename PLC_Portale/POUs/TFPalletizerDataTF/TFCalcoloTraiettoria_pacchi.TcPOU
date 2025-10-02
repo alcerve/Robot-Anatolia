@@ -1,0 +1,1280 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFCalcoloTraiettoria_pacchi" Id="{8bd455a0-826b-4aa2-86a2-235e991f07e4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TFCalcoloTraiettoria_pacchi
+VAR_INPUT
+	Traiettoria : POINTER TO TFTraiettoria;
+	WorkSpace : POINTER TO TFMachinePalletizer_WorkSpace;
+	WorkFootprint : POINTER TO ARRAY [1..MAXFOOTPRINT] OF TFMachinePalletizer_WorkFootprint;
+	WorkPickPoint : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPoint;
+	//WorkPickPointState : POINTER TO ARRAY [1..MAXPICKPOINT] OF TFMachinePalletizer_WorkPickPointState;
+
+	WorkArea : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkArea;
+	WorkAreaState : POINTER TO ARRAY [1..MAXAREA] OF TFMachinePalletizer_WorkAreaState;
+	Pallet : POINTER TO ARRAY [1..MAXPALLET] OF TFMachinePalletizer_Pallet;
+	Layer : POINTER TO ARRAY [1..MAXLAYER] OF TFMachinePalletizer_Layer;
+	Forming : POINTER TO ARRAY [1..MAXFORMING] OF TFMachinePalletizer_FormingForSlab;
+	//ZDim : REAL;
+	
+	Mission : POINTER TO TFMachinePalletizer_Mission;
+	
+	WorkAreaManager : POINTER TO TFWorkAreaManager;
+	ModuleAX_X : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Y : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_Z : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_J : POINTER TO TFModulePalletizer_Ax;
+	ModuleAX_K : POINTER TO TFModulePalletizer_Ax;
+	
+END_VAR
+VAR
+	f : UINT;
+	wa : UINT;
+	P : UINT;
+	a : uint;
+	
+	WASX : UINT;
+	WADX : UINT;
+	WAPARTENZA : UINT;
+	WADESTINAZIONE : UINT;
+
+	AltezzaDiIngombroArea_CCENTRALE : LREAL; //Altezza ingombro dell'Area nel corridoio CENTRALE
+	AltezzaDiIngombroArea_CESTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio ESTERNO
+	AltezzaDiIngombroArea_CINTERNO : LREAL; //Altezza ingombro dell'Area nel corridoio INTERNO
+	
+	
+	
+	
+	AltezzaDiIngombroOstacoli : LREAL;
+	AltezzaDiIngombroPuntiPrelievo : LREAL;
+	AssegnaQuote : BOOL;
+	OffsetSicurezzaConPacco : REAL;
+	AltezzaPinzaDaTastatoreAFlangiaMotore : REAL; // Altezza della pinza dal tastatore al bordo superiore della flangia di supporto motore asse K
+	AltezzaDaPavimentoAPiastraSupportoColonnaCentrale : REAL;
+	LarghezzaPiastraSupportoColonnaCentrale : REAL;
+	Quota_X_CentroColonnaCentrale : REAL;
+END_VAR	]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Ingombri colonna centrale *)
+(*AltezzaPinzaDaTastatoreAFlangiaMotore := 270;
+AltezzaDaPavimentoAPiastraSupportoColonnaCentrale := 2070;
+LarghezzaPiastraSupportoColonnaCentrale := 500;
+Quota_X_CentroColonnaCentrale := 7545;*)
+
+CASE WorkAreaManager^.State OF
+	WAMANAGER_NOP,
+	
+	WAMANAGER_CICLO_RIPOSO_INIT,
+		
+	WAMANAGER_CICLO_RIPOSO_RUN:
+		IF Mission^.State = MISSION_STATE_NOP THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+				END_IF
+				(* Se ho la postazione falde e/o catasta vuoti con riscontri fissi metto la quota fissa di altezza della postazione all'altezza massima*)
+				IF WorkArea^[a].Typology = TYPOLOGY_LAYER THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_FALDE;
+				ELSIF  WorkArea^[a].Typology <> TYPOLOGY_STACK AND CATASTA_VUOTI_CON_RISCONTRI_FISSI THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_VUOTI;
+				END_IF
+				
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto  THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			
+			
+			/////////////////////////////////////////////////////////////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//////////////////////////////
+			IF TFDirezioneAssePositiva(Posizione_Attuale:=ModuleAX_X^.Ax^.Status.ActPosition,Posizione_Finale:=Mission^.XPick) THEN	// Direzione Positiva 
+				(*TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale:=ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea:=WorkArea,
+												DirezioneAsseX_Positiva:=TRUE,
+												NPostazioneDX=>WADX,
+												NPostazioneSX=>WASX,
+												PostazionePartenza=>WAPARTENZA);*)
+												
+				IF WorkArea^[wa].Typology <> TYPOLOGY_EXTERNAL_DEPPREL THEN
+					FOR wa := WAPARTENZA TO NumPostazioneDiPareggiatura DO
+						AltezzaDiIngombroArea_CCENTRALE := 0;
+						CASE WorkArea^[wa].Typology OF
+							TYPOLOGY_PALLET:
+								CASE Forming^[WorkAreaState^[wa].F].Pallet.Tipologia OF
+										
+									PALLET_STANDARD:
+										IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+											AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].H;
+										ELSE
+											AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].HPL;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea_CCENTRALE THEN
+											AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;	
+										END_IF
+									
+									CASSA_STANDARD:
+										IF Forming^[WorkAreaState^[wa].F].Pallet.HMAX > WorkAreaState^[wa].H THEN
+											AltezzaDiIngombroArea_CCENTRALE := Forming^[WorkAreaState^[wa].F].Pallet.HMAX;
+										ELSE
+											AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].H;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea_CCENTRALE THEN
+											AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;	
+										END_IF
+										
+									CAVALLETTO:
+										IF Forming^[WorkAreaState^[wa].F].Pallet.HMAX > WorkAreaState^[wa].H THEN
+											AltezzaDiIngombroArea_CCENTRALE := Forming^[WorkAreaState^[wa].F].Pallet.HMAX;
+										ELSE
+											AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].H;
+										END_IF
+										IF WorkArea^[wa].Z > AltezzaDiIngombroArea_CCENTRALE THEN
+											AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;	
+										END_IF
+										
+									ELSE
+										AltezzaDiIngombroArea_CCENTRALE := 1700;//Fisso l'altezza ad una quota di default
+								END_CASE
+											
+							TYPOLOGY_LAYER:
+								IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+									AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].H;
+								ELSE
+									AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].HPL;
+								END_IF
+								IF WorkArea^[wa].Z > AltezzaDiIngombroArea_CCENTRALE THEN
+									AltezzaDiIngombroArea_CCENTRALE := WorkArea^[wa].Z;	
+								END_IF
+							
+							TYPOLOGY_EXTERNAL_DEPPREL:
+								AltezzaDiIngombroArea_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE;
+								
+							ELSE
+								AltezzaDiIngombroArea_CCENTRALE := 1700;//Fisso l'altezza ad una quota di default
+						
+						END_CASE					
+																
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto  THEN
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF
+					END_FOR	
+				END_IF	
+			ELSE
+				(*TFCalcolaNumeroPostazioneDXSX(PosizioneAttuale	:= ModuleAX_X^.Ax^.Status.ActPosition,
+												WorkArea		:= WorkArea,
+												DirezioneAsseX_Positiva:=FALSE,
+												NPostazioneDX	=> WADX,
+												NPostazioneSX	=> WASX,
+												PostazionePartenza=>WAPARTENZA);*)
+						
+				FOR wa := WAPARTENZA TO NPOSTAZIONE_DOPODELPUNTODIPREL BY -1 DO
+					AltezzaDiIngombroArea_CCENTRALE := 0;
+					IF WorkAreaState^[wa].H > WorkAreaState^[wa].HPL THEN
+						AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].H;
+					ELSE
+						AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[wa].HPL;
+					END_IF
+					IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto  THEN
+						QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+					END_IF
+				END_FOR			
+					(* Valuto I Pick-Point *)
+					(*FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF WAPARTENZA = NPOSTAZIONE_PRIMADELPUNTODIPREL THEN //Se sono nella posizione 7 valuto l'altezza del ribaltino "REALE", con o senza pacco
+							IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+								QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+							END_IF
+						ELSE		//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+							IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+								QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+							END_IF
+						END_IF
+					END_FOR*)
+				//END_IF
+				IF ModuleAX_Z^.Ax^.Status.ActPosition >= QuotaAnticipoDinamicaZ_VersoRiposo THEN
+					QuotaAnticipoDinamicaZ_Raggiunta := TRUE;
+				ELSE
+					QuotaAnticipoDinamicaZ_Raggiunta := FALSE;
+				END_IF
+			
+			
+			
+			END_IF
+				(* Valuto I Pick-Point *)
+				CASE TIPOLOGIA_FUNZIONAMENTO_MACCHINA OF
+					
+					FUNZIONAMENTO_PICKING:
+						AltezzaDiIngombroPuntiPrelievo := 0;
+															
+				ELSE;
+					(*FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPointDimension^[P].Zdim + WorkPickPointState^[P].Element.Z >= WorkPickPointDimension^[P].Zdim THEN // Se Altezza + Zpacco >= Ingombro Verticale 
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Z + WorkPickPointState^[P].Element.Z;
+						END_IF
+						IF WorkPickPointDimension^[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension^[P].Zdim;
+						END_IF
+						//Se non sono nella WA 7, do una quota fittizzia, inferiore all'altezza del ribaltino "reale"
+						IF QuotaAnticipoDinamicaZ_VersoRiposo <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300 THEN
+							QuotaAnticipoDinamicaZ_VersoRiposo := AltezzaDiIngombroPuntiPrelievo + WorkPickPointState^[P].Element.YDim + TCPParameter.Z + OffsetSicurezzaAnticipoMovimenti.OffsetSicurezzaAnticipo_Z - 300;
+						END_IF
+					END_FOR		*)	
+				END_CASE
+			
+			
+			
+			
+			
+		END_IF //riferito all'IF dello stato della missione	
+												
+	WAMANAGER_CICLO_RIPOSO_END,
+	(*		
+	WAMANAGER_CICLO_PALL_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_PALL_RUN:
+		IF Mission^.State = MISSION_STATE_NOP OR Mission^.State = MISSION_STATE_DEPOSITO_FALDA_END THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConPALLET := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+				IF Mission^.TPick = TPICK_PALLET THEN
+					IF QuotaFuoriIngombro_Z_ConPALLET <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet THEN
+						QuotaFuoriIngombro_Z_ConPALLET := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet;
+					END_IF
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+				END_IF
+				(* Se ho la postazione falde e/o catasta vuoti con riscontri fissi metto la quota fissa di altezza della postazione all'altezza massima*)
+				IF WorkArea^[a].Typology = TYPOLOGY_LAYER THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_FALDE;
+				ELSIF  WorkArea^[a].Typology <> TYPOLOGY_STACK AND CATASTA_VUOTI_CON_RISCONTRI_FISSI THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_VUOTI;
+				END_IF
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+				IF QuotaFuoriIngombro_Z_ConPALLET <= AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet THEN
+					QuotaFuoriIngombro_Z_ConPALLET := AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet;
+				END_IF
+			END_FOR
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+			END_CASE*)
+			
+			(*IF Mission^.TPick = TPICK_PALLET THEN
+				Traiettoria^.PassModePoint_Z_Enable[1] := TRUE; // traslazione verso l'alto e verticale.....inizio degli altri movimenti 200 mm prima dela fine
+				Traiettoria^.PassModePoint_Z[1] := QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE - OffsetPassMode.Z;
+				Traiettoria^.PassModePoint_X_Enable[1] := TRUE;	
+				IF ModuleAX_X^.Ax^.Status.ActPosition >= Mission^.XPick THEN			// se la posizione attuale in X è MAGGIORE della posizione di destinazione
+					Traiettoria^.PassModePoint_X[1] := Mission^.XPick + OffsetPassMode.X;			
+				ELSE																	// se la posizione attuale in X è MINORE della posizione di destinazione
+					Traiettoria^.PassModePoint_X[1] := Mission^.XPick - OffsetPassMode.X;			
+				END_IF			
+				Traiettoria^.PassModePoint_Y_Enable[1] := TRUE;
+				Traiettoria^.PassModePoint_Y[1] := 0;			// inizio degli altri movimenti in corrispondenza della posizione attuale
+				Traiettoria^.PassModePoint_J_Enable[1] := TRUE;
+				Traiettoria^.PassModePoint_J[1] := 0;			// inizio degli altri movimenti in corrispondenza della posizione attuale
+				Traiettoria^.PassModePoint_K_Enable[1] := TRUE;
+				Traiettoria^.PassModePoint_K[1] := 0;			// inizio degli altri movimenti in corrispondenza della posizione attuale
+			END_IF*)
+		END_IF //riferito all'IF dello stato della missione	
+														
+	WAMANAGER_CICLO_PRELIEVO_PALL_END,						
+		
+	WAMANAGER_CICLO_DEPOSITO_PALL_RUN:
+		IF Mission^.State = MISSION_STATE_NOP OR Mission^.State = MISSION_STATE_PRELIEVO_PALLET_END THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConPALLET := 0;
+			(* Valuto gli ostacoli x la quota fuori ingombro*)	
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+				IF QuotaFuoriIngombro_Z_ConPALLET <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet THEN
+					QuotaFuoriIngombro_Z_ConPALLET := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet;
+				END_IF
+			END_FOR
+			(* Valuto le aree x la quota fuori ingombro *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+				END_IF
+				(* Se ho la postazione falde e/o catasta vuoti con riscontri fissi metto la quota fissa di altezza della postazione all'altezza massima*)
+				IF WorkArea^[a].Typology = TYPOLOGY_LAYER THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_FALDE;
+				ELSIF  WorkArea^[a].Typology <> TYPOLOGY_STACK AND CATASTA_VUOTI_CON_RISCONTRI_FISSI THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_VUOTI;
+				END_IF
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+				IF QuotaFuoriIngombro_Z_ConPALLET <= AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet THEN
+					QuotaFuoriIngombro_Z_ConPALLET := AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPallet;
+				END_IF
+			END_FOR
+			(* Valuto I Pick-Point *)
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF
+						IF QuotaFuoriIngombro_Z_ConPALLET <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.ConPallet THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_ConPALLET := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.ConPallet;
+						END_IF
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF	
+						IF QuotaFuoriIngombro_Z_ConPALLET <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.ConPallet THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_ConPALLET := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.ConPallet;
+						END_IF			
+					END_FOR
+			END_CASE*)
+					
+		END_IF //riferito all'IF dello stato della missione	
+		
+			
+	WAMANAGER_CICLO_DEPOSITO_PALL_END,
+	
+	WAMANAGER_CICLO_FALDA_VUOTI_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_RUN:
+		IF Mission^.State = MISSION_STATE_NOP THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConFALDA := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+				END_IF
+				(* Se ho la postazione falde e/o catasta vuoti con riscontri fissi metto la quota fissa di altezza della postazione all'altezza massima*)
+				IF WorkArea^[a].Typology = TYPOLOGY_LAYER THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_FALDE;
+				ELSIF  WorkArea^[a].Typology <> TYPOLOGY_STACK AND CATASTA_VUOTI_CON_RISCONTRI_FISSI THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_VUOTI;
+				END_IF
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+			END_CASE*)
+			QuotaFuoriIngombro_Z_ConFALDA := QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE;
+			
+		END_IF //riferito all'IF dello stato della missione	
+					
+	WAMANAGER_CICLO_PRELIEVO_FALDA_VUOTI_END,
+		
+	WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_RUN:
+		IF Mission^.State = MISSION_STATE_NOP OR Mission^.State = MISSION_STATE_PRELIEVO_FALDA_END THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConFALDA := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+				END_IF
+				(* Se ho la postazione falde e/o catasta vuoti con riscontri fissi metto la quota fissa di altezza della postazione all'altezza massima*)
+				IF WorkArea^[a].Typology = TYPOLOGY_LAYER THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_FALDE;
+				ELSIF  WorkArea^[a].Typology <> TYPOLOGY_STACK AND CATASTA_VUOTI_CON_RISCONTRI_FISSI THEN
+					AltezzaDiIngombroArea_CCENTRALE := ALTEZZA_CATASTA_VUOTI;
+				END_IF
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+			END_CASE*)
+			QuotaFuoriIngombro_Z_ConFALDA := QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE;
+			
+		END_IF //riferito all'IF dello stato della missione	
+									
+	WAMANAGER_CICLO_DEPOSITO_FALDA_VUOTI_END,*)
+	
+	WAMANAGER_CICLO_FALDA_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_FALDA_RUN:
+		IF Mission^.State = MISSION_STATE_NOP THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConFALDA := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+				END_IF
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+			END_CASE*)
+			QuotaFuoriIngombro_Z_ConFALDA := QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE;
+			
+		END_IF //riferito all'IF dello stato della missione	
+																
+	WAMANAGER_CICLO_PRELIEVO_FALDA_END,
+			
+	WAMANAGER_CICLO_DEPOSITO_FALDA_RUN:
+		IF Mission^.State = MISSION_STATE_NOP OR Mission^.State = MISSION_STATE_PRELIEVO_FALDA_END THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConFALDA := 0;
+			(* Valuto gli ostacoli *)	
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+				ELSE
+					AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+				END_IF
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+			END_FOR
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+			END_CASE*)
+			QuotaFuoriIngombro_Z_ConFALDA := QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE;
+			
+		END_IF //riferito all'IF dello stato della missione	
+			
+	//WAMANAGER_CICLO_DEPOSITO_FALDA_END,
+
+	(*WAMANAGER_CICLO_PACCO_INIT,
+	
+	WAMANAGER_CICLO_PRELIEVO_PACCO_RUN:
+		IF Mission^.State = MISSION_STATE_NOP THEN
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConPEZZO := 0;
+			(* Valuto gli ostacoli per calcolare il fuori ingombro di Z *)
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+				IF QuotaFuoriIngombro_Z_ConPEZZO <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPacco THEN
+					QuotaFuoriIngombro_Z_ConPEZZO := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPacco;
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkArea^[a].Typology <> TYPOLOGY_LAYER AND  WorkArea^[a].Typology <> TYPOLOGY_STACK THEN
+					IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+						AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+					ELSE
+						AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+					END_IF
+					IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+						QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+					END_IF
+					IF QuotaFuoriIngombro_Z_ConPEZZO <= AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPacco THEN//WorkArea^[a].Z + WorkArea^[a].H + Dimensione_Z_ElementoInPresaX_Ingombro + OFFSETSICUREZZA_Z THEN
+						QuotaFuoriIngombro_Z_ConPEZZO := AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezza.ConPacco;//WorkArea^[a].Z + WorkArea^[a].H + Dimensione_Z_ElementoInPresaX_Ingombro + OFFSETSICUREZZA_Z;
+					END_IF
+				END_IF
+			END_FOR
+			
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+			END_CASE*)
+			
+			END_IF //riferito all'IF dello stato della missione	
+	
+	WAMANAGER_CICLO_PRELIEVO_PACCO_END,
+		
+	WAMANAGER_CICLO_DEPOSITO_PACCO_RUN:
+		IF Mission^.State = MISSION_STATE_NOP OR Mission^.State = MISSION_STATE_PRELIEVO_PACCO_END THEN
+			//QuotaX_ConsensoRotazionePinza_Raggiunta := FALSE;
+			QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 0;
+			QuotaFuoriIngombro_Z_ConPEZZO := 0;
+			(* Valuto gli ostacoli per calcolare il fuori ingombro di Z *)
+			//IF Mission^.JPickVO = 0 THEN
+			//	OffsetSicurezzaConPacco := OffsetSicurezza.ConPacco;
+		//	ELSE
+		//		OffsetSicurezzaConPacco := OffsetSicurezza.ConPacco + 200;
+		//	END_IF
+			
+			FOR f:=1 TO MAXFOOTPRINT DO	
+				IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+					QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + TCPParameter.Z + OffsetSicurezza.Avuoto;
+				END_IF
+				IF Mission^.TPick = TPICK_PACK THEN
+					IF QuotaFuoriIngombro_Z_ConPEZZO <= WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezzaConPacco THEN
+						QuotaFuoriIngombro_Z_ConPEZZO := WorkFootPrint^[f].Z + WorkFootPrint^[f].ZDim + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezzaConPacco;
+					END_IF
+				END_IF
+			END_FOR
+			(* Valuto le aree *)
+			FOR a:=1 TO MAXAREA DO
+				AltezzaDiIngombroArea_CCENTRALE := 0;
+				IF WorkArea^[a].Typology <> TYPOLOGY_LAYER AND  WorkArea^[a].Typology <> TYPOLOGY_STACK THEN
+					IF WorkAreaState^[a].H > WorkAreaState^[a].HPL THEN
+						AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].H;
+					ELSE
+						AltezzaDiIngombroArea_CCENTRALE := WorkAreaState^[a].HPL;
+					END_IF
+					IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto THEN
+						QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroArea_CCENTRALE + TCPParameter.Z + OffsetSicurezza.Avuoto;
+					END_IF
+					IF QuotaFuoriIngombro_Z_ConPEZZO <=  AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezzaConPacco THEN
+						QuotaFuoriIngombro_Z_ConPEZZO :=  AltezzaDiIngombroArea_CCENTRALE + Dimensione_Z_ElementoInPresaX_Ingombro + OffsetSicurezzaConPacco;
+					END_IF
+				end_if
+			END_FOR
+			
+			(* Valuto I Pick-Point *)
+			(*CASE TIPO_RIBALTINO OF
+				RIBALTINO_DOPO_SQUADRO:
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].YDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+				RIBALTINO_DIRETTO :
+					FOR P:=1 TO MAXPICKPOINT DO
+						AltezzaDiIngombroPuntiPrelievo := 0;
+						IF  WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza orrizzontale Ribaltino + Zpacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zh + WorkPickPointState^[P].ZDim;
+						END_IF
+						IF WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim >= WorkPickPointDimension[P].Zdim THEN // Se Altezza Vertivale Ribaltino + Quota Fermo + Ypacco >= Ingombro Verticale Ribaltino
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPoint^[P].Zv + WorkPickPointState^[P].ZTilter + WorkPickPointState^[P].XDim;
+						END_IF
+						IF WorkPickPointDimension[P].Zdim >= AltezzaDiIngombroPuntiPrelievo THEN //Se Ingombro Verticale Ribaltino >= Dell'ingombro valutato sopra
+							AltezzaDiIngombroPuntiPrelievo := WorkPickPointDimension[P].Zdim;
+						END_IF
+						IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE <= AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto THEN //Se Quota fuori ingombro <= dell' ingombro del punto di prelievo
+							QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := AltezzaDiIngombroPuntiPrelievo + TCPParameter.Z + OffsetSicurezza.Avuoto;
+						END_IF				
+					END_FOR
+			END_CASE
+			*)
+		END_IF //riferito all'IF dello stato della missione	
+		*)
+		(* Controllo della posizione X per dare OK alla rotazione della pinza per evitare che vada a sbattere *)
+	(*	IF QuotaFuoriIngombro_Z_ConPEZZO >= (AltezzaDaPavimentoAPiastraSupportoColonnaCentrale - AltezzaPinzaDaTastatoreAFlangiaMotore - 100) AND 
+			(ModuleAX_X^.Ax^.Status.ActPosition - (Dimensioni_Pinza.Lunghezza / 2) >= Quota_X_CentroColonnaCentrale + LarghezzaPiastraSupportoColonnaCentrale/2 + 50) OR 
+			(ModuleAX_X^.Ax^.Status.ActPosition + (Dimensioni_Pinza.Lunghezza / 2) <= Quota_X_CentroColonnaCentrale - LarghezzaPiastraSupportoColonnaCentrale/2 - 50) THEN
+			QuotaX_ConsensoRotazionePinza_Raggiunta := TRUE;
+		END_IF*)
+		
+	//WAMANAGER_CICLO_DEPOSITO_PACCO_END;
+	
+END_CASE
+
+(*
+(* Punto di approccio iniziale - Necessario per lo start lenta *)
+IF Mission^.TPick = TPICK_PALLET OR Mission^.TPick = TPICK_LAYER THEN
+	Traiettoria^.PuntoDiApproccioStartPoint.X := Mission^.XPick;
+	Traiettoria^.PuntoDiApproccioStartPoint.Y := Mission^.YPick;
+	IF Mission^.TPick = TPICK_LAYER AND 						// SE il tipo di prelievo è PRELIEVO FALDA
+		WorkArea^[Mission^.PPick].DoLearn_Z = 1 THEN					//se è necessario effettuare l'apprendimento
+		Traiettoria^.PuntoDiApproccioStartPoint.Z := WorkArea^[Mission^.PPick].Learn_Z  + OffsetPrelieviLenti.Falde;	// La quota di start lenta verticale coincide con la quota assegnata alla WorkArea come quota di start apprendimento
+	ELSIF Mission^.TPick = TPICK_LAYER AND 						// SE il tipo di prelievo è PRELIEVO FALDA
+		WorkArea^[Mission^.PPick].DoLearn_Z = 2 THEN					//se NON DEVO effettuare l'apprendimento
+		Traiettoria^.PuntoDiApproccioStartPoint.Z := WorkArea^[Mission^.PPick].Learned_Z + OffsetPrelieviLenti.Falde;//WorkArea^[Mission^.PPick].Z + WorkArea^[Mission^.PPick].H + OFFSETLENTAZ;	// La quota di start lenta verticale coincide con l'altezza della WA + altezza reale + offset.. vado piano da questa quota fino al tocco dei tastatori
+	ELSIF Mission^.TPick = TPICK_PALLET AND 					// SE il tipo di prelievo è PRELIEVO FALDA
+		WorkArea^[Mission^.PPick].DoLearn_Z = 1 THEN					//se è necessario effettuare l'apprendimento
+		Traiettoria^.PuntoDiApproccioStartPoint.Z := WorkArea^[Mission^.PPick].Learn_Z + OffsetPrelieviLenti.Pallet;	// La quota di start lenta verticale coincide con la quota assegnata alla WorkArea come quota di start apprendimento
+	ELSIF Mission^.TPick = TPICK_PALLET AND 					// SE il tipo di prelievo è PRELIEVO FALDA
+		WorkArea^[Mission^.PPick].DoLearn_Z = 2 THEN					//se è necessario effettuare l'apprendimento
+		Traiettoria^.PuntoDiApproccioStartPoint.Z := WorkArea^[Mission^.PPick].Learned_Z + OffsetPrelieviLenti.Pallet;	// La quota di start lenta verticale coincide con la quota assegnata alla WorkArea come quota di start apprendimento
+	ELSE																				// Altrimenti, la quota di prelievo equivale alla quota di Prelievo + Offset 
+		Traiettoria^.PuntoDiApproccioStartPoint.Z := Mission^.ZPick + OffsetPrelieviLenti.Pacco;
+	END_IF
+	Traiettoria^.PuntoDiApproccioStartPoint.K := Mission^.KPick;
+	Traiettoria^.PuntoDiApproccioStartPoint.J := Mission^.JPick;
+ELSE
+	Traiettoria^.PuntoDiApproccioStartPoint.X := Mission^.XPick;
+	Traiettoria^.PuntoDiApproccioStartPoint.Y := Mission^.YPick;
+	Traiettoria^.PuntoDiApproccioStartPoint.Z := Mission^.ZPick;
+	Traiettoria^.PuntoDiApproccioStartPoint.K := Mission^.KPick;
+	Traiettoria^.PuntoDiApproccioStartPoint.J := Mission^.JPick;
+END_IF
+*)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+(* Punto iniziale - Cincidente con il punto di prelievo *)
+Traiettoria^.StartPoint.X := Mission^.XPick;
+Traiettoria^.StartPoint.Y := Mission^.YPick;
+Traiettoria^.StartPoint.Z := Mission^.ZPick;
+Traiettoria^.StartPoint.K := Mission^.KPick;
+Traiettoria^.StartPoint.J := Mission^.JPick;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(* Punto intermedio 1 - E' il punto avente coordinata Z maggiore della coordinata di partenza e tutte le altre coordinate sono uguali *)
+Traiettoria^.PuntoIntermedio[1].X := Mission^.XPick;
+Traiettoria^.PuntoIntermedio[1].Y := Mission^.YPick;
+IF Mission^.TPick = TPICK_PACK THEN
+	Traiettoria^.PuntoIntermedio[1].Z := QuotaFuoriIngombro_Z_ConPEZZO;	
+ELSIF Mission^.TPick = TPICK_LAYER THEN	
+	Traiettoria^.PuntoIntermedio[1].Z := QuotaFuoriIngombro_Z_ConFALDA;	
+ELSIF Mission^.TPick = TPICK_PALLET THEN
+	Traiettoria^.PuntoIntermedio[1].Z := QuotaFuoriIngombro_Z_ConPALLET;
+END_IF		
+Traiettoria^.PuntoIntermedio[1].K := Mission^.KPick;
+Traiettoria^.PuntoIntermedio[1].J := Mission^.JPick;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(* Punto intermedio 2 - E' il punto avente coordinata Z uguale a quella del punto 1, coordinata X,Y,J e K uguale a quella del punto di approccio *)
+Traiettoria^.PuntoIntermedio[2].X := Mission^.XPlaceApproach;
+Traiettoria^.PuntoIntermedio[2].Y := Mission^.YPlaceApproach;
+Traiettoria^.PuntoIntermedio[2].Z := Traiettoria^.PuntoIntermedio[1].Z;
+Traiettoria^.PuntoIntermedio[2].K := Mission^.KPick;
+Traiettoria^.PuntoIntermedio[2].J := Mission^.JPlaceApproach;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(* Punto di approccio finale :
+- nel caso di deposito falda su catasta con apprendimento, la quota Z di approccio coincide con la quota di start lenta
+- nel caso di deposito falda su catasta SENZA apprendimento, la quota Z di approccio coincide con la quota di start lenta per evitare che se c'è un pallet fuori sagoma, evitiamo collisioni brusche della pinza*)
+
+Traiettoria^.PuntoDiApproccioEndPoint.X := Mission^.XPlaceApproach;
+Traiettoria^.PuntoDiApproccioEndPoint.Y := Mission^.YPlaceApproach;
+(*
+IF Mission^.TPick = TPICK_LAYER AND 						// se ho tipo di prelievo falda
+(WorkArea^[Mission^.PPlace].Typology = TYPOLOGY_STACK AND 	// e se è tipo di deposito su catasta vuoti
+WorkArea^[Mission^.PPlace].DoLearn_Z = 1)  THEN					// e se è necessario effettuare l'apprendimento sulla catasta vuoti
+	Traiettoria^.PuntoDiApproccioEndPoint.Z := WorkArea^[Mission^.PPlace].Learn_Z;	// La quota di start lenta verticale coincide con la quota assegnata alla WorkArea come quota di start apprendimento
+	Quota_Attesa_Caduta_Falda_Z := WorkArea^[Mission^.PPick].Learned_Z + OffsetCadutaFalda;
+ELSIF Mission^.TPick = TPICK_LAYER AND 						// se ho tipo di prelievo falda
+(WorkArea^[Mission^.PPlace].Typology = TYPOLOGY_STACK AND 	// e se è tipo di deposito su catasta vuoti
+WorkArea^[Mission^.PPlace].DoLearn_Z = 2)  THEN					// e se NON è necessario effettuare l'apprendimento sulla catasta vuoti
+	Traiettoria^.PuntoDiApproccioEndPoint.Z := WorkArea^[Mission^.PPlace].Learned_Z + OffsetPrelieviLenti.Pallet;	// La quota di start lenta verticale coincide con la quota assegnata alla WorkArea come quota di start apprendimento
+	Quota_Attesa_Caduta_Falda_Z := WorkArea^[Mission^.PPick].Learned_Z + OffsetCadutaFalda;
+ELSE																				// Altrimenti,(caso di deposito pacco o falda su piazzola: la quota di DEPOSITO equivale alla quota di inizo approccio 
+	Traiettoria^.PuntoDiApproccioEndPoint.Z := Mission^.ZPlaceApproach;
+	Quota_Attesa_Caduta_Falda_Z := WorkArea^[Mission^.PPick].Learned_Z + OffsetCadutaFalda;
+END_IF
+*)
+Traiettoria^.PuntoDiApproccioEndPoint.J := Mission^.JPlaceApproach;
+Traiettoria^.PuntoDiApproccioEndPoint.K := Mission^.KPick;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(* Punto finale*)
+Traiettoria^.EndPoint.X := Mission^.XPlace;
+Traiettoria^.EndPoint.Y := Mission^.YPlace;
+Traiettoria^.EndPoint.Z := Mission^.ZPlace;
+Traiettoria^.EndPoint.K := Mission^.KPlace;
+Traiettoria^.EndPoint.J := Mission^.JPlace;
+
+(* Setto la quota minima di fuori ingombro che mi permette di star fuori dal filo delle barriere orrizontali *)
+IF QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE < 1450 THEN
+	QuotaFuoriIngombro_Z_AVUOTO_CCENTRALE := 1450;
+END_IF
+
+Traiettoria^.PassModeGlobalEnable := AbilitazionePassModeGlobale;
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="TFCalcoloTraiettoria_pacchi">
+      <LineId Id="8131" Count="0" />
+      <LineId Id="8168" Count="2" />
+      <LineId Id="8132" Count="0" />
+      <LineId Id="5820" Count="0" />
+      <LineId Id="5838" Count="0" />
+      <LineId Id="5842" Count="0" />
+      <LineId Id="5844" Count="2" />
+      <LineId Id="6395" Count="0" />
+      <LineId Id="5902" Count="1" />
+      <LineId Id="5905" Count="6" />
+      <LineId Id="7160" Count="5" />
+      <LineId Id="5912" Count="0" />
+      <LineId Id="8847" Count="4" />
+      <LineId Id="8846" Count="0" />
+      <LineId Id="8852" Count="0" />
+      <LineId Id="5913" Count="2" />
+      <LineId Id="6698" Count="0" />
+      <LineId Id="8960" Count="0" />
+      <LineId Id="9053" Count="1" />
+      <LineId Id="9056" Count="5" />
+      <LineId Id="9055" Count="0" />
+      <LineId Id="9062" Count="0" />
+      <LineId Id="8967" Count="3" />
+      <LineId Id="8972" Count="54" />
+      <LineId Id="9121" Count="1" />
+      <LineId Id="9029" Count="1" />
+      <LineId Id="9032" Count="0" />
+      <LineId Id="9063" Count="0" />
+      <LineId Id="9069" Count="13" />
+      <LineId Id="9114" Count="1" />
+      <LineId Id="9085" Count="28" />
+      <LineId Id="9064" Count="4" />
+      <LineId Id="9033" Count="19" />
+      <LineId Id="8961" Count="5" />
+      <LineId Id="6388" Count="0" />
+      <LineId Id="5849" Count="1" />
+      <LineId Id="5852" Count="0" />
+      <LineId Id="7310" Count="0" />
+      <LineId Id="5854" Count="0" />
+      <LineId Id="6386" Count="0" />
+      <LineId Id="6905" Count="1" />
+      <LineId Id="6092" Count="4" />
+      <LineId Id="6102" Count="7" />
+      <LineId Id="7154" Count="1" />
+      <LineId Id="8009" Count="3" />
+      <LineId Id="6110" Count="0" />
+      <LineId Id="8845" Count="0" />
+      <LineId Id="8840" Count="0" />
+      <LineId Id="8844" Count="0" />
+      <LineId Id="8841" Count="2" />
+      <LineId Id="6111" Count="2" />
+      <LineId Id="6335" Count="1" />
+      <LineId Id="6123" Count="0" />
+      <LineId Id="6844" Count="0" />
+      <LineId Id="8524" Count="33" />
+      <LineId Id="7843" Count="0" />
+      <LineId Id="6204" Count="4" />
+      <LineId Id="6376" Count="4" />
+      <LineId Id="6210" Count="2" />
+      <LineId Id="6542" Count="2" />
+      <LineId Id="5855" Count="0" />
+      <LineId Id="6387" Count="0" />
+      <LineId Id="5857" Count="2" />
+      <LineId Id="6125" Count="0" />
+      <LineId Id="6907" Count="1" />
+      <LineId Id="6350" Count="0" />
+      <LineId Id="6126" Count="3" />
+      <LineId Id="6136" Count="3" />
+      <LineId Id="6141" Count="1" />
+      <LineId Id="7148" Count="1" />
+      <LineId Id="8013" Count="3" />
+      <LineId Id="6143" Count="0" />
+      <LineId Id="8854" Count="4" />
+      <LineId Id="8853" Count="0" />
+      <LineId Id="6144" Count="2" />
+      <LineId Id="6153" Count="1" />
+      <LineId Id="6156" Count="0" />
+      <LineId Id="6860" Count="0" />
+      <LineId Id="7869" Count="0" />
+      <LineId Id="8558" Count="16" />
+      <LineId Id="8835" Count="1" />
+      <LineId Id="8834" Count="0" />
+      <LineId Id="8575" Count="15" />
+      <LineId Id="8838" Count="1" />
+      <LineId Id="8837" Count="0" />
+      <LineId Id="8591" Count="0" />
+      <LineId Id="6157" Count="0" />
+      <LineId Id="6203" Count="0" />
+      <LineId Id="6194" Count="0" />
+      <LineId Id="5860" Count="0" />
+      <LineId Id="5862" Count="4" />
+      <LineId Id="6224" Count="0" />
+      <LineId Id="6909" Count="0" />
+      <LineId Id="8022" Count="0" />
+      <LineId Id="6225" Count="0" />
+      <LineId Id="6303" Count="6" />
+      <LineId Id="7142" Count="1" />
+      <LineId Id="8017" Count="3" />
+      <LineId Id="6310" Count="0" />
+      <LineId Id="8860" Count="4" />
+      <LineId Id="8859" Count="0" />
+      <LineId Id="6311" Count="2" />
+      <LineId Id="6967" Count="0" />
+      <LineId Id="8592" Count="33" />
+      <LineId Id="6314" Count="0" />
+      <LineId Id="7907" Count="0" />
+      <LineId Id="8426" Count="0" />
+      <LineId Id="6389" Count="0" />
+      <LineId Id="5869" Count="2" />
+      <LineId Id="6235" Count="0" />
+      <LineId Id="6911" Count="0" />
+      <LineId Id="8023" Count="0" />
+      <LineId Id="6912" Count="0" />
+      <LineId Id="6281" Count="6" />
+      <LineId Id="7136" Count="1" />
+      <LineId Id="8024" Count="3" />
+      <LineId Id="6288" Count="0" />
+      <LineId Id="8866" Count="4" />
+      <LineId Id="8865" Count="0" />
+      <LineId Id="6289" Count="2" />
+      <LineId Id="6952" Count="0" />
+      <LineId Id="8626" Count="33" />
+      <LineId Id="6292" Count="1" />
+      <LineId Id="5872" Count="0" />
+      <LineId Id="6390" Count="0" />
+      <LineId Id="5874" Count="4" />
+      <LineId Id="6396" Count="0" />
+      <LineId Id="6913" Count="0" />
+      <LineId Id="8032" Count="0" />
+      <LineId Id="6914" Count="0" />
+      <LineId Id="6060" Count="3" />
+      <LineId Id="6074" Count="2" />
+      <LineId Id="7130" Count="0" />
+      <LineId Id="7592" Count="0" />
+      <LineId Id="8028" Count="3" />
+      <LineId Id="6077" Count="2" />
+      <LineId Id="6090" Count="0" />
+      <LineId Id="6937" Count="0" />
+      <LineId Id="8660" Count="33" />
+      <LineId Id="6091" Count="0" />
+      <LineId Id="7947" Count="0" />
+      <LineId Id="5879" Count="0" />
+      <LineId Id="6391" Count="0" />
+      <LineId Id="5881" Count="0" />
+      <LineId Id="6280" Count="0" />
+      <LineId Id="5884" Count="0" />
+      <LineId Id="6397" Count="0" />
+      <LineId Id="6915" Count="0" />
+      <LineId Id="8045" Count="0" />
+      <LineId Id="6916" Count="0" />
+      <LineId Id="6027" Count="3" />
+      <LineId Id="6041" Count="2" />
+      <LineId Id="7124" Count="1" />
+      <LineId Id="8033" Count="3" />
+      <LineId Id="6044" Count="2" />
+      <LineId Id="6057" Count="0" />
+      <LineId Id="6922" Count="0" />
+      <LineId Id="7948" Count="0" />
+      <LineId Id="8695" Count="32" />
+      <LineId Id="6058" Count="0" />
+      <LineId Id="7967" Count="0" />
+      <LineId Id="6214" Count="0" />
+      <LineId Id="6392" Count="0" />
+      <LineId Id="5886" Count="0" />
+      <LineId Id="5888" Count="1" />
+      <LineId Id="5916" Count="0" />
+      <LineId Id="5891" Count="0" />
+      <LineId Id="6398" Count="0" />
+      <LineId Id="6917" Count="1" />
+      <LineId Id="5966" Count="0" />
+      <LineId Id="5945" Count="0" />
+      <LineId Id="5947" Count="3" />
+      <LineId Id="5952" Count="2" />
+      <LineId Id="5967" Count="1" />
+      <LineId Id="7123" Count="0" />
+      <LineId Id="7118" Count="0" />
+      <LineId Id="8384" Count="0" />
+      <LineId Id="8037" Count="3" />
+      <LineId Id="5969" Count="3" />
+      <LineId Id="5974" Count="2" />
+      <LineId Id="8385" Count="0" />
+      <LineId Id="7968" Count="1" />
+      <LineId Id="7971" Count="0" />
+      <LineId Id="8729" Count="32" />
+      <LineId Id="7970" Count="0" />
+      <LineId Id="5946" Count="0" />
+      <LineId Id="6393" Count="0" />
+      <LineId Id="5894" Count="2" />
+      <LineId Id="6399" Count="0" />
+      <LineId Id="8123" Count="0" />
+      <LineId Id="6919" Count="2" />
+      <LineId Id="8080" Count="0" />
+      <LineId Id="8084" Count="0" />
+      <LineId Id="8081" Count="0" />
+      <LineId Id="8083" Count="0" />
+      <LineId Id="8082" Count="0" />
+      <LineId Id="8079" Count="0" />
+      <LineId Id="5983" Count="11" />
+      <LineId Id="7166" Count="1" />
+      <LineId Id="8386" Count="0" />
+      <LineId Id="8041" Count="3" />
+      <LineId Id="5995" Count="3" />
+      <LineId Id="6000" Count="2" />
+      <LineId Id="8387" Count="0" />
+      <LineId Id="6890" Count="0" />
+      <LineId Id="7990" Count="0" />
+      <LineId Id="8909" Count="0" />
+      <LineId Id="8763" Count="32" />
+      <LineId Id="6004" Count="0" />
+      <LineId Id="6009" Count="0" />
+      <LineId Id="8122" Count="0" />
+      <LineId Id="6394" Count="0" />
+      <LineId Id="8119" Count="0" />
+      <LineId Id="8129" Count="0" />
+      <LineId Id="8128" Count="0" />
+      <LineId Id="8126" Count="1" />
+      <LineId Id="8125" Count="0" />
+      <LineId Id="5899" Count="2" />
+      <LineId Id="5840" Count="0" />
+      <LineId Id="8910" Count="0" />
+      <LineId Id="5773" Count="0" />
+      <LineId Id="5617" Count="0" />
+      <LineId Id="5259" Count="0" />
+      <LineId Id="5263" Count="0" />
+      <LineId Id="5268" Count="0" />
+      <LineId Id="5432" Count="0" />
+      <LineId Id="5264" Count="0" />
+      <LineId Id="5272" Count="0" />
+      <LineId Id="5450" Count="2" />
+      <LineId Id="5434" Count="0" />
+      <LineId Id="5273" Count="0" />
+      <LineId Id="5270" Count="0" />
+      <LineId Id="7449" Count="2" />
+      <LineId Id="5271" Count="0" />
+      <LineId Id="5269" Count="0" />
+      <LineId Id="5265" Count="1" />
+      <LineId Id="5290" Count="2" />
+      <LineId Id="5302" Count="0" />
+      <LineId Id="5293" Count="0" />
+      <LineId Id="5301" Count="0" />
+      <LineId Id="5260" Count="0" />
+      <LineId Id="5248" Count="0" />
+      <LineId Id="8912" Count="0" />
+      <LineId Id="8911" Count="0" />
+      <LineId Id="5078" Count="0" />
+      <LineId Id="5630" Count="0" />
+      <LineId Id="5622" Count="0" />
+      <LineId Id="315" Count="0" />
+      <LineId Id="5069" Count="3" />
+      <LineId Id="5621" Count="0" />
+      <LineId Id="5628" Count="0" />
+      <LineId Id="5627" Count="0" />
+      <LineId Id="5084" Count="0" />
+      <LineId Id="5093" Count="0" />
+      <LineId Id="5104" Count="0" />
+      <LineId Id="5475" Count="0" />
+      <LineId Id="5480" Count="0" />
+      <LineId Id="5484" Count="0" />
+      <LineId Id="5472" Count="0" />
+      <LineId Id="5464" Count="0" />
+      <LineId Id="5471" Count="0" />
+      <LineId Id="5473" Count="0" />
+      <LineId Id="5461" Count="0" />
+      <LineId Id="5107" Count="0" />
+      <LineId Id="5620" Count="0" />
+      <LineId Id="5626" Count="0" />
+      <LineId Id="5625" Count="0" />
+      <LineId Id="5115" Count="0" />
+      <LineId Id="5109" Count="0" />
+      <LineId Id="5116" Count="3" />
+      <LineId Id="5619" Count="0" />
+      <LineId Id="5624" Count="0" />
+      <LineId Id="5623" Count="0" />
+      <LineId Id="5095" Count="0" />
+      <LineId Id="5457" Count="1" />
+      <LineId Id="5096" Count="0" />
+      <LineId Id="8913" Count="0" />
+      <LineId Id="5100" Count="0" />
+      <LineId Id="5282" Count="0" />
+      <LineId Id="8914" Count="0" />
+      <LineId Id="5453" Count="1" />
+      <LineId Id="5284" Count="1" />
+      <LineId Id="7452" Count="0" />
+      <LineId Id="5455" Count="1" />
+      <LineId Id="5286" Count="1" />
+      <LineId Id="7453" Count="0" />
+      <LineId Id="5288" Count="0" />
+      <LineId Id="8214" Count="0" />
+      <LineId Id="5289" Count="0" />
+      <LineId Id="5283" Count="0" />
+      <LineId Id="5101" Count="0" />
+      <LineId Id="5103" Count="0" />
+      <LineId Id="5618" Count="0" />
+      <LineId Id="5099" Count="0" />
+      <LineId Id="5098" Count="0" />
+      <LineId Id="5629" Count="0" />
+      <LineId Id="5087" Count="1" />
+      <LineId Id="5274" Count="0" />
+      <LineId Id="5090" Count="2" />
+      <LineId Id="8465" Count="0" />
+      <LineId Id="8211" Count="2" />
+      <LineId Id="5614" Count="0" />
+      <LineId Id="8344" Count="1" />
+      <LineId Id="5759" Count="4" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_LayerData" Id="{e752336f-ee4e-4ff5-afc0-c36d20f42c74}">
+    <Declaration><![CDATA[TYPE ST_LayerData :
+STRUCT
+	Tipologia				: INT	:= 0;  (* Indica la tipologia dell'elemento 	FALDA_CARTONE 			:= 1, (* Falde di Cartone *)
+																					FALDA_POLISTIROLO 		:= 2, (* Falde di Polistirolo *)*)
+	Code					: INT 	:= -1;	(* Codici del tipo falda *)
+	Description				: STRING(20) := '';	(* Descrizione del tipo falda *)
+	
+	XDim					: REAL	:= 0.0;	(* (mm) Dimensione X -> Lunghezza *)
+	YDim					: REAL	:= 0.0;	(* (mm) Dimensione Y -> Larghezza *) 
+	ZDim					: REAL	:= 0.0;	(* (mm) Dimensione Z -> spessore *)
+	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

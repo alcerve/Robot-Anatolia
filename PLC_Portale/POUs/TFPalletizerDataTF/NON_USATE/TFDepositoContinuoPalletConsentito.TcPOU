@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TFDepositoContinuoPalletConsentito" Id="{0f8d1cef-3ff9-45ed-8344-982177652c25}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION TFDepositoContinuoPalletConsentito : BOOL
+VAR_INPUT
+	NpacchiPresenti : UINT;
+	NpacchiMassimiConsentiti : UINT; // Numero dei pacchi sui trasporti sotto del quale si vuole consentire il deposito continuo dei pallet
+	NultimiTrasportiOccupati : uint;
+END_VAR
+VAR
+	i : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TFDepositoContinuoPalletConsentito := FALSE; 
+
+IF NpacchiPresenti <= NpacchiMassimiConsentiti AND NultimiTrasportiOccupati <= NpacchiMassimiConsentiti THEN
+	TFDepositoContinuoPalletConsentito := TRUE;
+	RETURN;
+ELSE
+	TFDepositoContinuoPalletConsentito := FALSE;
+	RETURN;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="TFDepositoContinuoPalletConsentito">
+      <LineId Id="9" Count="1" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_WorkOrder_Premium" Id="{618fee7a-de1b-4a0d-a9de-26d11ee5f999}">
+    <Declaration><![CDATA[TYPE ST_WorkOrder_Premium :
+STRUCT
+	IDWorkOrder		: STRING; (* Identificatore univoco dell'ordine di lavoro *)
+	State			: INT; (* Stato dell'ordine di lavoro : 1=DA ESEGUIRE,2=IN ESECUZIONE,3=TERMINATO *)
+	Support			: ST_SupportData; (* Struttura descrizione supporto *)
+	Layer 			: ST_LayerData; (* Struttura descrizione falda *)
+	SlabNumber  	: INT; (* Numero di lastre da depositare sul supporto *)
+	SlabDimension 	: ST_DimensionElement; (* Dimensione Lastra *)
+	LayerSequence 	: INT; (* Sequenza di deposito delle falde -> 0=Nessuna falda,1=Deposito dopo ogni lastra,2=Deposito ogni 2 lastre,ecc*)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

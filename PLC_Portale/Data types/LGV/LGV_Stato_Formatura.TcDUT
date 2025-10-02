@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="LGV_Stato_Formatura" Id="{2df55b4e-d43a-466c-90c2-ef98e97e4b86}">
+    <Declaration><![CDATA[TYPE LGV_Stato_Formatura :
+STRUCT
+
+CodicePallet 	: INT; //Codice del Pallet Presente in formatura
+CodiceFalda		: INT; //Codice della Falda presente in formatura
+PacchiPresenti_ZonaPositiva : INT; //Numero dei pacchi presenti della formatura nella zona Positiva(rispetto al ribaltino)
+PacchiPresenti_ZonaNegativa : INT; //Numero dei pacchi presenti della formatura nella zona Negativa(rispetto al ribaltino)
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

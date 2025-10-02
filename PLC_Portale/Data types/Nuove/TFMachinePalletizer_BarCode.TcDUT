@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_BarCode" Id="{18f84585-b1db-43fb-b31f-37ff39fc62b3}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_BarCode :
+STRUCT
+	State 	: e_Stato_LetturaBarCode := LETURA_BC_TERMINATA;				(* Identifica lo stato della Lettura del BC:	0= Non Ancora letto/Da Leggere, 
+																					1= Lettura In corso
+																					2= Codice Letto e Valido/Non da leggere, 
+																					3= Errore *)
+	ErrorCode	: INT := 0;				(* Identifica il codice di errore *)
+	Value		: STRING[DIMBARCODE];	(* Identifica il valore della lettura *)	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

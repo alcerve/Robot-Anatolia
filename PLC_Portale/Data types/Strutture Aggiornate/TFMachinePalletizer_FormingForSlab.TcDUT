@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="TFMachinePalletizer_FormingForSlab" Id="{eb094edf-ccef-45bc-ae0a-b53637561943}">
+    <Declaration><![CDATA[TYPE TFMachinePalletizer_FormingForSlab :
+STRUCT
+	Enable		: INT							:= -1;	(* Formatura Abilitata 0=no, 1=si, -1 dato non valido *)
+	Code		: ARRAY[1..MAXFORMINGCODE] 		OF INT;	(* Codici di Pallettizzazione (0..n=, -1 dato non valido) *)
+	Pallet		: TFMachinePalletizer_Pallet;	(* Pallet assegnato (0 = tipo 0, 1 = tipo 1, 2 = tipo 2,  …. , 0 / -1 dato non valido *)
+	LGVAttr		: INT							:= -1;  (* Attributi LGV (-1= non valido) *)
+	PElement	: ARRAY[1..MAXFORMINGSLAB] OF TFMachinePalletizer_PlaceElement; (* Elemento i-esimo da dapositare *)
+	
+	AuxAttr		: INT 							:= -1;	(* Attributi Ausiliari per la gestione di abilitazioni varie 
+															-> Bit 0 : Abilitazione BARCODE 
+															-> Bit 1 : ABilita PRESA FALDA CON ARPIONI*)
+															
+	GUID		: UINT							:= 0;	(* Identificatore univoco della Formatura *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>
