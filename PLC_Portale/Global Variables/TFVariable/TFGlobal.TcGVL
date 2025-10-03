@@ -250,6 +250,7 @@ VAR_GLOBAL
 	EjeYPosFueraIngombro: BOOL;
 	EjeYPos0Ingombro: BOOL;
 	EjeYPos180Ingombro: BOOL;
+	Z_PuntoPrelievo180Bundle: LREAL;
 END_VAR
 
 VAR_GLOBAL PERSISTENT
