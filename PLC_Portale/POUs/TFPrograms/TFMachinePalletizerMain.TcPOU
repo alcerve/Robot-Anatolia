@@ -485,7 +485,7 @@ IF MachinePalletizerInitDone THEN
 		PALLETTIZZATORE_SX:
 		
 			AxisPar_J.MaxPosition 	:= 181.0;
-			AxisPar_J.HomeDefine 	:= -2.0;
+			AxisPar_J.HomeDefine 	:= 0.0;
 			AxisPar_J.HomePosition 	:= 0.0;
 			AxisPar_J.MinPosition 	:= -0.2;
 	END_CASE	

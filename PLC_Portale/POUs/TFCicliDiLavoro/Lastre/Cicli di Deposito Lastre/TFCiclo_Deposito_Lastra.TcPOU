@@ -704,7 +704,7 @@ IF NOT InterrompiCiclo THEN
 					Programma_Y[Y_PosStartLentaDepositoLastra].Stato = INTERROTTO OR
 					Programma_J[J_PosDepositoLastra].Stato = INTERROTTO OR 
 					Programma_Z[Z_PosStartLentaDepositoLastra].Stato 	= INTERROTTO THEN
-						Ciclo^.Passo := 42;										
+						Ciclo^.Passo := 41;										
 				ELSE
 					IF Programma_Y[Y_PosStartLentaDepositoLastra].Stato = TERMINATO  AND
 						Programma_J[J_PosDepositoLastra].Stato = TERMINATO AND

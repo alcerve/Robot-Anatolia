@@ -2145,7 +2145,7 @@ IF LatoPrelievo = 180 THEN
 		
 	ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto	
 		Y_PuntoPrelievo180 := Mission^.YPick ;
-		Mission^.YPick 				:= Mission^.YPick - 100 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+		Mission^.YPick 				:= Mission^.YPick - 90 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
 		Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		Mission^.ZPick				:= Mission^.ZPick + 25 ;
 		Mission^.ZPickApproach		:= Mission^.ZPick;
@@ -2161,7 +2161,7 @@ ELSIF LatoPrelievo = 0 THEN
 		Mission^.JPick := 3;	
 	END_IF
 	Y_PuntoPrelievo0 := Mission^.YPick ;
-	Mission^.YPick 				:= Mission^.YPick + 50; // + 50 (*+ 50 *);
+	Mission^.YPick 				:= Mission^.YPick + 40; // + 50 (*+ 50 *);
 	Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 	Mission^.ZPick				:= Mission^.ZPick + 25 ;
 	Mission^.ZPickApproach		:= Mission^.ZPick;

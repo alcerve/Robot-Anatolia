@@ -1667,12 +1667,10 @@ CASE VERSO_PALLETTIZZATORE OF
 										ELSIF PosRobot <> 0 AND  WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  AND ModuleAX_J^.Ax^.Status.ActPosition < 95    THEN 
 											QuotaFuoriIngombro_Y_Calcolata := 
 											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
+																			//Modificacion Pasillo Trabajo Caballete
 																			MAX(QuotaFuoriIngombro_Y_Calcolata,
 																			QuotaCentroPostazione  + 						(* Quota Y Postazione *)	
-																			//	WorkAreaState^[Mission^.PPick].Supporto.YDim/2				
-																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
-																			
-																			IngombroDestinazioneY_Pos - *) 
+																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2
 																			+ OffsetSicurezza.Y.Avuoto )  ;		   			   
 		   								// Añadido 	2 -9-2025_________________________________________________
 										ELSIF (( WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO  AND NuPosGuiroPiking = PosRobot) OR ( PosRobot <> 0 AND WorkAreaState^[PosRobot].Supporto.Tipologia <> CAVALLETTO))  AND PosicionJActual = 90     THEN 
@@ -2001,7 +1999,8 @@ CASE VERSO_PALLETTIZZATORE OF
 							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
 																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
-									//4_9_2025							(*	IngombroDestinazioneY_Pos *) +			(* Ingombro negativo pinza *)
+																	//añadido 3_10_2025		
+																	IngombroDestinazioneY_Pos  +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
@@ -3067,7 +3066,10 @@ END_IF*)]]></ST>
       <LineId Id="1802" Count="0" />
       <LineId Id="1791" Count="0" />
       <LineId Id="1789" Count="0" />
-      <LineId Id="1806" Count="9" />
+      <LineId Id="1806" Count="2" />
+      <LineId Id="1871" Count="0" />
+      <LineId Id="1809" Count="2" />
+      <LineId Id="1815" Count="0" />
       <LineId Id="1805" Count="0" />
       <LineId Id="1817" Count="8" />
       <LineId Id="1816" Count="0" />
@@ -3180,7 +3182,9 @@ END_IF*)]]></ST>
       <LineId Id="1707" Count="0" />
       <LineId Id="1232" Count="0" />
       <LineId Id="1708" Count="0" />
-      <LineId Id="1233" Count="69" />
+      <LineId Id="1233" Count="55" />
+      <LineId Id="1872" Count="0" />
+      <LineId Id="1289" Count="13" />
       <LineId Id="1694" Count="0" />
       <LineId Id="1693" Count="0" />
       <LineId Id="1697" Count="0" />
