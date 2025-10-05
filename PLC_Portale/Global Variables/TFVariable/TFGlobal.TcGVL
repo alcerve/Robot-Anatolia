@@ -230,27 +230,33 @@ VAR_GLOBAL
 	SupportDataEmpty : ST_SupportData;
 
 //#### Variabili per Test
-	M255 : BOOL := TRUE; 			//# RIcorda Forzatura
-	M255_sempreON :  BOOL := TRUE;
-	M255_sempreOFF : BOOL := FALSE;
+	M255 						: BOOL := TRUE; 			//# RIcorda Forzatura
+	M255_sempreON 				: BOOL := TRUE;
+	M255_sempreOFF 				: BOOL := FALSE;
 	
 	
 //##
 	CoordenadaZInicial: REAL;
 
-	In_PosRobot: UINT;
-	PosRobot: UINT;
-	QuotaCentroPostazioneIni: LREAL;
-	QuotaCentroPostazionePiking: LREAL;
-	PosicionJActual: LREAL;
-	RobotWorkAreaCavallete : BOOL ;
-	RobotCentroPosX			: BOOL ;
-	PosicionJDestino: LREAL;
-	PosicionJOrigen: LREAL;
-	EjeYPosFueraIngombro: BOOL;
-	EjeYPos0Ingombro: BOOL;
-	EjeYPos180Ingombro: BOOL;
-	Z_PuntoPrelievo180Bundle: LREAL;
+	In_PosRobot								: UINT;
+	PosRobot								: UINT;
+	QuotaCentroPostazioneIni				: LREAL;
+	QuotaCentroPostazionePiking				: LREAL;
+	PosicionJActual							: LREAL;
+	RobotWorkAreaCavallete 					: BOOL ;
+	RobotCentroPosX							: BOOL ;
+	PosicionJDestino						: LREAL;
+	PosicionJOrigen							: LREAL;
+	EjeYPosFueraIngombro					: BOOL;
+	EjeYPos0Ingombro						: BOOL;
+	EjeYPos180Ingombro						: BOOL;
+	Z_PuntoPrelievo180Bundle				: LREAL;
+	
+//##Depuracion Alberto
+	NuIngombroYCalculado180G_Depuracion		: UINT ;
+	NuIngombroYCalculado0G_Depuracion		: UINT ;
+	NuIngombroYCalculado90G_Depuracion		: UINT ;
+	
 END_VAR
 
 VAR_GLOBAL PERSISTENT

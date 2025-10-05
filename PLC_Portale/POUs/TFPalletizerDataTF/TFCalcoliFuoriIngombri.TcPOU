@@ -1323,6 +1323,10 @@ QuotaCentroPostazionePiking		:= WorkArea^[Mission^.PPlace].Y + WorkAreaOffset^[M
 //
 QuotaYColonnaSx := WorkFootprint^[5].Y;
 QuotaYColonnaDx := WorkFootprint^[6].Y;
+//##Modificacion Para Depurar
+NuIngombroYCalculado180G_Depuracion := 0 ;
+NuIngombroYCalculado0G_Depuracion 	:= 0 ;
+NuIngombroYCalculado90G_Depuracion 	:= 0 ;
 							
 CASE VERSO_PALLETTIZZATORE OF
 	{region " Pallettizzatore DX "}					
@@ -1343,7 +1347,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos -
 																	OffsetSicurezza.Y.Avuoto);
-																			  
+								NuIngombroYCalculado180G_Depuracion := 1;											  
 								IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
 									Errore := ErrCOLLISIONE_PINZA;
 									ErrCollisioneDebug := 110;			 
@@ -1360,6 +1364,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg +
 																OffsetSicurezza.Y.Avuoto);
+							NuIngombroYCalculado180G_Depuracion := 2;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 112;
@@ -1375,7 +1380,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																QuotaCentroPostazione + 						(* Quota Y Postazione *)				                         																					
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg +                                                        
-																OffsetSicurezza.Y.Avuoto);                                                         
+																OffsetSicurezza.Y.Avuoto);  
+							NuIngombroYCalculado180G_Depuracion := 3;                                                       
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 114;
@@ -1394,12 +1400,14 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							NuIngombroYCalculado180G_Depuracion := 4;
 						ELSE
 							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
 																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							NuIngombroYCalculado180G_Depuracion := 5;
 						END_IF	
 					ELSE//se non c'è nulla o c'è una cassa-pianale
 						QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2 + OffSetPosYReposo);
@@ -1426,6 +1434,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg +
 																OffsetSicurezza.Y.Avuoto);
+							NuIngombroYCalculado0G_Depuracion := 1;
 							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 118;			 
@@ -1439,6 +1448,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos -
 																	OffsetSicurezza.Y.Avuoto);
+								NuIngombroYCalculado0G_Depuracion := 2;
 								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 									Errore := ErrCOLLISIONE_PINZA;
 									ErrCollisioneDebug := 119;
@@ -1450,6 +1460,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg +				(* Ingombro positivo pinza *)
 																OffsetSicurezza.Y.Avuoto);				(* Offset sicurezza *)
+							NuIngombroYCalculado0G_Depuracion := 3;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 120;
@@ -1468,6 +1479,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							NuIngombroYCalculado0G_Depuracion := 4;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 122;
@@ -1484,6 +1496,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							NuIngombroYCalculado0G_Depuracion := 5;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 124;
@@ -1519,6 +1532,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg +
 																OffsetSicurezza.Y.Avuoto);
+						NuIngombroYCalculado90G_Depuracion := 1 ;
 							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 128;			 
@@ -1531,6 +1545,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos -
 																	OffsetSicurezza.Y.Avuoto);
+							NuIngombroYCalculado90G_Depuracion := 2 ;
 								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 									Errore := ErrCOLLISIONE_PINZA;
 									ErrCollisioneDebug := 129;
@@ -1542,6 +1557,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg +				(* Ingombro positivo pinza *)
 																OffsetSicurezza.Y.Avuoto);				(* Offset sicurezza *)
+							NuIngombroYCalculado90G_Depuracion := 3 ;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 130;
@@ -1560,6 +1576,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							NuIngombroYCalculado90G_Depuracion := 4 ;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 132;
@@ -1576,6 +1593,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							NuIngombroYCalculado90G_Depuracion := 5 ;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 134;
@@ -1632,6 +1650,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			WorkAreaState^[Mission^.PPlace].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			IngombroDestinazioneY_Pos - *) 
 																			+ OffsetSicurezza.Y.Avuoto )  ;
+									NuIngombroYCalculado180G_Depuracion := 6;
 									ELSE
 										IF Mission^.PPick = PosRobot AND( Mission^.JPick <> Mission^.JPlace OR ModuleAX_J^.Ax^.Status.ActPosition < 85) THEN
 														   
@@ -1642,7 +1661,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																			QuotaCentroPostazioneIni - 						(* Quota Y Postazione *)																									
 																			WorkAreaState^[Mission^.PPick].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			IngombroDestinazioneY_Pos - *) 
-																			- OffsetSicurezza.Y.Avuoto )  ;		   
+																			- OffsetSicurezza.Y.Avuoto )  ;	
+											NuIngombroYCalculado180G_Depuracion := 7;	   
 	   										ELSE
 											QuotaFuoriIngombro_Y_Calcolata := 
 											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
@@ -1650,7 +1670,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																			QuotaCentroPostazioneIni + 						(* Quota Y Postazione *)																									
 																			WorkAreaState^[Mission^.PPick].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;		   				   
+																			+ OffsetSicurezza.Y.Avuoto )  ;	
+											NuIngombroYCalculado180G_Depuracion := 8;	   				   
 											END_IF	
 										// Añadido 	29 -7-2025__________________________________________			   
 										ELSIF   PosRobot <> 0 AND   WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  AND ModuleAX_J^.Ax^.Status.ActPosition > 95      THEN 
@@ -1662,7 +1683,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																			WorkAreaState^[PosRobot].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;		   			   
+																			+ OffsetSicurezza.Y.Avuoto )  ;
+										NuIngombroYCalculado180G_Depuracion := 9;			   			   
 		   								// Añadido 	29 -7-2025_________________________________________________
 										ELSIF PosRobot <> 0 AND  WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  AND ModuleAX_J^.Ax^.Status.ActPosition < 95    THEN 
 											QuotaFuoriIngombro_Y_Calcolata := 
@@ -1671,7 +1693,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																			MAX(QuotaFuoriIngombro_Y_Calcolata,
 																			QuotaCentroPostazione  + 						(* Quota Y Postazione *)	
 																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2
-																			+ OffsetSicurezza.Y.Avuoto )  ;		   			   
+																			+ OffsetSicurezza.Y.Avuoto )  ;
+										NuIngombroYCalculado180G_Depuracion := 10;		   			   
 		   								// Añadido 	2 -9-2025_________________________________________________
 										ELSIF (( WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO  AND NuPosGuiroPiking = PosRobot) OR ( PosRobot <> 0 AND WorkAreaState^[PosRobot].Supporto.Tipologia <> CAVALLETTO))  AND PosicionJActual = 90     THEN 
 											QuotaFuoriIngombro_Y_Calcolata := 
@@ -1682,7 +1705,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;		
+																			+ OffsetSicurezza.Y.Avuoto )  ;	
+										NuIngombroYCalculado180G_Depuracion := 11;		
 										// Añadido 	4 -9-2025_________________________________________________
 										ELSIF  WorkAreaState^[Mission^.PPick].Supporto.Tipologia = BUNDLE  AND  PosRobot = 0    THEN 
 											QuotaFuoriIngombro_Y_Calcolata := 
@@ -1693,15 +1717,10 @@ CASE VERSO_PALLETTIZZATORE OF
 																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;		   		   			
+																			+ OffsetSicurezza.Y.Avuoto )  ;		
+										NuIngombroYCalculado180G_Depuracion := 12;	   		   			
 										END_IF
-										(*	QuotaFuoriIngombro_Y_Calcolata := 
-											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
-																			MAX(QuotaFuoriIngombro_Y_Calcolata,
-																			QuotaCentroPostazioneIni + 						(* Quota Y Postazione *)																									
-																			WorkAreaState^[Mission^.PPlace].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
-																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;		*)   
+										 
 									END_IF
 								ELSE
 										IF 	WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO	 THEN
@@ -1712,6 +1731,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	WorkAreaState^[iwa].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
 																	+ OffsetSicurezza.Y.Avuoto )  ;
+										NuIngombroYCalculado180G_Depuracion := 13;
 										ELSIF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = BUNDLE    THEN  	
 											QuotaFuoriIngombro_Y_Calcolata := 
 											   //%%%%%%%%%%%%%%%%modificado 18-7-2025
@@ -1720,6 +1740,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	WorkAreaState^[iwa].Supporto.YDim /2  (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
 																	+ OffsetSicurezza.Y.Avuoto )  ;
+										NuIngombroYCalculado180G_Depuracion := 14;
 											ELSIF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO    THEN  	
 											QuotaFuoriIngombro_Y_Calcolata := 
 											   //%%%%%%%%%%%%%%%%modificado 18-7-2025
@@ -1727,7 +1748,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																	WorkAreaState^[iwa].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
-																	+ OffsetSicurezza.Y.Avuoto )  ;								
+																	+ OffsetSicurezza.Y.Avuoto )  ;	
+										NuIngombroYCalculado180G_Depuracion := 15;							
 										END_IF 
 					  
 			   						
@@ -1761,6 +1783,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg (*+
 																OffsetSicurezza.Y.Avuoto*));
+							NuIngombroYCalculado180G_Depuracion := 16;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 12;
@@ -1776,7 +1799,8 @@ CASE VERSO_PALLETTIZZATORE OF
 																QuotaCentroPostazione + 						(* Quota Y Postazione *)				                         																					
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																(*IngombroDestinazioneY_Neg + *) //+++++++++                                                      
-																OffsetSicurezza.Y.Avuoto);                                                         
+																OffsetSicurezza.Y.Avuoto);  
+							NuIngombroYCalculado180G_Depuracion := 17;                                                       
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 14;
@@ -1795,12 +1819,14 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	MAX (IngombroDestinazioneY_Neg ,			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto));           (* Offset sicurezza *)
+						NuIngombroYCalculado180G_Depuracion := 18; 
 						ELSE
 							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
 																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	MAX (IngombroDestinazioneY_Pos ,			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto));           (* Offset sicurezza *)
+						NuIngombroYCalculado180G_Depuracion := 19; 
 						END_IF	
 					ELSE//se non c'è nulla o c'è una cassa-pianale
 						QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2 + OffSetPosYReposo);
@@ -1826,6 +1852,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg  -
 																OffsetSicurezza.Y.Avuoto );
+						   NuIngombroYCalculado0G_Depuracion := 6;	
 							(*												   
 							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
 																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
@@ -1846,6 +1873,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	MAX( IngombroDestinazioneY_Pos ,
 																	OffsetSicurezza.Y.Avuoto));
+							   NuIngombroYCalculado0G_Depuracion := 7;
 								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 									Errore := ErrCOLLISIONE_PINZA;
 									ErrCollisioneDebug := 19;
@@ -1858,6 +1886,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																IngombroDestinazioneY_Neg -				(* Ingombro positivo pinza *)
 																MAX( IngombroDestinazioneY_Pos ,
 																	OffsetSicurezza.Y.Avuoto));				(* Offset sicurezza *)
+						   NuIngombroYCalculado0G_Depuracion := 8;
 															(*	
 																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
@@ -1882,6 +1911,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+						   NuIngombroYCalculado0G_Depuracion := 9;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 22;
@@ -1898,6 +1928,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Pos +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+						   NuIngombroYCalculado0G_Depuracion := 10;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 24;
@@ -1918,7 +1949,8 @@ CASE VERSO_PALLETTIZZATORE OF
 															MIN(QuotaFuoriIngombro_Y_Calcolata,
 										   						MAX(WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE,//comunque devo sempre considerarlo perchè il riscontro è sempre presente!!!!
 																//ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2+ OffSetPosYReposo);		   
-																ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2(*+ OffSetPosYReposo*)));				   
+																ModuleAX_Y^.Ax^.Status.ActPosition,WorkSpace^.Y/2(*+ OffSetPosYReposo*)));	
+						NuIngombroYCalculado0G_Depuracion := 11;			   
 																							  
 						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
 							Errore := ErrCOLLISIONE_PINZA;
@@ -1944,6 +1976,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																// si Va con el eje a 0 grados no deve contemplar la pieza 16/7/2025				   
 																// + OffsetSicurezza.Y.Avuoto
 																	);
+						   NuIngombroYCalculado90G_Depuracion := 6 ;
 							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 28;			 
@@ -1956,6 +1989,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	WorkAreaState^[iwa].Supporto.YDim/2 -	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos -
 																	OffsetSicurezza.Y.Avuoto);
+							   NuIngombroYCalculado90G_Depuracion := 7 ;
 								IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 									Errore := ErrCOLLISIONE_PINZA;
 									ErrCollisioneDebug := 29;
@@ -1967,6 +2001,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																IngombroDestinazioneY_Neg +				(* Ingombro positivo pinza *)
 																OffsetSicurezza.Y.Avuoto);				(* Offset sicurezza *)
+						   NuIngombroYCalculado90G_Depuracion := 8 ;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 30;
@@ -1985,6 +2020,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	IngombroDestinazioneY_Neg +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+							NuIngombroYCalculado90G_Depuracion := 9 ;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 32;
@@ -2002,6 +2038,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	//añadido 3_10_2025		
 																	IngombroDestinazioneY_Pos  +			(* Ingombro negativo pinza *)
 																	OffsetSicurezza.Y.Avuoto);           (* Offset sicurezza *)
+						   NuIngombroYCalculado90G_Depuracion := 10 ;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= QuotaCentroPostazione + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 34;
@@ -2018,6 +2055,7 @@ CASE VERSO_PALLETTIZZATORE OF
 										   						WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE,//comunque devo sempre considerarlo perchè il riscontro è sempre presente!!!!
 																MIN(ModuleAX_Y^.Ax^.Status.ActPosition,WorkFootprint^[6].Y - IngombroDestinazioneY_Pos - OffsetSicurezza.Y.Avuoto),
 																WorkSpace^.Y/2 + OffSetPosYReposo+100);
+					   NuIngombroYCalculado90G_Depuracion := 11 ;
 						IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massima dell'area di lavoro genro un allarme
 							Errore := ErrCOLLISIONE_PINZA;
 							ErrCollisioneDebug := 36;			 
@@ -3014,20 +3052,52 @@ END_IF*)]]></ST>
       <LineId Id="1754" Count="0" />
       <LineId Id="1688" Count="0" />
       <LineId Id="1690" Count="1" />
+      <LineId Id="1874" Count="0" />
+      <LineId Id="1873" Count="0" />
+      <LineId Id="1880" Count="0" />
+      <LineId Id="1886" Count="0" />
       <LineId Id="1217" Count="0" />
       <LineId Id="29" Count="2" />
       <LineId Id="1684" Count="0" />
       <LineId Id="1687" Count="0" />
       <LineId Id="1685" Count="0" />
       <LineId Id="1341" Count="4" />
-      <LineId Id="1628" Count="50" />
-      <LineId Id="1397" Count="32" />
+      <LineId Id="1628" Count="24" />
+      <LineId Id="1875" Count="0" />
+      <LineId Id="1653" Count="15" />
+      <LineId Id="1876" Count="0" />
+      <LineId Id="1669" Count="9" />
+      <LineId Id="1397" Count="7" />
+      <LineId Id="1877" Count="0" />
+      <LineId Id="1405" Count="5" />
+      <LineId Id="1878" Count="0" />
+      <LineId Id="1411" Count="18" />
       <LineId Id="1679" Count="1" />
-      <LineId Id="1430" Count="11" />
+      <LineId Id="1430" Count="4" />
+      <LineId Id="1879" Count="0" />
+      <LineId Id="1435" Count="6" />
       <LineId Id="1681" Count="0" />
-      <LineId Id="1442" Count="78" />
+      <LineId Id="1442" Count="4" />
+      <LineId Id="1881" Count="0" />
+      <LineId Id="1447" Count="10" />
+      <LineId Id="1882" Count="0" />
+      <LineId Id="1458" Count="17" />
+      <LineId Id="1883" Count="0" />
+      <LineId Id="1476" Count="15" />
+      <LineId Id="1884" Count="0" />
+      <LineId Id="1492" Count="28" />
       <LineId Id="1682" Count="0" />
-      <LineId Id="1521" Count="88" />
+      <LineId Id="1521" Count="4" />
+      <LineId Id="1885" Count="0" />
+      <LineId Id="1526" Count="11" />
+      <LineId Id="1887" Count="0" />
+      <LineId Id="1538" Count="10" />
+      <LineId Id="1888" Count="0" />
+      <LineId Id="1549" Count="17" />
+      <LineId Id="1890" Count="0" />
+      <LineId Id="1567" Count="15" />
+      <LineId Id="1891" Count="0" />
+      <LineId Id="1583" Count="26" />
       <LineId Id="315" Count="0" />
       <LineId Id="354" Count="1" />
       <LineId Id="111" Count="3" />
@@ -3047,15 +3117,18 @@ END_IF*)]]></ST>
       <LineId Id="1733" Count="0" />
       <LineId Id="1748" Count="5" />
       <LineId Id="1747" Count="0" />
+      <LineId Id="1892" Count="0" />
       <LineId Id="1758" Count="0" />
       <LineId Id="1768" Count="0" />
       <LineId Id="1788" Count="0" />
       <LineId Id="1772" Count="0" />
       <LineId Id="1782" Count="5" />
       <LineId Id="1781" Count="0" />
+      <LineId Id="1893" Count="0" />
       <LineId Id="1773" Count="0" />
       <LineId Id="1775" Count="5" />
       <LineId Id="1774" Count="0" />
+      <LineId Id="1895" Count="0" />
       <LineId Id="1770" Count="0" />
       <LineId Id="1792" Count="0" />
       <LineId Id="1790" Count="0" />
@@ -3065,30 +3138,35 @@ END_IF*)]]></ST>
       <LineId Id="1803" Count="0" />
       <LineId Id="1802" Count="0" />
       <LineId Id="1791" Count="0" />
+      <LineId Id="1894" Count="0" />
       <LineId Id="1789" Count="0" />
       <LineId Id="1806" Count="2" />
       <LineId Id="1871" Count="0" />
       <LineId Id="1809" Count="2" />
       <LineId Id="1815" Count="0" />
+      <LineId Id="1896" Count="0" />
       <LineId Id="1805" Count="0" />
       <LineId Id="1817" Count="8" />
       <LineId Id="1816" Count="0" />
+      <LineId Id="1897" Count="0" />
       <LineId Id="1827" Count="9" />
       <LineId Id="1826" Count="0" />
+      <LineId Id="1898" Count="0" />
       <LineId Id="1771" Count="0" />
-      <LineId Id="1765" Count="0" />
-      <LineId Id="1760" Count="4" />
       <LineId Id="1759" Count="0" />
       <LineId Id="1757" Count="0" />
       <LineId Id="1735" Count="0" />
       <LineId Id="1837" Count="0" />
       <LineId Id="1842" Count="5" />
       <LineId Id="1839" Count="0" />
+      <LineId Id="1899" Count="0" />
       <LineId Id="1838" Count="0" />
       <LineId Id="1849" Count="5" />
       <LineId Id="1848" Count="0" />
+      <LineId Id="1900" Count="0" />
       <LineId Id="1863" Count="6" />
       <LineId Id="1862" Count="0" />
+      <LineId Id="1901" Count="0" />
       <LineId Id="1841" Count="0" />
       <LineId Id="1840" Count="0" />
       <LineId Id="1736" Count="0" />
@@ -3104,6 +3182,7 @@ END_IF*)]]></ST>
       <LineId Id="507" Count="1" />
       <LineId Id="981" Count="0" />
       <LineId Id="509" Count="2" />
+      <LineId Id="1902" Count="0" />
       <LineId Id="1337" Count="3" />
       <LineId Id="974" Count="0" />
       <LineId Id="969" Count="1" />
@@ -3113,6 +3192,7 @@ END_IF*)]]></ST>
       <LineId Id="512" Count="1" />
       <LineId Id="982" Count="0" />
       <LineId Id="514" Count="2" />
+      <LineId Id="1903" Count="0" />
       <LineId Id="964" Count="0" />
       <LineId Id="966" Count="0" />
       <LineId Id="973" Count="0" />
@@ -3124,9 +3204,12 @@ END_IF*)]]></ST>
       <LineId Id="951" Count="0" />
       <LineId Id="954" Count="1" />
       <LineId Id="983" Count="0" />
-      <LineId Id="956" Count="4" />
+      <LineId Id="956" Count="2" />
+      <LineId Id="1904" Count="0" />
+      <LineId Id="959" Count="1" />
       <LineId Id="984" Count="0" />
       <LineId Id="961" Count="2" />
+      <LineId Id="1905" Count="0" />
       <LineId Id="952" Count="0" />
       <LineId Id="979" Count="1" />
       <LineId Id="986" Count="3" />
@@ -3141,6 +3224,7 @@ END_IF*)]]></ST>
       <LineId Id="1166" Count="0" />
       <LineId Id="1683" Count="0" />
       <LineId Id="1167" Count="4" />
+      <LineId Id="1906" Count="0" />
       <LineId Id="1861" Count="0" />
       <LineId Id="1857" Count="3" />
       <LineId Id="1855" Count="1" />
@@ -3150,9 +3234,12 @@ END_IF*)]]></ST>
       <LineId Id="1192" Count="0" />
       <LineId Id="1182" Count="0" />
       <LineId Id="1710" Count="0" />
-      <LineId Id="1183" Count="8" />
+      <LineId Id="1183" Count="3" />
+      <LineId Id="1907" Count="0" />
+      <LineId Id="1187" Count="4" />
       <LineId Id="1009" Count="5" />
       <LineId Id="1870" Count="0" />
+      <LineId Id="1908" Count="0" />
       <LineId Id="1699" Count="0" />
       <LineId Id="1701" Count="2" />
       <LineId Id="1700" Count="0" />
@@ -3161,9 +3248,11 @@ END_IF*)]]></ST>
       <LineId Id="1161" Count="3" />
       <LineId Id="1159" Count="0" />
       <LineId Id="1020" Count="7" />
+      <LineId Id="1909" Count="0" />
       <LineId Id="1195" Count="8" />
       <LineId Id="1193" Count="0" />
       <LineId Id="1028" Count="5" />
+      <LineId Id="1910" Count="0" />
       <LineId Id="1205" Count="9" />
       <LineId Id="1034" Count="2" />
       <LineId Id="1711" Count="0" />
@@ -3171,7 +3260,9 @@ END_IF*)]]></ST>
       <LineId Id="1709" Count="0" />
       <LineId Id="1695" Count="0" />
       <LineId Id="1714" Count="2" />
-      <LineId Id="1712" Count="1" />
+      <LineId Id="1712" Count="0" />
+      <LineId Id="1911" Count="0" />
+      <LineId Id="1713" Count="0" />
       <LineId Id="1037" Count="9" />
       <LineId Id="941" Count="0" />
       <LineId Id="1223" Count="1" />
@@ -3182,12 +3273,22 @@ END_IF*)]]></ST>
       <LineId Id="1707" Count="0" />
       <LineId Id="1232" Count="0" />
       <LineId Id="1708" Count="0" />
-      <LineId Id="1233" Count="55" />
+      <LineId Id="1912" Count="0" />
+      <LineId Id="1233" Count="11" />
+      <LineId Id="1913" Count="0" />
+      <LineId Id="1245" Count="10" />
+      <LineId Id="1914" Count="0" />
+      <LineId Id="1256" Count="17" />
+      <LineId Id="1915" Count="0" />
+      <LineId Id="1274" Count="14" />
       <LineId Id="1872" Count="0" />
-      <LineId Id="1289" Count="13" />
+      <LineId Id="1289" Count="0" />
+      <LineId Id="1916" Count="0" />
+      <LineId Id="1290" Count="12" />
       <LineId Id="1694" Count="0" />
       <LineId Id="1693" Count="0" />
       <LineId Id="1697" Count="0" />
+      <LineId Id="1917" Count="0" />
       <LineId Id="1303" Count="9" />
       <LineId Id="551" Count="0" />
       <LineId Id="498" Count="0" />
