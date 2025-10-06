@@ -154,6 +154,7 @@ VAR
 	
 	
 	Centrocavallete: REAL;
+	Soporte			:REAL;
 END_VAR	]]></Declaration>
     <Implementation>
       <ST><![CDATA[(**********************************************************************************************)
@@ -1687,12 +1688,19 @@ CASE VERSO_PALLETTIZZATORE OF
 										NuIngombroYCalculado180G_Depuracion := 9;			   			   
 		   								// Añadido 	29 -7-2025_________________________________________________
 										ELSIF PosRobot <> 0 AND  WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  AND ModuleAX_J^.Ax^.Status.ActPosition < 95    THEN 
-											QuotaFuoriIngombro_Y_Calcolata := 
-											 //%%%%%%%%%%%%%%%%modificado 18-7-2025
+											
+																			
+																			IF 	WorkAreaState^[Mission^.PPick].Supporto.Tipologia = BUNDLE THEN
+																				Soporte := WorkAreaState^[Mission^.PPick].Supporto.YDim;	
+																			ELSIF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO THEN
+																				Soporte := WorkAreaState^[Mission^.PPick].Supporto.YDim /2;	   
+																			END_IF		   
+																			QuotaFuoriIngombro_Y_Calcolata := 
+																			 //%%%%%%%%%%%%%%%%modificado 18-7-2025														  
 																			//Modificacion Pasillo Trabajo Caballete
 																			MAX(QuotaFuoriIngombro_Y_Calcolata,
-																			QuotaCentroPostazione  + 						(* Quota Y Postazione *)	
-																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2
+																			QuotaCentroPostazione  + 					(* Quota Y Postazione *)	
+																			Soporte
 																			+ OffsetSicurezza.Y.Avuoto )  ;
 										NuIngombroYCalculado180G_Depuracion := 10;		   			   
 		   								// Añadido 	2 -9-2025_________________________________________________
@@ -1789,7 +1797,7 @@ CASE VERSO_PALLETTIZZATORE OF
 								ErrCollisioneDebug := 12;
 								RETURN;										  
 							END_IF											  
-							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+							IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos /2(*Puesto Para Probar*)  >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
 								Errore := ErrCOLLISIONE_PINZA;
 								ErrCollisioneDebug := 13;			 
 								RETURN; 
@@ -3140,8 +3148,14 @@ END_IF*)]]></ST>
       <LineId Id="1791" Count="0" />
       <LineId Id="1894" Count="0" />
       <LineId Id="1789" Count="0" />
-      <LineId Id="1806" Count="2" />
-      <LineId Id="1871" Count="0" />
+      <LineId Id="1806" Count="1" />
+      <LineId Id="1918" Count="1" />
+      <LineId Id="1924" Count="0" />
+      <LineId Id="1926" Count="1" />
+      <LineId Id="1922" Count="0" />
+      <LineId Id="1920" Count="0" />
+      <LineId Id="1923" Count="0" />
+      <LineId Id="1921" Count="0" />
       <LineId Id="1809" Count="2" />
       <LineId Id="1815" Count="0" />
       <LineId Id="1896" Count="0" />

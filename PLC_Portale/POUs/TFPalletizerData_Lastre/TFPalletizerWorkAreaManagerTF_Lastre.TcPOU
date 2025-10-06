@@ -2161,7 +2161,7 @@ ELSIF LatoPrelievo = 0 THEN
 		Mission^.JPick := 3;	
 	END_IF
 	Y_PuntoPrelievo0 := Mission^.YPick ;
-	Mission^.YPick 				:= Mission^.YPick + 40; // + 50 (*+ 50 *);
+	Mission^.YPick 				:= Mission^.YPick + 50; // + 50 (*+ 50 *);
 	Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 	Mission^.ZPick				:= Mission^.ZPick + 25 ;
 	Mission^.ZPickApproach		:= Mission^.ZPick;
