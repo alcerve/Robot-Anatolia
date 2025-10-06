@@ -4322,7 +4322,7 @@ FOR LoopLista := 1 TO 3 DO
 					CalcolaFormaturaTrig2 := TRUE;		
 					FOR i:= 1 TO MAXFORMINGSLAB DO
 						//IF i <= 10  THEN
-						IF i <= 30 THEN
+						IF i <= 40 THEN
 						//IF i <= HMI_Forming_NumeroElementiDaDepositare  THEN
 							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := LASTRA;//Settiamo tutte lastre!!
 						ELSE
