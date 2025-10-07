@@ -6,6 +6,7 @@ STRUCT
 	Destinazione		  : BOOL;	//Se TRUE=WA di destinazione materiale, FALSE=Postazione di prelievo materiale
 	NumElementiDaLavorare : UINT; 	//Numero elementi da depositare-prelevare
 	Typology			  : INT := 0; 	//Supporto disposto in verticale: e_TypologySupDataPicking: 0= Orrizzontale LEGNO,1= Orrizzontale Telaio , 2 = Bundle, 3 = A-FRAME 
+	
 END_STRUCT
 END_TYPE
 ]]></Declaration>
