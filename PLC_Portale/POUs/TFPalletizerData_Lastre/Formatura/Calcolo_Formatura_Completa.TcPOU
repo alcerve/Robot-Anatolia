@@ -16,6 +16,7 @@ VAR_INPUT
 
 	PulisciMemoria : BOOL;
 	CalcolaFormatura : BOOL;
+	HabiCalTodasCordenadas: BOOL;
 END_VAR
 
 VAR_OUTPUT
@@ -34,6 +35,11 @@ VAR_OUTPUT
 	YFinaleLado_180Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto finale n-esima lastra/falda depositata
 	ZFinaleLado_180Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto finale n-esima lastra/falda depositata
 	JFinaleLado_180Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata J punto finale n-esima lastra/falda depositata
+	
+	XFinaleLado_Pri0_Des180 : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto finale n-esima lastra/falda depositata
+	YFinaleLado_Pri0_Des180 : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto finale n-esima lastra/falda depositata
+	ZFinaleLado_Pri0_Des180 : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto finale n-esima lastra/falda depositata
+	JFinaleLado_Pri0_Des180 : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata J punto finale n-esima lastra/falda depositata
 	
 	FormingSlab 			: TFMachinePalletizer_FormingForSlab;
 	PulisciMemoriaDone		: BOOL;
@@ -100,6 +106,10 @@ VAR
 	MemoriaInizializzata : BOOL;
 	NuPiezasLadoDx : INT ;
 	NuPiezasLadoSx : INT ;
+	CalForCavallete: UINT;
+	F_ini: UINT;
+	F_Fin: UINT;
+	
 END_VAR
 
 VAR CONSTANT
@@ -110,6 +120,11 @@ END_VAR
 IF PulisciMemoria AND NOT PulisciMemoriaDone THEN		// Pulizia delle variabili locali e di uscita
 	PulisciMemoriaDone := TRUE;
 	memset(ADR(XFinale), 0 , SIZEOF(XFinale));memset(ADR(YFinale), 0 , SIZEOF(YFinale));memset(ADR(ZFinale), 0 , SIZEOF(ZFinale));memset(ADR(JFinale), 0 , SIZEOF(JFinale));
+	//###########################################
+	memset(ADR(XFinaleLado_0Grados), 0 , SIZEOF(XFinaleLado_0Grados));memset(ADR(YFinaleLado_0Grados), 0 , SIZEOF(YFinaleLado_0Grados));memset(ADR(ZFinaleLado_0Grados), 0 , SIZEOF(ZFinaleLado_0Grados));memset(ADR(JFinaleLado_0Grados), 0 , SIZEOF(JFinaleLado_0Grados));
+	memset(ADR(XFinaleLado_180Grados), 0 , SIZEOF(XFinaleLado_180Grados));memset(ADR(YFinaleLado_180Grados), 0 , SIZEOF(YFinaleLado_180Grados));memset(ADR(ZFinaleLado_180Grados), 0 , SIZEOF(ZFinaleLado_180Grados));memset(ADR(JFinaleLado_180Grados), 0 , SIZEOF(JFinaleLado_180Grados));
+	memset(ADR(XFinaleLado_Pri0_Des180), 0 , SIZEOF(XFinaleLado_Pri0_Des180));memset(ADR(YFinaleLado_Pri0_Des180), 0 , SIZEOF(YFinaleLado_Pri0_Des180));memset(ADR(ZFinaleLado_Pri0_Des180), 0 , SIZEOF(ZFinaleLado_Pri0_Des180));memset(ADR(JFinaleLado_Pri0_Des180), 0 , SIZEOF(JFinaleLado_Pri0_Des180));
+	//###########################################################################################
 	memset(ADR(FormingSlab), 0 , SIZEOF(FormingSlab));
 	memset(ADR(Errore), 0 , SIZEOF(Errore));
 	memset(ADR(OrdineDepositoSxDx), 0 , SIZEOF(OrdineDepositoSxDx));
@@ -131,6 +146,7 @@ IF PulisciMemoria AND NOT PulisciMemoriaDone THEN		// Pulizia delle variabili lo
 	memset(ADR(Materiale), 0 , SIZEOF(Materiale));
 	memset(ADR(TipoElementoDep), 99 , SIZEOF(TipoElementoDep));
 	Errore := 0;
+	HabiCalTodasCordenadas := FALSE ;
 	MemoriaInizializzata := TRUE;
 ELSIF NOT PulisciMemoria AND PulisciMemoriaDone THEN
 	PulisciMemoriaDone := FALSE;
@@ -509,8 +525,16 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				FormingSlab.PElement[counter1].Typology := TERMINATORE;
 			END_FOR
 		//#########################aqui for	
+		IF HabiCalTodasCordenadas THEN
+				F_ini := 1 ;
+				F_Fin := 4 ;
+			ELSE
+				F_ini := TipoOrdinamento ;
+				F_Fin := TipoOrdinamento ;
+		END_IF
+		FOR CalForCavallete := F_ini TO F_Fin DO
 			(* Calcolo delle coordinate X,Y,Z,J del punto finale sulla base del TipoRisultato *)
-			CASE TipoOrdinamento OF
+			CASE CalForCavallete OF
 				(* Ordinamento alternato Dx-SX *)	
 				1: 
 					FOR counter2:=1 TO numeroLastre_int*2 BY 1 DO
@@ -561,6 +585,45 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 							XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
 							CASE TipoRisultato OF
 								1:	
+									YFinaleLado_Pri0_Des180[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
+									ZFinaleLado_Pri0_Des180[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
+								2:	
+									YFinaleLado_Pri0_Des180[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
+									ZFinaleLado_Pri0_Des180[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
+								3:	
+									YFinaleLado_Pri0_Des180[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
+									ZFinaleLado_Pri0_Des180[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
+								4:	
+									YFinaleLado_Pri0_Des180[counter2] := -YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y180;
+									ZFinaleLado_Pri0_Des180[counter2] :=  ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
+							END_CASE
+									JFinaleLado_Pri0_Des180[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
+						ELSE// Lato SX della cavallina
+							XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+							CASE TipoRisultato OF
+								1:	
+									YFinaleLado_Pri0_Des180[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+									ZFinaleLado_Pri0_Des180[counter2] := ZInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+								2:	
+									YFinaleLado_Pri0_Des180[counter2] := YCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+									ZFinaleLado_Pri0_Des180[counter2] := ZCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+								3:	
+									YFinaleLado_Pri0_Des180[counter2] := YEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+									ZFinaleLado_Pri0_Des180[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+								4:	
+									YFinaleLado_Pri0_Des180[counter2] := YCoordinataAppoggioLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+									ZFinaleLado_Pri0_Des180[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+							END_CASE
+							JFinaleLado_Pri0_Des180[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
+						END_IF
+					END_FOR
+					IF NOT HabiCalTodasCordenadas THEN 
+						FOR counter2:=1 TO numeroLastre_int BY 1 DO
+						IF counter2 <= numeroLastre_int/2 THEN // Lato DX della cavallina
+							varEven := counter2 MOD 2;
+							XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+							CASE TipoRisultato OF
+								1:	
 									YFinale[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
 									ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
 								2:	
@@ -593,10 +656,30 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 							JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
 						END_IF
 					END_FOR
-				
+					END_IF
+					
 				(* Ordinamento consecutivo prima SOLO lato 0° *)
 				3:
 					FOR counter2:=1 TO numeroLastre_int BY 1 DO
+						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+						CASE TipoRisultato OF
+							1:	
+								YFinaleLado_0Grados[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+								ZFinaleLado_0Grados[counter2] := ZInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+							2:	
+								YFinaleLado_0Grados[counter2] := YCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+								ZFinaleLado_0Grados[counter2] := ZCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+							3:	
+								YFinaleLado_0Grados[counter2] := YEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+								ZFinaleLado_0Grados[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+							4:	
+								YFinaleLado_0Grados[counter2] := YCoordinataAppoggioLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
+								ZFinaleLado_0Grados[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+						END_CASE
+						JFinaleLado_0Grados[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
+					END_FOR
+					IF NOT HabiCalTodasCordenadas THEN 
+						FOR counter2:=1 TO numeroLastre_int BY 1 DO
 						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
 						CASE TipoRisultato OF
 							1:	
@@ -614,10 +697,31 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 						END_CASE
 						JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
 					END_FOR
-
+					END_IF
 				(* Ordinamento consecutivo SOLO lato 180 *)
 				4:
 					FOR counter2:=1 TO numeroLastre_int BY 1 DO
+						varEven := counter2 MOD 2;
+						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+						CASE TipoRisultato OF
+							1:	
+								YFinaleLado_180Grados[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinaleLado_180Grados[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
+							2:	
+								YFinaleLado_180Grados[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinaleLado_180Grados[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
+							3:	
+								YFinaleLado_180Grados[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
+								//YFinale[counter2] := YCoordinataAppoggioLastra[counter2] ;
+								ZFinaleLado_180Grados[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
+							4:	
+								YFinaleLado_180Grados[counter2] := -YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y180;
+								ZFinaleLado_180Grados[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
+						END_CASE
+						JFinaleLado_180Grados[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
+					END_FOR
+					IF NOT HabiCalTodasCordenadas THEN 
+						FOR counter2:=1 TO numeroLastre_int BY 1 DO
 						varEven := counter2 MOD 2;
 						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
 						CASE TipoRisultato OF
@@ -637,8 +741,9 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 						END_CASE
 						JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
 					END_FOR
+					END_IF
 			END_CASE						
-	
+		END_FOR
 
 
 			
@@ -878,7 +983,12 @@ END_IF
     <LineIds Name="Calcolo_Formatura_Completa">
       <LineId Id="4883" Count="1" />
       <LineId Id="6359" Count="0" />
-      <LineId Id="4885" Count="21" />
+      <LineId Id="4885" Count="0" />
+      <LineId Id="6578" Count="2" />
+      <LineId Id="6600" Count="0" />
+      <LineId Id="6581" Count="0" />
+      <LineId Id="4886" Count="20" />
+      <LineId Id="6601" Count="0" />
       <LineId Id="4908" Count="218" />
       <LineId Id="6026" Count="0" />
       <LineId Id="6031" Count="1" />
@@ -920,7 +1030,14 @@ END_IF
       <LineId Id="6134" Count="1" />
       <LineId Id="6133" Count="0" />
       <LineId Id="5219" Count="0" />
-      <LineId Id="5221" Count="21" />
+      <LineId Id="5221" Count="20" />
+      <LineId Id="6586" Count="0" />
+      <LineId Id="6592" Count="1" />
+      <LineId Id="6587" Count="0" />
+      <LineId Id="6590" Count="1" />
+      <LineId Id="6588" Count="0" />
+      <LineId Id="6582" Count="0" />
+      <LineId Id="5242" Count="0" />
       <LineId Id="5552" Count="0" />
       <LineId Id="5594" Count="0" />
       <LineId Id="5553" Count="0" />
@@ -953,6 +1070,9 @@ END_IF
       <LineId Id="5591" Count="1" />
       <LineId Id="5598" Count="0" />
       <LineId Id="5560" Count="0" />
+      <LineId Id="6602" Count="0" />
+      <LineId Id="6759" Count="36" />
+      <LineId Id="6603" Count="1" />
       <LineId Id="5770" Count="0" />
       <LineId Id="5847" Count="0" />
       <LineId Id="5772" Count="0" />
@@ -962,6 +1082,9 @@ END_IF
       <LineId Id="6465" Count="0" />
       <LineId Id="5807" Count="1" />
       <LineId Id="5774" Count="0" />
+      <LineId Id="6605" Count="0" />
+      <LineId Id="6742" Count="16" />
+      <LineId Id="6606" Count="0" />
       <LineId Id="5844" Count="0" />
       <LineId Id="5775" Count="0" />
       <LineId Id="5845" Count="0" />
@@ -972,6 +1095,10 @@ END_IF
       <LineId Id="6469" Count="2" />
       <LineId Id="5827" Count="1" />
       <LineId Id="5843" Count="0" />
+      <LineId Id="6721" Count="0" />
+      <LineId Id="6723" Count="18" />
+      <LineId Id="6722" Count="0" />
+      <LineId Id="6720" Count="0" />
       <LineId Id="5556" Count="0" />
       <LineId Id="5277" Count="0" />
       <LineId Id="6576" Count="1" />

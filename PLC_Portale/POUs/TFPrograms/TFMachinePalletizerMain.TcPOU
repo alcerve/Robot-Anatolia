@@ -4329,7 +4329,7 @@ FOR LoopLista := 1 TO 3 DO
 					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].XDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.XDim; 
 					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].YDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.YDim; 
 					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].ZDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.ZDim; 
-				
+					TFCalcoloFormaturaRT[IdxLista].HabiCalTodasCordenadas := true ;
 					TFCalcoloFormaturaRT[IdxLista].Supporto.Code											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.Code;
 					TFCalcoloFormaturaRT[IdxLista].Supporto.XDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.XDim;
 					TFCalcoloFormaturaRT[IdxLista].Supporto.YDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.YDim(**2*);
