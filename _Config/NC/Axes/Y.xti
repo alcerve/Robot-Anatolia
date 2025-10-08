@@ -1417,7 +1417,7 @@ External Setpoint Generation:
 			<EncPara ScaleFactorNumerator="27.64" ScaleFactorDenominator="65536" Offset="38938.6948199463" Inverse="true" MaxCount="#xffffffff">
 				<FilterTime TVelo="0" TAcc="0"/>
 				<SoftEndMinControl Enable="true" Range="445"/>
-				<SoftEndMaxControl Enable="true" Range="3100"/>
+				<SoftEndMaxControl Enable="true" Range="3120"/>
 				<Inc RefSearchInverse="true" RefSyncInverse="false"/>
 			</EncPara>
 			<Vars VarGrpType="1">

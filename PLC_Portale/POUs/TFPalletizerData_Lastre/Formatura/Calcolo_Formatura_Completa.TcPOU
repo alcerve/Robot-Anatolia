@@ -25,6 +25,16 @@ VAR_OUTPUT
 	ZFinale : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto finale n-esima lastra/falda depositata
 	JFinale : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata J punto finale n-esima lastra/falda depositata
 	
+	XFinaleLado_0Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto finale n-esima lastra/falda depositata
+	YFinaleLado_0Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto finale n-esima lastra/falda depositata
+	ZFinaleLado_0Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto finale n-esima lastra/falda depositata
+	JFinaleLado_0Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata J punto finale n-esima lastra/falda depositata
+	
+	XFinaleLado_180Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto finale n-esima lastra/falda depositata
+	YFinaleLado_180Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto finale n-esima lastra/falda depositata
+	ZFinaleLado_180Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto finale n-esima lastra/falda depositata
+	JFinaleLado_180Grados : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata J punto finale n-esima lastra/falda depositata
+	
 	FormingSlab 			: TFMachinePalletizer_FormingForSlab;
 	PulisciMemoriaDone		: BOOL;
 	CalcolaFormaturaDone 	: BOOL;
@@ -498,7 +508,7 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 			FOR counter1 := 1 TO MAXFORMINGSLAB DO
 				FormingSlab.PElement[counter1].Typology := TERMINATORE;
 			END_FOR
-			
+		//#########################aqui for	
 			(* Calcolo delle coordinate X,Y,Z,J del punto finale sulla base del TipoRisultato *)
 			CASE TipoOrdinamento OF
 				(* Ordinamento alternato Dx-SX *)	
@@ -628,7 +638,10 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 						JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
 					END_FOR
 			END_CASE						
-				
+	
+
+
+			
 			// Alimentazione della struttura FormingSlab
 			FOR counter1:=1 TO MAXFORMINGSLAB DO// numeroLastre_int*2 BY 1 DO
 				IF counter1 <= numeroLastre_int THEN
@@ -960,7 +973,10 @@ END_IF
       <LineId Id="5827" Count="1" />
       <LineId Id="5843" Count="0" />
       <LineId Id="5556" Count="0" />
-      <LineId Id="5277" Count="24" />
+      <LineId Id="5277" Count="0" />
+      <LineId Id="6576" Count="1" />
+      <LineId Id="6575" Count="0" />
+      <LineId Id="5278" Count="23" />
       <LineId Id="5303" Count="2" />
       <LineId Id="5308" Count="203" />
       <LineId Id="4072" Count="0" />
