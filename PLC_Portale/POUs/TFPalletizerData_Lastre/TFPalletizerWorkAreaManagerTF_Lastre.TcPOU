@@ -2139,17 +2139,34 @@ IF LatoPrelievo = 180 THEN
 	//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 	IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //SE PRELIEVO SU BUNDLE O CASSA
 		Y_PuntoPrelievo180 := Mission^.YPick ;
-		Mission^.YPick 				:= Mission^.YPick  - 90 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
-		Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
-		Mission^.ZPick				:= Mission^.ZPick + 15 ;
-		Mission^.ZPickApproach		:= Mission^.ZPick;
+			Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
+		 IF Mission^.YDim  < 1300 THEN
+			Mission^.YPick 				:= Mission^.YPick - (80 -10) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+			Mission^.ZPick				:= Mission^.ZPick + (15 +25) ;
+			Mission^.ZPickApproach		:= Mission^.ZPick;
+			ELSE
+				
+			Mission^.YPick 				:= Mission^.YPick  - 80 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+ 			Mission^.ZPick				:= Mission^.ZPick + 15 ;
+			Mission^.ZPickApproach		:= Mission^.ZPick;
+		 END_IF
+		
+	
 		
 	ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto	
 		Y_PuntoPrelievo180 := Mission^.YPick ;
-		Mission^.YPick 				:= Mission^.YPick - 90 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+		Mission^.YPick 				:= Mission^.YPick - 85 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
 		Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
-		Mission^.ZPick				:= Mission^.ZPick + 25 ;
-		Mission^.ZPickApproach		:= Mission^.ZPick;
+		IF Mission^.YDim  < 1300 THEN
+				Mission^.ZPick				:= Mission^.ZPick + (25 +20) ;
+				Mission^.ZPickApproach		:= Mission^.ZPick;		
+			ELSE
+				Mission^.ZPick				:= Mission^.ZPick + 25 ;
+				Mission^.ZPickApproach		:= Mission^.ZPick;		
+			
+		END_IF
+		
+		
 	END_IF
 
 ELSIF LatoPrelievo = 0 THEN
@@ -2162,10 +2179,17 @@ ELSIF LatoPrelievo = 0 THEN
 		Mission^.JPick := 3;	
 	END_IF
 	Y_PuntoPrelievo0 := Mission^.YPick ;
-	Mission^.YPick 				:= Mission^.YPick + 50; // + 50 (*+ 50 *);
+	Mission^.YPick 				:= Mission^.YPick + 40; // + 50 (*+ 50 *);
 	Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
-	Mission^.ZPick				:= Mission^.ZPick + 25 ;
-	Mission^.ZPickApproach		:= Mission^.ZPick;
+	IF Mission^.YDim  < 1300 THEN
+			Mission^.ZPick				:= Mission^.ZPick + (25 + 5) ; // pieza pequeña
+			Mission^.ZPickApproach		:= Mission^.ZPick;
+		ELSE
+			Mission^.ZPick				:= Mission^.ZPick + 25 ;
+			Mission^.ZPickApproach		:= Mission^.ZPick;	
+	END_IF
+	
+	
 	
 END_IF											 			
 //									
@@ -3005,15 +3029,27 @@ END_IF	]]></ST>
       <LineId Id="1733" Count="0" />
       <LineId Id="1750" Count="0" />
       <LineId Id="1734" Count="0" />
-      <LineId Id="1803" Count="0" />
+      <LineId Id="1812" Count="0" />
+      <LineId Id="1842" Count="0" />
+      <LineId Id="1818" Count="1" />
+      <LineId Id="1839" Count="2" />
+      <LineId Id="1816" Count="1" />
+      <LineId Id="1815" Count="0" />
+      <LineId Id="1813" Count="0" />
       <LineId Id="1802" Count="0" />
-      <LineId Id="1808" Count="0" />
       <LineId Id="1739" Count="0" />
       <LineId Id="1735" Count="1" />
       <LineId Id="1749" Count="0" />
       <LineId Id="1732" Count="0" />
+      <LineId Id="1820" Count="0" />
+      <LineId Id="1827" Count="1" />
+      <LineId Id="1822" Count="0" />
+      <LineId Id="1824" Count="0" />
+      <LineId Id="1826" Count="0" />
+      <LineId Id="1825" Count="0" />
+      <LineId Id="1823" Count="0" />
+      <LineId Id="1821" Count="0" />
       <LineId Id="1805" Count="0" />
-      <LineId Id="1809" Count="0" />
       <LineId Id="1804" Count="0" />
       <LineId Id="1698" Count="0" />
       <LineId Id="1617" Count="0" />
@@ -3023,8 +3059,15 @@ END_IF	]]></ST>
       <LineId Id="1720" Count="2" />
       <LineId Id="1716" Count="0" />
       <LineId Id="1712" Count="0" />
-      <LineId Id="1806" Count="1" />
-      <LineId Id="1810" Count="0" />
+      <LineId Id="1806" Count="0" />
+      <LineId Id="1829" Count="0" />
+      <LineId Id="1836" Count="1" />
+      <LineId Id="1831" Count="0" />
+      <LineId Id="1833" Count="0" />
+      <LineId Id="1835" Count="0" />
+      <LineId Id="1834" Count="0" />
+      <LineId Id="1830" Count="0" />
+      <LineId Id="1807" Count="0" />
       <LineId Id="1790" Count="0" />
       <LineId Id="1392" Count="0" />
       <LineId Id="1375" Count="0" />

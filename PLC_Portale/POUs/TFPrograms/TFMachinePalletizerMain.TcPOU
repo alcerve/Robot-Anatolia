@@ -127,7 +127,7 @@ IF MachinePalletizerInitVariables THEN
 	ORDINE_DISPOSIZIONE_POSTAZIONI		:= CRESCENTE;
 	
 	OFFSET_POSTAZIONE_LEGNO 	:= 1330;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
-	OFFSET_POSTAZIONE_TELAIO 	:= 3220 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_TELAIO 	:= 3155 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
 	
 	INGOMBRO_RISCONTRO_BUNDLE := 100;
 	
@@ -456,7 +456,7 @@ IF MachinePalletizerInitDone THEN
 	AxisPar_Z.JOGDec := AxisNominalPar_Z.MaximumDeceleration;
 	AxisPar_Z.Jerk := AxisNominalPar_Z.DefaultJerk;
 	
-	AxisPar_Z.MinPosition := 60;
+	AxisPar_Z.MinPosition := 20;
 	AxisPar_Z.MaxPosition := 1730;
 	AxisPar_Z.HomeDefine :=  1730;
 	AxisPar_Z.HomePosition := 1730.0;

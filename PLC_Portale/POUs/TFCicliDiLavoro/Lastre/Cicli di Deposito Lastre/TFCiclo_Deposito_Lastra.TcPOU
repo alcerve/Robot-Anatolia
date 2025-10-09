@@ -563,7 +563,7 @@ IF NOT InterrompiCiclo THEN
 			(* Case 31 -  Attesa completamento del comando MOVETOPOS o del raggiungimento quota di Pre-Movimento se abilitata la funzione *)
 			31: 
 				IF Programma_X[X_PosStartLentaDepositoLastra].Stato = INTERROTTO   OR
-					(Programma_Y[Y_PosFuoriIngombroCaricoLastra].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 126 ) OR
+					(Programma_Y[Y_PosFuoriIngombroCaricoLastra].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 104 ) OR
 					(Programma_Y[Y_PosPasillo0grados].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 128)  OR
 					(Programma_Y[Y_PosPasillo180grados].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 129)  OR
 					Programma_Z[Z_PosFuoriIngombroCaricoLastra].Stato = INTERROTTO OR 
@@ -583,7 +583,7 @@ IF NOT InterrompiCiclo THEN
 			(* Case 32 - Vado a quota di START LENTA CON GLI ASSI con Y,Z,J *)
 			32:
 				IF Programma_X[X_PosStartLentaDepositoLastra].Stato = INTERROTTO OR
-					(Programma_Y[Y_PosFuoriIngombroCaricoLastra].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 126 ) OR
+					(Programma_Y[Y_PosFuoriIngombroCaricoLastra].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 104 ) OR
 					(Programma_Y[Y_PosPasillo0grados].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 128)  OR
 					(Programma_Y[Y_PosPasillo180grados].Stato = INTERROTTO AND  ProgramaEjes.EjeY = 129)  OR
 					Programma_Z[Z_PosFuoriIngombroCaricoLastra].Stato = INTERROTTO OR 

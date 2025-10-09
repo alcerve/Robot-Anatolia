@@ -582,7 +582,7 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 					FOR counter2:=1 TO numeroLastre_int BY 1 DO
 						IF counter2 <= numeroLastre_int/2 THEN // Lato DX della cavallina
 							varEven := counter2 MOD 2;
-							XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+							XFinaleLado_Pri0_Des180[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
 							CASE TipoRisultato OF
 								1:	
 									YFinaleLado_Pri0_Des180[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
@@ -661,7 +661,7 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				(* Ordinamento consecutivo prima SOLO lato 0° *)
 				3:
 					FOR counter2:=1 TO numeroLastre_int BY 1 DO
-						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+						XFinaleLado_0Grados[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
 						CASE TipoRisultato OF
 							1:	
 								YFinaleLado_0Grados[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
@@ -702,7 +702,7 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				4:
 					FOR counter2:=1 TO numeroLastre_int BY 1 DO
 						varEven := counter2 MOD 2;
-						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+						XFinaleLado_180Grados[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
 						CASE TipoRisultato OF
 							1:	
 								YFinaleLado_180Grados[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
