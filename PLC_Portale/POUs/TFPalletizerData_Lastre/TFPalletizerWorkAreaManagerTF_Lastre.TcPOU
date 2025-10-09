@@ -2141,7 +2141,7 @@ IF LatoPrelievo = 180 THEN
 		Y_PuntoPrelievo180 := Mission^.YPick ;
 			Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		 IF Mission^.YDim  < 1300 THEN
-			Mission^.YPick 				:= Mission^.YPick - (80 -10) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+			Mission^.YPick 				:= Mission^.YPick - (80 ) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
 			Mission^.ZPick				:= Mission^.ZPick + (15 +25) ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 			ELSE
@@ -2155,12 +2155,13 @@ IF LatoPrelievo = 180 THEN
 		
 	ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto	
 		Y_PuntoPrelievo180 := Mission^.YPick ;
-		Mission^.YPick 				:= Mission^.YPick - 85 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
 		Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		IF Mission^.YDim  < 1300 THEN
+				Mission^.YPick 				:= Mission^.YPick - 75 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
 				Mission^.ZPick				:= Mission^.ZPick + (25 +20) ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			ELSE
+				Mission^.YPick 				:= Mission^.YPick - 85 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
 				Mission^.ZPick				:= Mission^.ZPick + 25 ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			
@@ -2179,12 +2180,14 @@ ELSIF LatoPrelievo = 0 THEN
 		Mission^.JPick := 3;	
 	END_IF
 	Y_PuntoPrelievo0 := Mission^.YPick ;
-	Mission^.YPick 				:= Mission^.YPick + 40; // + 50 (*+ 50 *);
+	
 	Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 	IF Mission^.YDim  < 1300 THEN
+			Mission^.YPick 				:= Mission^.YPick + 40; // + 50 (*+ 50 *);
 			Mission^.ZPick				:= Mission^.ZPick + (25 + 5) ; // pieza pequeña
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		ELSE
+			Mission^.YPick 				:= Mission^.YPick + 40; // + 50 (*+ 50 *);
 			Mission^.ZPick				:= Mission^.ZPick + 25 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;	
 	END_IF
@@ -3040,11 +3043,12 @@ END_IF	]]></ST>
       <LineId Id="1739" Count="0" />
       <LineId Id="1735" Count="1" />
       <LineId Id="1749" Count="0" />
-      <LineId Id="1732" Count="0" />
       <LineId Id="1820" Count="0" />
-      <LineId Id="1827" Count="1" />
+      <LineId Id="1827" Count="0" />
+      <LineId Id="1845" Count="0" />
+      <LineId Id="1828" Count="0" />
       <LineId Id="1822" Count="0" />
-      <LineId Id="1824" Count="0" />
+      <LineId Id="1843" Count="1" />
       <LineId Id="1826" Count="0" />
       <LineId Id="1825" Count="0" />
       <LineId Id="1823" Count="0" />
@@ -3061,9 +3065,12 @@ END_IF	]]></ST>
       <LineId Id="1712" Count="0" />
       <LineId Id="1806" Count="0" />
       <LineId Id="1829" Count="0" />
-      <LineId Id="1836" Count="1" />
+      <LineId Id="1836" Count="0" />
+      <LineId Id="1847" Count="0" />
+      <LineId Id="1837" Count="0" />
       <LineId Id="1831" Count="0" />
       <LineId Id="1833" Count="0" />
+      <LineId Id="1846" Count="0" />
       <LineId Id="1835" Count="0" />
       <LineId Id="1834" Count="0" />
       <LineId Id="1830" Count="0" />
