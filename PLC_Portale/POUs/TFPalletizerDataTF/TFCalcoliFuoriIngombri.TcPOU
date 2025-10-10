@@ -1832,8 +1832,8 @@ CASE VERSO_PALLETTIZZATORE OF
 							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
 																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
-																	MAX (IngombroDestinazioneY_Pos ,			(* Ingombro negativo pinza *)
-																	OffsetSicurezza.Y.Avuoto));           (* Offset sicurezza *)
+																	MAX (IngombroDestinazioneY_Pos  ,			(* Ingombro negativo pinza *)
+																	OffsetSicurezza.Y.Avuoto) +INGOMBRO_RISCONTRO_BUNDLE);           (* Offset sicurezza *)
 						NuIngombroYCalculado180G_Depuracion := 19; 
 						END_IF	
 					ELSE//se non c'è nulla o c'è una cassa-pianale

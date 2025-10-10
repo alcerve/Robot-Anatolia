@@ -127,7 +127,7 @@ IF MachinePalletizerInitVariables THEN
 	ORDINE_DISPOSIZIONE_POSTAZIONI		:= CRESCENTE;
 	
 	OFFSET_POSTAZIONE_LEGNO 	:= 1330;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
-	OFFSET_POSTAZIONE_TELAIO 	:= 3155 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_TELAIO 	:= 3185 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
 	
 	INGOMBRO_RISCONTRO_BUNDLE := 100;
 	
@@ -485,9 +485,9 @@ IF MachinePalletizerInitDone THEN
 		PALLETTIZZATORE_SX:
 		
 			AxisPar_J.MaxPosition 	:= 181.0;
-			AxisPar_J.HomeDefine 	:= 0.0;
-			AxisPar_J.HomePosition 	:= 0.0;
-			AxisPar_J.MinPosition 	:= -0.2;
+			AxisPar_J.HomeDefine 	:= -1.0;
+			AxisPar_J.HomePosition 	:= -1.0;
+			AxisPar_J.MinPosition 	:= -2.0;
 	END_CASE	
 	
 	AxisPar_J.HomeVelocity := 2;
