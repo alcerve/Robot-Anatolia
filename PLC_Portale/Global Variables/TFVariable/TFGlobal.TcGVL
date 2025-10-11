@@ -258,6 +258,10 @@ VAR_GLOBAL
 	NuIngombroYCalculado0G_Depuracion		: UINT ;
 	NuIngombroYCalculado90G_Depuracion		: UINT ;
 	
+	Ok_sensores_Tastator: BOOL;
+	Nu_Sensores_Leyendo: BYTE;
+	// Habilitacion Giro coger con fc
+	Habilito_Pos_j_Fc: BOOL;
 END_VAR
 
 VAR_GLOBAL PERSISTENT

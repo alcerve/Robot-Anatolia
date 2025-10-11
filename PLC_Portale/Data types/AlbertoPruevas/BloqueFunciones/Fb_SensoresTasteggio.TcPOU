@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="Fb_SensoresTasteggio" Id="{95854c01-84c9-493f-9abe-75e2cf54d95b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Fb_SensoresTasteggio
+VAR_INPUT
+	Sensor_Tasteo_1 				: BOOL ;
+	Sensor_Tasteo_2 				: BOOL ;
+	Sensor_Tasteo_3 				: BOOL ;
+	Sensor_Tasteo_4 				: BOOL ;
+	Nu_sensores_Dar_Out				: BYTE ;
+END_VAR
+VAR_OUTPUT
+	Sensores_Tasteggio_Ok 			: BOOL ;
+	Nu_Sesores_Activos				: BYTE ;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Nu_Sesores_Activos := BOOL_TO_BYTE(Sensor_Tasteo_1) + BOOL_TO_BYTE(Sensor_Tasteo_2) + BOOL_TO_BYTE(Sensor_Tasteo_3) + BOOL_TO_BYTE(Sensor_Tasteo_4) ; 
+
+IF Nu_Sesores_Activos >= Nu_sensores_Dar_Out THEN
+	Sensores_Tasteggio_Ok := TRUE ;
+	ELSE
+	Sensores_Tasteggio_Ok := FALSE ;	
+	
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="Fb_SensoresTasteggio">
+      <LineId Id="9" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="20" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

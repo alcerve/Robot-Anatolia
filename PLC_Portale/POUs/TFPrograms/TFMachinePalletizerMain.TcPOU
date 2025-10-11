@@ -107,8 +107,12 @@ IF _TaskInfo[fbGetCurTaskIdx.index].FirstCycle THEN
 	
 	OffsetSicurezza.Z.Avuoto := 200;
 	OffsetSicurezza.Z.Carico := 350;
-	
-	HMI_AbilitaPosJPrelConFTC := TRUE;
+	IF Habilito_Pos_j_Fc THEN 
+		HMI_AbilitaPosJPrelConFTC := TRUE;
+	ELSE
+		HMI_AbilitaPosJPrelConFTC := FALSE;
+	END_IF
+		
 	
 END_IF
 
@@ -127,7 +131,7 @@ IF MachinePalletizerInitVariables THEN
 	ORDINE_DISPOSIZIONE_POSTAZIONI		:= CRESCENTE;
 	
 	OFFSET_POSTAZIONE_LEGNO 	:= 1330;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
-	OFFSET_POSTAZIONE_TELAIO 	:= 3185 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_TELAIO 	:= 3157 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
 	
 	INGOMBRO_RISCONTRO_BUNDLE := 100;
 	
@@ -1057,7 +1061,14 @@ Re_In_TastatoreEmergenzaPinza[3] :=  NOT TFTimerDone(ADR(Re_TastatoreEmergenzaPi
 Re_In_TastatoreEmergenzaPinza[4] :=  NOT TFTimerDone(ADR(Re_TastatoreEmergenzaPinza[4])) ;
 
 
-
+Fun_SensoresTasteggio(
+	Sensor_Tasteo_1:= I_TastatorePinza_1 , 
+	Sensor_Tasteo_2:= I_TastatorePinza_2 , 
+	Sensor_Tasteo_3:= I_TastatorePinza_3 , 
+	Sensor_Tasteo_4:= I_TastatorePinza_4 , 
+	Nu_sensores_Dar_Out:= 4 , 
+	Sensores_Tasteggio_Ok=> Ok_sensores_Tastator , 
+	Nu_Sesores_Activos=> Nu_Sensores_Leyendo);
 
 
 (* Valorizzo la presenza delle falde *)
@@ -1078,8 +1089,8 @@ MachinePalletizerModules.AX_X.AxHomingParameters			:= ADR(AxisHomingParameters_X
 
 
 (*Sensori di extra corsa + home + tastatori + presenza elemento nella pinza*)
-MachinePalletizerModules.AX_X.IN.Px_Touch_1			 		:= Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2] ;
-MachinePalletizerModules.AX_X.IN.Px_Touch_2			 		:= Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4] ;
+MachinePalletizerModules.AX_X.IN.Px_Touch_1			 		:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_X.IN.Px_Touch_2			 		:= Ok_sensores_Tastator OR ( Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
 //MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_1		:= I_TastatoreEmergenzaPinza_1 AND I_TastatoreEmergenzaPinza_2 AND I_TastatoreEmergenzaPinza_3 AND I_TastatoreEmergenzaPinza_4 OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_1		:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2])OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_2		:= (Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4])OR NOT TouchErrorEnable;
@@ -1134,8 +1145,8 @@ MachinePalletizerModules.AX_Y.AxHomingParameters			:= ADR(AxisHomingParameters_Y
 
 (*Sensori di extra corsa + home + tastatori + presenza elemento nella pinza + sicurezza cinghia*)
 MachinePalletizerModules.AX_Y.IN.BeltSafety				:= I_SicurezzaCinghia_Y OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_Y.IN.Px_Touch_1			 	:= Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2] ;
-MachinePalletizerModules.AX_Y.IN.Px_Touch_2			 	:= Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4] ;
+MachinePalletizerModules.AX_Y.IN.Px_Touch_1			 	:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_Y.IN.Px_Touch_2			 	:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
 //MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_1		:= I_TastatoreEmergenzaPinza_1 AND I_TastatoreEmergenzaPinza_2 AND I_TastatoreEmergenzaPinza_3 AND I_TastatoreEmergenzaPinza_4 OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_1		:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2]) OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_2		:= ( Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4] )OR NOT TouchErrorEnable;;
@@ -1212,8 +1223,8 @@ MachinePalletizerModules.AX_Z.ByPassTastatoriInUscitaTasteggio 	:= FALSE;
 MachinePalletizerModules.AX_Z.InterventoPxASpazio				:= FALSE;
 MachinePalletizerModules.AX_Z.SpazioInteventoPX					:= HMI_SpazioInterventoTastoriCartone;
 
-MachinePalletizerModules.AX_Z.IN.Px_Touch_1			 		:= Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2] ;
-MachinePalletizerModules.AX_Z.IN.Px_Touch_2			 		:= Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4] ;
+MachinePalletizerModules.AX_Z.IN.Px_Touch_1			 		:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_Z.IN.Px_Touch_2			 		:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
 //MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_1		:= I_TastatoreEmergenzaPinza_1 AND I_TastatoreEmergenzaPinza_2 AND I_TastatoreEmergenzaPinza_3 AND I_TastatoreEmergenzaPinza_4 OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_1		:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2] ) OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_2		:= (Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4]) OR NOT TouchErrorEnable;;
@@ -1284,8 +1295,8 @@ ProgramaEjes.CoordenadaEjeJ := ProgrammaToModule_J.Quota_Destinazione;
 							
 
 (*Sensori di extra corsa + home + tastatori + presenza elemento nella pinza*)
-MachinePalletizerModules.AX_J.IN.Px_Touch_1			 	:=  Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2] ;
-MachinePalletizerModules.AX_J.IN.Px_Touch_2			 	:=  Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4] ;
+MachinePalletizerModules.AX_J.IN.Px_Touch_1			 	:=  Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_J.IN.Px_Touch_2			 	:=  Ok_sensores_Tastator OR (Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
 MachinePalletizerModules.AX_J.IN.PX_TouchEmergency_1	:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2] ) OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_J.IN.PX_TouchEmergency_2	:= (Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4] ) OR NOT TouchErrorEnable;;
 MachinePalletizerModules.AX_J.AxHomingParameters		:= ADR(AxisHomingParameters_J);
@@ -5205,7 +5216,12 @@ END_IF
       <LineId Id="1954" Count="1" />
       <LineId Id="1953" Count="0" />
       <LineId Id="1956" Count="0" />
-      <LineId Id="1958" Count="3" />
+      <LineId Id="1958" Count="2" />
+      <LineId Id="1984" Count="0" />
+      <LineId Id="1981" Count="0" />
+      <LineId Id="1983" Count="0" />
+      <LineId Id="1982" Count="0" />
+      <LineId Id="1961" Count="0" />
       <LineId Id="1957" Count="0" />
       <LineId Id="1932" Count="0" />
       <LineId Id="1935" Count="0" />
@@ -5501,7 +5517,9 @@ END_IF
       <LineId Id="9157" Count="4" />
       <LineId Id="9043" Count="1" />
       <LineId Id="9123" Count="2" />
-      <LineId Id="9143" Count="3" />
+      <LineId Id="9143" Count="1" />
+      <LineId Id="9166" Count="6" />
+      <LineId Id="9145" Count="1" />
       <LineId Id="9005" Count="0" />
       <LineId Id="8415" Count="14" />
       <LineId Id="9097" Count="0" />

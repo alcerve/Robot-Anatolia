@@ -18,6 +18,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Data types" />
+    <Folder Include="Data types\AlbertoPruevas\Estructuras" />
+    <Folder Include="Data types\AlbertoPruevas\Funciones" />
+    <Folder Include="Data types\AlbertoPruevas\BloqueFunciones" />
     <Folder Include="Data types\DatiVari" />
     <Folder Include="Data types\DatiVari\EAP" />
     <Folder Include="Data types\DatiVari\Workorder" />
@@ -94,10 +97,16 @@
     </Folder>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Data types\AlbertoPruevas\Es_Ingombro_PorPosicion.TcDUT">
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Data types\AlbertoPruevas\ProgramaEjecucion.TcDUT">
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_Ingombro_PorPosicion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\ProgramaEjecucion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\DatiVari\EAP\ST_EAPAxeState.TcDUT">
