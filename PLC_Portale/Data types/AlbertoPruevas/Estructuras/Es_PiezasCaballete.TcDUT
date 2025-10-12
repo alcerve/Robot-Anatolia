@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Es_PiezasCaballete" Id="{992562f3-59cb-4b3c-96f8-26b40410b608}">
+    <Declaration><![CDATA[TYPE Es_PiezasCaballete :
+STRUCT
+	HMI_NumeroPezziPresentiPostazione_A_Cavaleto : UINT ;  //Numero Piezas Lado A ( 0º) caballete 
+	HMI_NumeroPezziPresentiPostazione_B_Cavaleto : UINT ;  //Numero Piezas Lado B ( 180º) caballete 
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>
