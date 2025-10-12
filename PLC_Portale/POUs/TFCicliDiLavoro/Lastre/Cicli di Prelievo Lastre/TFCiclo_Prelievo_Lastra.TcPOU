@@ -1081,6 +1081,7 @@ IF NOT InterrompiCiclo THEN
 					(Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO AND ProgramaEjes.EjeY = 106 ) OR 
 					(Programma_Y[Y_PosPasillo0grados].Stato = INTERROTTO AND ProgramaEjes.EjeY = 128 ) OR 
 					(Programma_Y[Y_PosPasillo180grados].Stato = INTERROTTO AND ProgramaEjes.EjeY = 129 ) OR 
+					(Programma_Y[Y_PosgiroPieza].Stato = INTERROTTO AND ProgramaEjes.EjeY = 127 ) OR 
 					Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = INTERROTTO OR 
 					(Programma_J[J_PosFuoriIngombro].Stato = INTERROTTO AND ProgramaEjes.EjeJ = 6) OR 
 					(Programma_J[Pos0TrasporteCavallete].Stato = INTERROTTO AND ProgramaEjes.EjeJ = 0)OR  	
@@ -1090,7 +1091,8 @@ IF NOT InterrompiCiclo THEN
 					IF Programma_X[X_PosStartLentaPrelievoLastra].Stato = TERMINATO AND
 						((Programma_Y[Y_PosFuoriIngombroVuotoLastra].Stato = TERMINATO AND ProgramaEjes.EjeY = 106 ) OR 
 						(Programma_Y[Y_PosPasillo0grados].Stato = TERMINATO AND ProgramaEjes.EjeY = 128 ) OR 
-						(Programma_Y[Y_PosPasillo180grados].Stato = TERMINATO AND ProgramaEjes.EjeY = 129 ) )AND 
+						(Programma_Y[Y_PosPasillo180grados].Stato = TERMINATO AND ProgramaEjes.EjeY = 129 ) OR 
+						(Programma_Y[Y_PosgiroPieza].Stato = TERMINATO AND ProgramaEjes.EjeY = 127 ))AND 
 						Programma_Z[Z_PosFuoriIngombroVuotoLastra].Stato = TERMINATO AND 
 						(Programma_J[J_PosFuoriIngombro].Stato = TERMINATO AND ProgramaEjes.EjeJ = 6 OR
 								(( Programma_J[Pos0TrasporteCavallete].Stato = TERMINATO AND  ProgramaEjes.EjeJ = 0 OR 
@@ -1678,11 +1680,15 @@ END_IF]]></ST>
       <LineId Id="1126" Count="1" />
       <LineId Id="1125" Count="0" />
       <LineId Id="2205" Count="1" />
-      <LineId Id="775" Count="2" />
+      <LineId Id="775" Count="0" />
+      <LineId Id="2207" Count="0" />
+      <LineId Id="776" Count="1" />
       <LineId Id="2123" Count="1" />
       <LineId Id="778" Count="2" />
       <LineId Id="2203" Count="1" />
-      <LineId Id="781" Count="2" />
+      <LineId Id="781" Count="0" />
+      <LineId Id="2209" Count="0" />
+      <LineId Id="782" Count="1" />
       <LineId Id="1961" Count="2" />
       <LineId Id="1089" Count="0" />
       <LineId Id="1092" Count="2" />

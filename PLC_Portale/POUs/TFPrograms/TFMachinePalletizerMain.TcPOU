@@ -107,8 +107,12 @@ IF _TaskInfo[fbGetCurTaskIdx.index].FirstCycle THEN
 	
 	OffsetSicurezza.Z.Avuoto := 200;
 	OffsetSicurezza.Z.Carico := 350;
-	
-	HMI_AbilitaPosJPrelConFTC := TRUE;
+	IF Habilito_Pos_j_Fc THEN 
+		HMI_AbilitaPosJPrelConFTC := TRUE;
+	ELSE
+		HMI_AbilitaPosJPrelConFTC := FALSE;
+	END_IF
+		
 	
 END_IF
 
@@ -127,7 +131,7 @@ IF MachinePalletizerInitVariables THEN
 	ORDINE_DISPOSIZIONE_POSTAZIONI		:= CRESCENTE;
 	
 	OFFSET_POSTAZIONE_LEGNO 	:= 1330;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
-	OFFSET_POSTAZIONE_TELAIO 	:= 3060 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_TELAIO 	:= 3157 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
 	
 	INGOMBRO_RISCONTRO_BUNDLE := 100;
 	
@@ -147,7 +151,7 @@ IF MachinePalletizerInitVariables THEN
 	(* Spazio di lavoro *)
 	(***********************************************************************************************************************************************************************************)
 	WorkSpace.X := 33345;
-	WorkSpace.Y := 3090;
+	WorkSpace.Y := 3120;
 	WorkSpace.Z := 1730;
 	(***********************************************************************************************************************************************************************************)
 	(* Quote Punto di Prelievo 1 *)
@@ -413,8 +417,8 @@ IF MachinePalletizerInitDone THEN
 	AxisPar_X.JOGDec := AxisNominalPar_X.MaximumDeceleration;
 	AxisPar_X.Jerk := AxisNominalPar_X.DefaultJerk;
 	AxisPar_X.MaxPosition := WorkSpace.X;
-	AxisPar_X.HomeDefine := 700.0;
-	AxisPar_X.HomePosition := 700;
+	AxisPar_X.HomeDefine := 715.0; (*+700 +15 Anatolia Canada*)
+	AxisPar_X.HomePosition := 715; (*700 +15 Anatolia Canada*)
 	AxisPar_X.MinPosition := 699;//AxisPar_X.HomeDefine;
 	AxisPar_X.HomeVelocity := 40;
 	
@@ -438,7 +442,7 @@ IF MachinePalletizerInitDone THEN
 	AxisPar_Y.JOGAcc := AxisNominalPar_Y.MaximumAcceleration;
 	AxisPar_Y.JOGDec := AxisNominalPar_Y.MaximumDeceleration;
 	AxisPar_Y.Jerk := AxisNominalPar_Y.DefaultJerk;
-	AxisPar_Y.MaxPosition := 3090;
+	AxisPar_Y.MaxPosition := 3120;
 	AxisPar_Y.HomeDefine := 535.0;
 	AxisPar_Y.HomePosition := 535.0;
 	AxisPar_Y.MinPosition := 534;
@@ -456,7 +460,7 @@ IF MachinePalletizerInitDone THEN
 	AxisPar_Z.JOGDec := AxisNominalPar_Z.MaximumDeceleration;
 	AxisPar_Z.Jerk := AxisNominalPar_Z.DefaultJerk;
 	
-	AxisPar_Z.MinPosition := 60;
+	AxisPar_Z.MinPosition := 20;
 	AxisPar_Z.MaxPosition := 1730;
 	AxisPar_Z.HomeDefine :=  1730;
 	AxisPar_Z.HomePosition := 1730.0;
@@ -485,9 +489,9 @@ IF MachinePalletizerInitDone THEN
 		PALLETTIZZATORE_SX:
 		
 			AxisPar_J.MaxPosition 	:= 181.0;
-			AxisPar_J.HomeDefine 	:= -2.0;
-			AxisPar_J.HomePosition 	:= 0.0;
-			AxisPar_J.MinPosition 	:= -0.2;
+			AxisPar_J.HomeDefine 	:= -1.0;
+			AxisPar_J.HomePosition 	:= -1.0;
+			AxisPar_J.MinPosition 	:= -2.0;
 	END_CASE	
 	
 	AxisPar_J.HomeVelocity := 2;
@@ -1017,10 +1021,10 @@ TFTimerCall(ADR(RetardoFcTastastatore[4]),TimeBase);
 TFTimerCall(ADR(RetardoFcTastastatoreJ[1]),TimeBase);
 TFTimerCall(ADR(RetardoFcTastastatoreJ[2]),TimeBase);
 
-TFTimerSet(ADR(RetardoFcTastastatore[1]),200, I_TastatorePinza_1);
-TFTimerSet(ADR(RetardoFcTastastatore[2]),200, I_TastatorePinza_2);
-TFTimerSet(ADR(RetardoFcTastastatore[3]),200,I_TastatorePinza_3);
-TFTimerSet(ADR(RetardoFcTastastatore[4]),200, I_TastatorePinza_4);
+TFTimerSet(ADR(RetardoFcTastastatore[1]),50, I_TastatorePinza_1);
+TFTimerSet(ADR(RetardoFcTastastatore[2]),50, I_TastatorePinza_2);
+TFTimerSet(ADR(RetardoFcTastastatore[3]),50,I_TastatorePinza_3);
+TFTimerSet(ADR(RetardoFcTastastatore[4]),50, I_TastatorePinza_4);
 
 TFTimerSet(ADR(RetardoFcTastastatoreJ[1]),200,I_TastatorePinza_1);
 TFTimerSet(ADR(RetardoFcTastastatoreJ[2]),200,I_TastatorePinza_2);
@@ -1030,10 +1034,10 @@ TFTimerCall(ADR(Re_TastatoreEmergenzaPinza[2]),TimeBase);
 TFTimerCall(ADR(Re_TastatoreEmergenzaPinza[3]),TimeBase);
 TFTimerCall(ADR(Re_TastatoreEmergenzaPinza[4]),TimeBase);
 
-TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[1]),220,I_TastatoreEmergenzaPinza_1);
-TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[2]),200,I_TastatoreEmergenzaPinza_2);
-TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[3]),200,I_TastatoreEmergenzaPinza_3);
-TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[4]),200 ,I_TastatoreEmergenzaPinza_4);
+TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[1]),50,I_TastatoreEmergenzaPinza_1);
+TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[2]),50,I_TastatoreEmergenzaPinza_2);
+TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[3]),50,I_TastatoreEmergenzaPinza_3);
+TFTimerSet(ADR(Re_TastatoreEmergenzaPinza[4]),50 ,I_TastatoreEmergenzaPinza_4);
 
 
 
@@ -1046,13 +1050,25 @@ Temp_Bool[5] := NOT TFTimerDone(ADR(RetardoFcTastastatore[1]))
 Temp_Bool[6] := NOT  TFTimerDone(ADR(RetardoFcTastastatore[2]))
 						AND NOT TFTimerDone(ADR(RetardoFcTastastatore[3]));
 						
+Re_In_TastatorePinza[1] 	 := NOT TFTimerDone(ADR(RetardoFcTastastatore[1]));	
+Re_In_TastatorePinza[2] 	 := NOT TFTimerDone(ADR(RetardoFcTastastatore[2]));	
+Re_In_TastatorePinza[3] 	 := NOT TFTimerDone(ADR(RetardoFcTastastatore[3]));	
+Re_In_TastatorePinza[4] 	 := NOT TFTimerDone(ADR(RetardoFcTastastatore[4]));						
+						
 Re_In_TastatoreEmergenzaPinza[1] :=  NOT TFTimerDone(ADR(Re_TastatoreEmergenzaPinza[1])) ;
 Re_In_TastatoreEmergenzaPinza[2] :=  NOT TFTimerDone(ADR(Re_TastatoreEmergenzaPinza[2])) ;
 Re_In_TastatoreEmergenzaPinza[3] :=  NOT TFTimerDone(ADR(Re_TastatoreEmergenzaPinza[3])) ;
 Re_In_TastatoreEmergenzaPinza[4] :=  NOT TFTimerDone(ADR(Re_TastatoreEmergenzaPinza[4])) ;
 
 
-
+Fun_SensoresTasteggio(
+	Sensor_Tasteo_1:= I_TastatorePinza_1 , 
+	Sensor_Tasteo_2:= I_TastatorePinza_2 , 
+	Sensor_Tasteo_3:= I_TastatorePinza_3 , 
+	Sensor_Tasteo_4:= I_TastatorePinza_4 , 
+	Nu_sensores_Dar_Out:= 4 , 
+	Sensores_Tasteggio_Ok=> Ok_sensores_Tastator , 
+	Nu_Sesores_Activos=> Nu_Sensores_Leyendo);
 
 
 (* Valorizzo la presenza delle falde *)
@@ -1073,13 +1089,11 @@ MachinePalletizerModules.AX_X.AxHomingParameters			:= ADR(AxisHomingParameters_X
 
 
 (*Sensori di extra corsa + home + tastatori + presenza elemento nella pinza*)
-MachinePalletizerModules.AX_X.IN.Px_Touch_1			 		:= TRUE;
-MachinePalletizerModules.AX_X.IN.Px_Touch_2			 		:= (*I_TastatorePinza_1 AND I_TastatorePinza_2 AND I_TastatorePinza_3 AND I_TastatorePinza_4 *) RetardoTastatore AND I_TastatorePinza_5 AND I_TastatorePinza_6;
+MachinePalletizerModules.AX_X.IN.Px_Touch_1			 		:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_X.IN.Px_Touch_2			 		:= Ok_sensores_Tastator OR ( Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
 //MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_1		:= I_TastatoreEmergenzaPinza_1 AND I_TastatoreEmergenzaPinza_2 AND I_TastatoreEmergenzaPinza_3 AND I_TastatoreEmergenzaPinza_4 OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_1		:= Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2]
-																	AND Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4] 
-																				OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_2		:= TRUE;
+MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_1		:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2])OR NOT TouchErrorEnable;
+MachinePalletizerModules.AX_X.IN.PX_TouchEmergency_2		:= (Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4])OR NOT TouchErrorEnable;
 MachinePalletizerModules.AX_X.IN.PX_GripPresence			:= NOT I_PHPresenzaMaterialePinza;
 MachinePalletizerModules.AX_X.IN.Enable_TouchEmergency   	:= ADR(TouchErrorEnable);
 
@@ -1131,14 +1145,11 @@ MachinePalletizerModules.AX_Y.AxHomingParameters			:= ADR(AxisHomingParameters_Y
 
 (*Sensori di extra corsa + home + tastatori + presenza elemento nella pinza + sicurezza cinghia*)
 MachinePalletizerModules.AX_Y.IN.BeltSafety				:= I_SicurezzaCinghia_Y OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_Y.IN.Px_Touch_1			 	:= TRUE;
-MachinePalletizerModules.AX_Y.IN.Px_Touch_2			 	:= (*I_TastatorePinza_1 AND I_TastatorePinza_2 AND I_TastatorePinza_3 AND I_TastatorePinza_4 *) RetardoTastatore  AND I_TastatorePinza_5 AND I_TastatorePinza_6;
+MachinePalletizerModules.AX_Y.IN.Px_Touch_1			 	:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_Y.IN.Px_Touch_2			 	:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
 //MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_1		:= I_TastatoreEmergenzaPinza_1 AND I_TastatoreEmergenzaPinza_2 AND I_TastatoreEmergenzaPinza_3 AND I_TastatoreEmergenzaPinza_4 OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_1		:= Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2] 
-																			AND Re_In_TastatoreEmergenzaPinza[3] 
-																						AND Re_In_TastatoreEmergenzaPinza[4] 
-																								OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_2		:= TRUE;
+MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_1		:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2]) OR NOT TouchErrorEnable;
+MachinePalletizerModules.AX_Y.IN.PX_TouchEmergency_2		:= ( Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4] )OR NOT TouchErrorEnable;;
 MachinePalletizerModules.AX_Y.IN.PX_GripPresence			:= NOT I_PHPresenzaMaterialePinza;
 MachinePalletizerModules.AX_Y.IN.Enable_TouchEmergency   := ADR(TouchErrorEnable);
 MachinePalletizerModules.AX_Y.IN.SimulazioneSenzaHW		:= FALSE;//TEST_ENABLE;
@@ -1212,14 +1223,11 @@ MachinePalletizerModules.AX_Z.ByPassTastatoriInUscitaTasteggio 	:= FALSE;
 MachinePalletizerModules.AX_Z.InterventoPxASpazio				:= FALSE;
 MachinePalletizerModules.AX_Z.SpazioInteventoPX					:= HMI_SpazioInterventoTastoriCartone;
 
-MachinePalletizerModules.AX_Z.IN.Px_Touch_1			 		:= TRUE;
-MachinePalletizerModules.AX_Z.IN.Px_Touch_2			 		:= (*I_TastatorePinza_1 AND I_TastatorePinza_2 AND I_TastatorePinza_3 AND I_TastatorePinza_4 *) RetardoTastatore AND I_TastatorePinza_5 AND I_TastatorePinza_6;
+MachinePalletizerModules.AX_Z.IN.Px_Touch_1			 		:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_Z.IN.Px_Touch_2			 		:= Ok_sensores_Tastator OR (Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
 //MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_1		:= I_TastatoreEmergenzaPinza_1 AND I_TastatoreEmergenzaPinza_2 AND I_TastatoreEmergenzaPinza_3 AND I_TastatoreEmergenzaPinza_4 OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_1		:= Re_In_TastatoreEmergenzaPinza[1] AND 
-																		Re_In_TastatoreEmergenzaPinza[2] AND 
-																				Re_In_TastatoreEmergenzaPinza[3] AND 
-																							Re_In_TastatoreEmergenzaPinza[4] OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_2		:= TRUE;
+MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_1		:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2] ) OR NOT TouchErrorEnable;
+MachinePalletizerModules.AX_Z.IN.PX_TouchEmergency_2		:= (Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4]) OR NOT TouchErrorEnable;;
 MachinePalletizerModules.AX_Z.IN.PX_GripPresence			:= NOT I_PHPresenzaMaterialePinza;
 MachinePalletizerModules.AX_Z.IN.Enable_TouchEmergency   	:= ADR(TouchErrorEnable);
 MachinePalletizerModules.AX_Z.IN.SimulazioneSenzaHW			:= FALSE;//TEST_ENABLE;
@@ -1287,10 +1295,10 @@ ProgramaEjes.CoordenadaEjeJ := ProgrammaToModule_J.Quota_Destinazione;
 							
 
 (*Sensori di extra corsa + home + tastatori + presenza elemento nella pinza*)
-MachinePalletizerModules.AX_J.IN.Px_Touch_1			 	:=  Temp_Bool[5]OR I_TastatorePinza_1 OR I_TastatorePinza_4;//TRUE; //LATO SX
-MachinePalletizerModules.AX_J.IN.Px_Touch_2			 	:=  Temp_Bool[6]OR  I_TastatorePinza_2 OR I_TastatorePinza_3;//LATO DX //I_TastatorePinza_1 AND I_TastatorePinza_2 AND I_TastatorePinza_3 AND I_TastatorePinza_4 AND I_TastatorePinza_5 AND I_TastatorePinza_6;
-MachinePalletizerModules.AX_J.IN.PX_TouchEmergency_1	:= (*I_TastatorePinza_1 AND I_TastatorePinza_2 AND I_TastatorePinza_3 AND I_TastatorePinza_4 *) RetardoTastatore OR NOT TouchErrorEnable;
-MachinePalletizerModules.AX_J.IN.PX_TouchEmergency_2	:= TRUE;
+MachinePalletizerModules.AX_J.IN.Px_Touch_1			 	:=  Ok_sensores_Tastator OR (Re_In_TastatorePinza[1]  AND Re_In_TastatorePinza[2]) ;
+MachinePalletizerModules.AX_J.IN.Px_Touch_2			 	:=  Ok_sensores_Tastator OR (Re_In_TastatorePinza[3]  AND Re_In_TastatorePinza[4]) ;
+MachinePalletizerModules.AX_J.IN.PX_TouchEmergency_1	:= (Re_In_TastatoreEmergenzaPinza[1] AND Re_In_TastatoreEmergenzaPinza[2] ) OR NOT TouchErrorEnable;
+MachinePalletizerModules.AX_J.IN.PX_TouchEmergency_2	:= (Re_In_TastatoreEmergenzaPinza[3] AND Re_In_TastatoreEmergenzaPinza[4] ) OR NOT TouchErrorEnable;;
 MachinePalletizerModules.AX_J.AxHomingParameters		:= ADR(AxisHomingParameters_J);
 MachinePalletizerModules.AX_J.Ax^.EncoderType			:= ABSOLUTE_ENCODER;
                                                         
@@ -4322,7 +4330,7 @@ FOR LoopLista := 1 TO 3 DO
 					CalcolaFormaturaTrig2 := TRUE;		
 					FOR i:= 1 TO MAXFORMINGSLAB DO
 						//IF i <= 10  THEN
-						IF i <= 30 THEN
+						IF i <= 40 THEN
 						//IF i <= HMI_Forming_NumeroElementiDaDepositare  THEN
 							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := LASTRA;//Settiamo tutte lastre!!
 						ELSE
@@ -4332,7 +4340,7 @@ FOR LoopLista := 1 TO 3 DO
 					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].XDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.XDim; 
 					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].YDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.YDim; 
 					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].ZDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.ZDim; 
-				
+					TFCalcoloFormaturaRT[IdxLista].HabiCalTodasCordenadas := true ;
 					TFCalcoloFormaturaRT[IdxLista].Supporto.Code											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.Code;
 					TFCalcoloFormaturaRT[IdxLista].Supporto.XDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.XDim;
 					TFCalcoloFormaturaRT[IdxLista].Supporto.YDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.YDim(**2*);
@@ -5208,7 +5216,12 @@ END_IF
       <LineId Id="1954" Count="1" />
       <LineId Id="1953" Count="0" />
       <LineId Id="1956" Count="0" />
-      <LineId Id="1958" Count="3" />
+      <LineId Id="1958" Count="2" />
+      <LineId Id="1984" Count="0" />
+      <LineId Id="1981" Count="0" />
+      <LineId Id="1983" Count="0" />
+      <LineId Id="1982" Count="0" />
+      <LineId Id="1961" Count="0" />
       <LineId Id="1957" Count="0" />
       <LineId Id="1932" Count="0" />
       <LineId Id="1935" Count="0" />
@@ -5492,7 +5505,8 @@ END_IF
       <LineId Id="9114" Count="0" />
       <LineId Id="9117" Count="0" />
       <LineId Id="9116" Count="0" />
-      <LineId Id="9119" Count="3" />
+      <LineId Id="9119" Count="2" />
+      <LineId Id="9165" Count="0" />
       <LineId Id="9118" Count="0" />
       <LineId Id="9112" Count="0" />
       <LineId Id="9028" Count="2" />
@@ -5500,16 +5514,20 @@ END_IF
       <LineId Id="9027" Count="0" />
       <LineId Id="9039" Count="0" />
       <LineId Id="9038" Count="0" />
+      <LineId Id="9157" Count="4" />
       <LineId Id="9043" Count="1" />
       <LineId Id="9123" Count="2" />
-      <LineId Id="9143" Count="3" />
+      <LineId Id="9143" Count="1" />
+      <LineId Id="9166" Count="6" />
+      <LineId Id="9145" Count="1" />
       <LineId Id="9005" Count="0" />
       <LineId Id="8415" Count="14" />
       <LineId Id="9097" Count="0" />
       <LineId Id="9096" Count="0" />
       <LineId Id="8430" Count="3" />
-      <LineId Id="9126" Count="2" />
-      <LineId Id="8434" Count="25" />
+      <LineId Id="9126" Count="0" />
+      <LineId Id="9156" Count="0" />
+      <LineId Id="8435" Count="24" />
       <LineId Id="9151" Count="0" />
       <LineId Id="9150" Count="0" />
       <LineId Id="9100" Count="0" />
@@ -5517,8 +5535,9 @@ END_IF
       <LineId Id="9149" Count="0" />
       <LineId Id="9098" Count="0" />
       <LineId Id="8460" Count="22" />
-      <LineId Id="9129" Count="3" />
-      <LineId Id="8483" Count="32" />
+      <LineId Id="9129" Count="0" />
+      <LineId Id="9162" Count="0" />
+      <LineId Id="8484" Count="31" />
       <LineId Id="9093" Count="2" />
       <LineId Id="9153" Count="0" />
       <LineId Id="9092" Count="0" />
@@ -5527,7 +5546,7 @@ END_IF
       <LineId Id="9133" Count="0" />
       <LineId Id="9135" Count="1" />
       <LineId Id="8531" Count="20" />
-      <LineId Id="9137" Count="3" />
+      <LineId Id="9137" Count="0" />
       <LineId Id="8552" Count="33" />
       <LineId Id="9090" Count="1" />
       <LineId Id="9147" Count="0" />

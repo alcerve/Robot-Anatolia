@@ -125,7 +125,8 @@ TFCommandToExecution(ADR(CmdNext),ADR(CmdExe),ADR(Error),ADR(ErrorLog),ADR(State
 END_IF*)
 
 (* Tastatori Pinza *)
-Px_Touch := IN.Px_Touch_1 AND IN.Px_Touch_2;
+//Px_Touch := IN.Px_Touch_1 AND IN.Px_Touch_2;
+Px_Touch := IN.Px_Touch_1 OR IN.Px_Touch_2;
 Px_TouchEmergency := IN.Px_TouchEmergency_1 AND IN.Px_TouchEmergency_2;
 
 Spaziotastatori(Sensor:= NOT Px_Touch,
@@ -1356,7 +1357,9 @@ END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="TFModulePalletizer_Ax">
-      <LineId Id="9867" Count="393" />
+      <LineId Id="9867" Count="57" />
+      <LineId Id="11347" Count="0" />
+      <LineId Id="9925" Count="335" />
       <LineId Id="11260" Count="0" />
       <LineId Id="10261" Count="23" />
       <LineId Id="11261" Count="0" />

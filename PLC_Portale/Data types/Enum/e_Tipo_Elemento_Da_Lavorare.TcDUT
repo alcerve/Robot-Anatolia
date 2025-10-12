@@ -9,10 +9,9 @@ TYPE e_Tipo_Elemento_Da_Lavorare :
 	NOT_DEFINED				:= -1, //Elemento non definito
 	LASTRA 					:= 0, //Elemento di tipo LASTRA
 	FALDA					:= 1, //Elemento di tipo FALDA
-	
-	
+	//##############################################################################################################################
 	QUADROTTA 				:= 2, //Elemento di tipo "Quadrotta" ovvero, sotto prodotti che formano un piano come fosse una lastra
-	
+	//##############################################################################################################################
 	TERMINATORE				:= 99 //Indica che il deposito è terminato
 );
 

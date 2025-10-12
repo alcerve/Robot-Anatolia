@@ -119,6 +119,11 @@ TFCommandToExecution(ADR(CmdNext),ADR(CmdExe),ADR(Error),ADR(ErrorLog),ADR(State
 Px_Touch := IN.Px_Touch_1 AND IN.Px_Touch_2;
 Px_TouchEmergency := IN.Px_TouchEmergency_1 AND IN.Px_TouchEmergency_2;
 
+
+
+
+
+
 (* Fotocellule tasteggio *)
 DistanzaFTC0 	:= MIN(2000,Keyence_LRTB2000C(IN_Pinza.InKeyence0_Byte0,IN_Pinza.InKeyence0_Byte1));
 DistanzaFTC180 	:= MIN(2000,Keyence_LRTB2000C(IN_Pinza.InKeyence180_Byte0,IN_Pinza.InKeyence180_Byte1));
@@ -1436,7 +1441,10 @@ END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="TFModulePalletizer_AxJ_Lastre">
-      <LineId Id="8458" Count="39" />
+      <LineId Id="8458" Count="38" />
+      <LineId Id="10115" Count="3" />
+      <LineId Id="10114" Count="0" />
+      <LineId Id="8497" Count="0" />
       <LineId Id="9807" Count="49" />
       <LineId Id="9934" Count="0" />
       <LineId Id="9936" Count="0" />

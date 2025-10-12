@@ -230,26 +230,38 @@ VAR_GLOBAL
 	SupportDataEmpty : ST_SupportData;
 
 //#### Variabili per Test
-	M255 : BOOL := TRUE; 			//# RIcorda Forzatura
-	M255_sempreON :  BOOL := TRUE;
-	M255_sempreOFF : BOOL := FALSE;
+	M255 						: BOOL := TRUE; 			//# RIcorda Forzatura
+	M255_sempreON 				: BOOL := TRUE;
+	M255_sempreOFF 				: BOOL := FALSE;
 	
 	
 //##
 	CoordenadaZInicial: REAL;
 
-	In_PosRobot: UINT;
-	PosRobot: UINT;
-	QuotaCentroPostazioneIni: LREAL;
-	QuotaCentroPostazionePiking: LREAL;
-	PosicionJActual: LREAL;
-	RobotWorkAreaCavallete : BOOL ;
-	RobotCentroPosX			: BOOL ;
-	PosicionJDestino: LREAL;
-	PosicionJOrigen: LREAL;
-	EjeYPosFueraIngombro: BOOL;
-	EjeYPos0Ingombro: BOOL;
-	EjeYPos180Ingombro: BOOL;
+	In_PosRobot								: UINT;
+	PosRobot								: UINT;
+	QuotaCentroPostazioneIni				: LREAL;
+	QuotaCentroPostazionePiking				: LREAL;
+	PosicionJActual							: LREAL;
+	RobotWorkAreaCavallete 					: BOOL ;
+	RobotCentroPosX							: BOOL ;
+	PosicionJDestino						: LREAL;
+	PosicionJOrigen							: LREAL;
+	EjeYPosFueraIngombro					: BOOL;
+	EjeYPos0Ingombro						: BOOL;
+	EjeYPos180Ingombro						: BOOL;
+	EjeyPosLentaCoger						: BOOL ;
+	Z_PuntoPrelievo180Bundle				: LREAL;
+	
+//##Depuracion Alberto
+	NuIngombroYCalculado180G_Depuracion		: UINT ;
+	NuIngombroYCalculado0G_Depuracion		: UINT ;
+	NuIngombroYCalculado90G_Depuracion		: UINT ;
+	
+	Ok_sensores_Tastator: BOOL;
+	Nu_Sensores_Leyendo: BYTE;
+	// Habilitacion Giro coger con fc
+	Habilito_Pos_j_Fc: BOOL;
 END_VAR
 
 VAR_GLOBAL PERSISTENT
@@ -387,6 +399,7 @@ VAR_GLOBAL PERSISTENT
 	RetardoFcTastastatoreJ								: ARRAY [1..2] OF REAL ;
 	Re_TastatoreEmergenzaPinza							: ARRAY [1..4] OF REAL ;
 	Re_In_TastatoreEmergenzaPinza						: ARRAY [1..4] OF BOOL ;
+	Re_In_TastatorePinza								: ARRAY [1..4] OF BOOL ;
 	RetardoTastatore 									:BOOL ;
 	RetardoTastatoreJ 									:BOOL ;
 	RegistroAlarma2205									:UINT ;

@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Es_CoordenadasCaballeteLadoA_ladoB" Id="{4363d8da-bd39-481d-a655-a94509e55e13}">
+    <Declaration><![CDATA[TYPE Es_CoordenadasCaballeteLadoA_ladoB :
+STRUCT
+	LadoA : Es_CoordenadasCaballeteLadoA ;
+	LadoB : Es_CoordenadasCaballeteLadoB ;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

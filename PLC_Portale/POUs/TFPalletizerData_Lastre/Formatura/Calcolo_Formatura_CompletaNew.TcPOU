@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
-  <POU Name="Calcolo_Formatura_Completa" Id="{a627df17-1f04-41c4-9b14-3bbfeeb098aa}" SpecialFunc="None">
-    <Declaration><![CDATA[FUNCTION_BLOCK Calcolo_Formatura_Completa
+  <POU Name="Calcolo_Formatura_CompletaNew" Id="{0fc050ba-a0d7-4895-ba88-6d4950212d7d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Calcolo_Formatura_CompletaNew
 VAR_INPUT
 	
 	Supporto : TFMachinePalletizer_Pallet;
 	
 	//Materiale : ARRAY [0..MAXTYPE_SLABLAYER] OF Type_SlabLayer;	// Tipo di materiale, Lastra, Falda e dimensioni
-	Materiale 			: ARRAY [0..MAXTYPE_SLABLAYER] OF TFMachinePalletizer_PlaceElement;	// Tipo di materiale, Lastra, Falda e dimensioni
+	Materiale 		: ARRAY [0..MAXTYPE_SLABLAYER] OF TFMachinePalletizer_PlaceElement;	// Tipo di materiale, Lastra, Falda e dimensioni
 	TipoElementoDep 	: ARRAY [1..MAXFORMINGSLAB] OF e_Tipo_Elemento_Da_Lavorare;	// Tipologia del n-esimo elemento di Materiale da depositare (Lstra-falda-terminatore)
 	
 	TipoRisultato 		: UINT := 3;// Punto utilizzato per coordinate finali di deposito lastra/falda, 1 interno, 2 centro, 3 esterno(default)
@@ -982,7 +982,7 @@ END_IF
 
 ]]></ST>
     </Implementation>
-    <LineIds Name="Calcolo_Formatura_Completa">
+    <LineIds Name="Calcolo_Formatura_CompletaNew">
       <LineId Id="4883" Count="1" />
       <LineId Id="6359" Count="0" />
       <LineId Id="4885" Count="0" />
