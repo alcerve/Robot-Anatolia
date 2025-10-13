@@ -2157,7 +2157,7 @@ IF LatoPrelievo = 180 THEN
 		Y_PuntoPrelievo180 := Mission^.YPick ;
 		Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		IF Mission^.YDim  < 1300 THEN
-				Mission^.YPick 				:= Mission^.YPick - Dimensioni_Pinza.DimTraveVerticale / 2 -30; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+				Mission^.YPick 				:= Mission^.YPick - (Dimensioni_Pinza.DimTraveVerticale -20) ;//(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
 				Mission^.ZPick				:= Mission^.ZPick + (25 +20) ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			ELSE
