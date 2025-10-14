@@ -3254,16 +3254,15 @@ END_IF
 {region "Gestione zona GLOBALE - Postazioni da 1 a 8"}
 
 //Traferisco i valori dei supporti della lista 1 nella lista 2 e 3
-RequestPickingListFromHMI[2].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
+(*RequestPickingListFromHMI[2].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
 RequestPickingListFromHMI[3].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
 RequestPickingListFromHMI[2].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
 RequestPickingListFromHMI[3].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
 RequestPickingListFromHMI[2].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
 RequestPickingListFromHMI[3].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
 RequestPickingListFromHMI[2].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
-RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
-RequestPickingListFromHMI[2].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
-RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
+RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;	*)	  
+	  
 
 FOR LoopLista := 1 TO 3 DO
 	IdxLista := LoopLista;		 
@@ -5921,7 +5920,8 @@ END_IF
       <LineId Id="2670" Count="0" />
       <LineId Id="3364" Count="0" />
       <LineId Id="3363" Count="0" />
-      <LineId Id="3350" Count="9" />
+      <LineId Id="3350" Count="7" />
+      <LineId Id="3359" Count="0" />
       <LineId Id="3362" Count="0" />
       <LineId Id="3242" Count="0" />
       <LineId Id="3643" Count="1" />
