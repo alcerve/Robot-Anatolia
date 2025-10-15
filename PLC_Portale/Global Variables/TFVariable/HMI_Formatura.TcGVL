@@ -10,14 +10,16 @@ VAR_GLOBAL
 
 	HMI_Forming_FormaturaCalcolata			: TFMachinePalletizer_FormingForSlab; //Formatura calcolata dal FB
 	HMI_Forming_ErroreCalcoli 				: UINT;//Errore calcoli formatura per sagnalazioni a operatore 
+	
 	HMI_Forming_IndiceFormaturaAttivata		: UINT; //Indica l'indice sul quale la formatura è stata attivata
 	HMI_Forming_CodiciAbilitatiFormatura	: ARRAY[1..MAXFORMING] OF TFCodiciPerFormatura;
 
 	HMI_Forming_GUID 						: UINT;
 	HMI_Forming_Attivazione					: ARRAY[1..MAXFORMING] OF BOOL; //Attivazione formatura
 	HMI_Forming_Disattivazione				: ARRAY[1..MAXFORMING] OF BOOL; //Disattiva formatura
-		
-	HMI_Forming_FormaturaCreata 			: BOOL; //TRUE se la formatura è stata creata correttamente
+	HMI_Forming_ErroreCalculos 				: ARRAY[1..MAXFORMING] OF BOOL; //Disattiva formatura
+	
+	HMI_Forming_FormaturaCreata 			:  BOOL; //TRUE se la formatura è stata creata correttamente
 	HMI_Forming_FormaturaAttivata 			:  ARRAY[1..MAXFORMING] OF BOOL; //TRUE se la formatura è stata attivata correttamente
 
 	HMI_ErrAckCalcolaFormatura 				: BOOL; //Variabile che serve per dare ok acquisizione da operatore

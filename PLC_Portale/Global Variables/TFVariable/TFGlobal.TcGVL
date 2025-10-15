@@ -222,6 +222,7 @@ VAR_GLOBAL
 	TFCalcoloFormatura 			: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
 	TFCalcoloFormaturaDaLista	: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
 	TFCalcoloFormaturaRT		: ARRAY[1..3] OF Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+	TFCalcoloFormaturaEmpty		: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
 
 	SIMULAZIONE_NO_HW 				: BOOL:= FALSE;
 	FormingEmpty 				: TFMachinePalletizer_FormingForSlab;

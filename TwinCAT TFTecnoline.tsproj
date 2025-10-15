@@ -1867,7 +1867,7 @@ External Setpoint Generation:
 		</Motion>
 		<Plc>
 			<Project GUID="{F5E1106F-7BEA-4E24-8B06-B4FF587F31D3}" Name="PLC_Portale" PrjFilePath="PLC_Portale\PLC_Portale.plcproj" TmcFilePath="PLC_Portale\PLC_Portale.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" CopyTmcToTarget="true" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="PLC_Portale\PLC_Portale.tmc" TmcHash="{11646EC2-86B4-C0D4-CE46-76D91F041EEE}">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="PLC_Portale\PLC_Portale.tmc" TmcHash="{F46DD354-0D73-21A5-D9A3-ACD53ACA8AAD}">
 					<Name>PLC_Portale Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="1">
@@ -2490,15 +2490,6 @@ I_BarrieraCentroDx_CH2			: BOOL; // 4=
 							<Type GUID="{064EA673-04B6-D0C1-CD14-82E56022843A}">ARRAY [1..4] OF BOOL</Type>
 						</Var>
 						<Var>
-							<Name>.I_AP202_6</Name>
-							<Comment><![CDATA[I_PresenzaVeicolo[5]	: BOOL; // 1=
-I_PresenzaVeicolo[6] 	: BOOL; // 2=	
-I_PresenzaVeicolo[7]	: BOOL; // 3=	
-I_PresenzaVeicolo[8]	: BOOL; // 4=	
-******************** SCHEDA IN SAFETY AP202.6		]]></Comment>
-							<Type GUID="{064EA673-04B6-D0C1-CD14-82E56022843A}">ARRAY [1..4] OF BOOL</Type>
-						</Var>
-						<Var>
 							<Name>.I_AP201_3</Name>
 							<Comment><![CDATA[O_ConsensoVeicolo[5]		  	: BOOL;	// 5 =
 O_ConsensoVeicolo[6]			: BOOL;	// 6 =
@@ -2552,6 +2543,15 @@ I_PresenzaVeicolo[2] 	: BOOL; // 2=
 I_PresenzaVeicolo[3]	: BOOL; // 3=	
 I_PresenzaVeicolo[4]	: BOOL; // 4=	
 ******************** SCHEDA IN SAFETY AP202.5		]]></Comment>
+							<Type GUID="{064EA673-04B6-D0C1-CD14-82E56022843A}">ARRAY [1..4] OF BOOL</Type>
+						</Var>
+						<Var>
+							<Name>.I_AP202_6</Name>
+							<Comment><![CDATA[I_PresenzaVeicolo[5]	: BOOL; // 1=
+I_PresenzaVeicolo[6] 	: BOOL; // 2=	
+I_PresenzaVeicolo[7]	: BOOL; // 3=	
+I_PresenzaVeicolo[8]	: BOOL; // 4=	
+******************** SCHEDA IN SAFETY AP202.6		]]></Comment>
 							<Type GUID="{064EA673-04B6-D0C1-CD14-82E56022843A}">ARRAY [1..4] OF BOOL</Type>
 						</Var>
 						<Var>
@@ -2647,17 +2647,17 @@ I_PresenzaVeicolo[4]	: BOOL; // 4=
 							<Type>BOOL</Type>
 						</Var>
 						<Var>
-							<Name>.Ovem1.Out.ControlWord</Name>
-							<Comment><![CDATA[ControlWord da linkare al dispositivo]]></Comment>
-							<Type>WORD</Type>
-						</Var>
-						<Var>
 							<Name>.O_ControlWordOVEM_1</Name>
 							<Comment><![CDATA[Control Word Ovem A]]></Comment>
 							<Type>WORD</Type>
 						</Var>
 						<Var>
 							<Name>.Ovem2.Out.ControlWord</Name>
+							<Comment><![CDATA[ControlWord da linkare al dispositivo]]></Comment>
+							<Type>WORD</Type>
+						</Var>
+						<Var>
+							<Name>.Ovem1.Out.ControlWord</Name>
 							<Comment><![CDATA[ControlWord da linkare al dispositivo]]></Comment>
 							<Type>WORD</Type>
 						</Var>
@@ -2707,6 +2707,13 @@ I_PresenzaVeicolo[4]	: BOOL; // 4=
 							<Type GUID="{A6CC6AFE-FE37-C02D-2C0C-FB1479660FEB}">ARRAY [0..31] OF BYTE</Type>
 						</Var>
 						<Var>
+							<Name>.O_AP201_4</Name>
+							<Comment><![CDATA[I_BarrieraInterna_CH1			: BOOL; // 3=	
+I_BarrieraInterna_CH2			: BOOL; // 4=	
+******************** SCHEDA OUT AP201.4]]></Comment>
+							<Type GUID="{46C950DA-5D6E-6516-D69B-F24F38546D38}">ARRAY [1..16] OF BOOL</Type>
+						</Var>
+						<Var>
 							<Name>.O_AP201_5</Name>
 							<Comment><![CDATA[Appoggio]]></Comment>
 							<Type GUID="{064EA673-04B6-D0C1-CD14-82E56022843A}">ARRAY [1..4] OF BOOL</Type>
@@ -2718,13 +2725,6 @@ FREE			: BOOL; // CH2=
 FREE			: BOOL; // CH3=	
 FREE			: BOOL; // CH4=	
 ******************** SCHEDA OUT AP201.6	]]></Comment>
-							<Type GUID="{46C950DA-5D6E-6516-D69B-F24F38546D38}">ARRAY [1..16] OF BOOL</Type>
-						</Var>
-						<Var>
-							<Name>.O_AP201_4</Name>
-							<Comment><![CDATA[I_BarrieraInterna_CH1			: BOOL; // 3=	
-I_BarrieraInterna_CH2			: BOOL; // 4=	
-******************** SCHEDA OUT AP201.4]]></Comment>
 							<Type GUID="{46C950DA-5D6E-6516-D69B-F24F38546D38}">ARRAY [1..16] OF BOOL</Type>
 						</Var>
 						<Var>
