@@ -67,6 +67,12 @@ VAR
 	TraiettoriaClr : POINTER TO TFTraiettoria;
 	jj: UINT;
 	ClrEstructura: POINTER TO ARRAY [1..MAXPALLET] OF e_Tipo_Pallet;
+	// Variable para rellenar la estrctura con las dimensiones de la pieza
+	InPiezasPos: UINT;
+	// Variable pafa Calcular las formaciones
+	CalFor: UINT;
+	// Recorre los casos para crear la formacion
+	CrearFormacion: UINT;
 END_VAR
 
 
@@ -3254,14 +3260,14 @@ END_IF
 {region "Gestione zona GLOBALE - Postazioni da 1 a 8"}
 
 //Traferisco i valori dei supporti della lista 1 nella lista 2 e 3
-(*RequestPickingListFromHMI[2].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
+RequestPickingListFromHMI[2].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
 RequestPickingListFromHMI[3].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
 RequestPickingListFromHMI[2].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
 RequestPickingListFromHMI[3].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
 RequestPickingListFromHMI[2].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
 RequestPickingListFromHMI[3].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
 RequestPickingListFromHMI[2].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
-RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;	*)	  
+RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
 	  
 
 FOR LoopLista := 1 TO 3 DO
@@ -3478,8 +3484,8 @@ FOR LoopLista := 1 TO 3 DO
 				END_FOR
 	
 				IF ElementiDaDepositare[IdxLista] <= HMI_WorkAreaDataPicking[NumPostazioneDeposito].NumElementiDaLavorare THEN
-					ActualPickingListFromHMI[IdxLista] 		:= RequestPickingListFromHMI[IdxLista];
-					ActualPickingListFromHMI[IdxLista].State 	:= e_StatoWorkOrder.DA_ESEGUIRE;
+					ActualPickingListFromHMI[IdxLista] 				:= RequestPickingListFromHMI[IdxLista];
+					ActualPickingListFromHMI[IdxLista].State 		:= e_StatoWorkOrder.DA_ESEGUIRE;
 
 				ELSE
 					HMI_ErroreCalcoloLista := 1;
@@ -3993,6 +3999,1290 @@ FOR LoopLista := 1 TO 3 DO
 						HMI_Formatura.HMI_Forming_Supporto.DimVertice 		:= RequestPickingListFromHMI[IdxLista].SupportPianoLegno.DimVertice;
 						HMI_Formatura.HMI_Forming_Supporto.HMAX 			:= RequestPickingListFromHMI[IdxLista].SupportPianoLegno.HMAX;
 						HMI_Formatura.HMI_Forming_Supporto.Tipologia		:= e_Tipo_Pallet.CASSA_STANDARD;// RequestPickingListFromHMI[1].Support.Tipologia;		
+				END_CASE	
+				WorkAreaProductionList[j].Support := HMI_Formatura.HMI_Forming_Supporto;		   
+				//WorkAreaProductionList[NumPostazioneDeposito].Support := HMI_Formatura.HMI_Forming_Supporto;												 
+				//
+				HMI_Formatura.HMI_Forming_LastraDaDepositare.XDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.XDim;
+				HMI_Formatura.HMI_Forming_LastraDaDepositare.YDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.YDim;
+				HMI_Formatura.HMI_Forming_LastraDaDepositare.ZDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.ZDim;
+																									
+				HMI_Formatura.HMI_Forming_CodiciAbilitatiFormatura[IdxLista].Code[1] := 1;                 
+				
+				FaldaDaDepositare.TypologyCode := RequestPickingListFromHMI[IdxLista].Layer.Tipologia;
+				
+				FaldaDaDepositare.XDim := RequestPickingListFromHMI[IdxLista].Layer.XDim;
+				FaldaDaDepositare.YDim := RequestPickingListFromHMI[IdxLista].Layer.YDim;
+				FaldaDaDepositare.ZDim := RequestPickingListFromHMI[IdxLista].Layer.ZDim;
+				
+				//Vado ad assegnare il numero giusto di elementi a seconda se è presente o meno la falda 
+				IF (RequestPickingListFromHMI[IdxLista].LayerSequence = 1 AND HMI_AbilitaDepositoFalda) AND RequestPickingListFromHMI[IdxLista].SupportPianoLegno.Tipologia <> CAVALLETTO AND RequestPickingListFromHMI[IdxLista].SupportPianoLegno.Tipologia <> BUNDLE THEN 
+					HMI_Formatura.HMI_Forming_NumeroElementiDaDepositare	:= TO_UINT(2*RequestPickingListFromHMI[IdxLista].SlabNumber - 1);
+				ELSE 
+					HMI_Formatura.HMI_Forming_NumeroElementiDaDepositare	:= TO_UINT(RequestPickingListFromHMI[IdxLista].SlabNumber);
+				END_IF
+				
+				//Ack 
+				IF HMI_ErrAckCalcolaFormatura THEN
+					HMI_Forming_ErroreCalcoli := 0;
+					HMI_ErrAckCalcolaFormatura := FALSE;
+					FOR i:= 1 TO MAXFORMING DO
+						HMI_ConfermaAttivazioneFormatura[i] := FALSE;
+						HMI_Forming_FormaturaAttivata[i] := FALSE;
+					END_FOR
+				END_IF
+				
+				//Azzeramento comandi in caso di errore
+				IF HMI_Forming_ErroreCalcoli <> 0 THEN
+					FOR i:=1 TO MAXFORMING DO
+						HMI_Forming_Attivazione[i] 		:= FALSE;
+						HMI_Forming_Disattivazione[i] 	:= FALSE;
+					END_FOR
+					HMI_Forming_Calcola 			:= FALSE;
+				END_IF
+				
+				//Valorizzo altezza esterna supporto
+				//IF HMI_Forming_Supporto.ZDim_Ext1 = 0 THEN
+					HMI_Forming_Supporto.ZDim_Ext1 := HMI_Forming_Supporto.ZDim + HMI_Forming_Supporto.AltezzaDenteRitenuta;
+				//END_IF
+				//Valorizzo HMAX x tipologia pallet
+				IF HMI_Forming_Supporto.Tipologia = PALLET_STANDARD THEN
+					HMI_Forming_Supporto.HMAX := HMI_Forming_Supporto.ZDim;
+				END_IF
+
+				
+//##########################################################################################		  
+//------------------------------------------------------------------------------------------				
+///////////	Attivazione	Formature  autosettata dopo caricamento dei dati dell'ordine  /////
+//------------------------------------------------------------------------------------------	
+					 
+				//FOR i:= 1 TO MAXFORMING DO
+					idxForm:= IdxLista;//forzo a 1 la formatura da attivare
+					IF HMI_Forming_Attivazione[idxForm] AND idxForm <=3 AND NOT Formacion_De_listaOk[idxForm] THEN
+						Forming[idxForm] := FormingEmpty;
+						(*IF NOT CalcolaFormaturaTrig AND TFCalcoloFormaturaDaLista.PulisciMemoriaDone THEN *)//#Modificado
+							 IF TFCalcoloFormaturaDaLista.CalcolaFormaturaDone THEN
+								CalcolaFormaturaTrig := TRUE;	  
+							END_IF	
+						IF NOT CalcolaFormaturaTrig  AND NOT Formacion_De_listaOk[idxForm] THEN 
+							HMI_Forming_FormaturaAttivata[idxForm] 	:= FALSE;
+							TFCalcoloFormaturaDaLista.PulisciMemoria 	:= TRUE;
+							IF TFCalcoloFormaturaDaLista.PulisciMemoriaDone THEN	
+								HMI_Forming_ErroreCalcoli := 0;
+								CalcolaFormaturaTrig := TRUE;
+								IF (RequestPickingListFromHMI[1].LayerSequence = 0 OR NOT HMI_AbilitaDepositoFalda)
+									AND HMI_Forming_NumeroElementiDaDepositare >0 
+								THEN
+									//Assegno l'ordine tutto a 1 perchè ho solo lastre	
+									FOR i:= 1 TO MAXFORMINGSLAB DO
+										//IF i <= HMI_Forming_NumeroElementiDaDepositare THEN
+										IF i <= HMI_Forming_NumeroElementiDaDepositare + HMI_NumeroPezziPresentiPostazione[NumPostazioneDeposito] THEN
+										//IF i <= 20THEN
+											TFCalcoloFormaturaDaLista.TipoElementoDep[i] := LASTRA;//Settiamo tutte lastre!!
+										ELSE
+											TFCalcoloFormaturaDaLista.TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
+										END_IF
+									END_FOR
+								ELSE
+									//FOR i := 1 TO HMI_Forming_NumeroElementiDaDepositare DO//BY (Request_WorkOrder.LayerSequence+1) DO		  
+									FOR i := 1 TO HMI_Forming_NumeroElementiDaDepositare DO//BY (Request_WorkOrder.LayerSequence+1) DO
+										IF i MOD 2 = 1 THEN// i <= HMI_Forming_NumeroElementiDaDepositare THEN 
+											TFCalcoloFormaturaDaLista.TipoElementoDep[i] := LASTRA;//Settiamo tipo lastre!!
+										ELSE
+											TFCalcoloFormaturaDaLista.TipoElementoDep[i] := FALDA;//Settiamo tipoi falda!
+										END_IF
+										TFCalcoloFormaturaDaLista.TipoElementoDep[i+1] := TERMINATORE;//Settiamo il resto come terminatore
+									END_FOR
+								END_IF	
+								//FOR i := HMI_Forming_NumeroElementiDaDepositare+1 TO MAXFORMINGSLAB DO
+								FOR i := (HMI_Forming_NumeroElementiDaDepositare + HMI_NumeroPezziPresentiPostazione[NumPostazioneDeposito] )   +1 TO MAXFORMINGSLAB DO
+									TFCalcoloFormaturaDaLista.TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
+								END_FOR
+									
+								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA]		:= HMI_Forming_LastraDaDepositare; 
+								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.FALDA]		:= FaldaDaDepositare;
+								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.QUADROTTA]	:= HMI_Forming_LastraDaDepositare;
+								TFCalcoloFormaturaDaLista.Supporto											:= HMI_Forming_Supporto;	//Assegno la tipologia di supporto
+								
+								//CASE HMI_WorkAreaDataPicking[j].Typology OF //**Mod	 
+								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF //**Mod
+									BUNDLE_VERT:
+										TFCalcoloFormaturaDaLista.TipoOrdinamento := 4;//Ordinamento di deposito òato 180°
+									A_FRAME_VERT:
+										TFCalcoloFormaturaDaLista.TipoOrdinamento := 1;//Ordinamento di deposito, prima un lato poi l'altro	
+									ELSE
+										TFCalcoloFormaturaDaLista.TipoOrdinamento := 2;//Ordinamento di deposito consecutivo	 
+								END_CASE
+									 
+								TFCalcoloFormaturaDaLista.CalcolaFormatura := TRUE; 		//Lancio esecuzione dei calcoli
+								MEMSET(ADR(HMI_Forming_FormaturaCalcolata),0,SIZEOF(HMI_Forming_FormaturaCalcolata));	//Pulisco la memoria di destinazione
+								HMI_Forming_Attivazione[i] := FALSE;
+								TFCalcoloFormaturaDaLista.PulisciMemoria := FALSE;
+							END_IF
+						ELSIF (TFCalcoloFormaturaDaLista.CalcolaFormaturaDone OR TFCalcoloFormaturaDaLista.Errore > 0) AND CalcolaFormaturaTrig AND NOT Formacion_De_listaOk[idxForm] THEN
+							CalcolaFormaturaTrig := FALSE;
+							TFCalcoloFormaturaDaLista.CalcolaFormatura := FALSE;
+							Formacion_De_listaOk[idxForm] := TRUE ;
+							IF TFCalcoloFormaturaDaLista.Errore = 0 THEN
+								IDFormatura 								:= IDFormatura+1;
+								GUIDFormatura 								:= STRING_TO_UINT(concat(UINT_TO_STRING(NUMERO_MACCHINA),UINT_TO_STRING(IDFormatura)));
+								HMI_Forming_GUID 							:= GUIDFormatura;
+						
+								HMI_Forming_FormaturaCalcolata 				:= TFCalcoloFormaturaDaLista.FormingSlab;
+								Forming[idxForm] 							:= FormingEmpty;	//Pulisco la memoria di destinazione
+								Forming[idxForm] 							:= TFCalcoloFormaturaDaLista.FormingSlab;
+								Forming[idxForm].Enable 					:= 1;
+								Forming[idxForm].Code 						:= HMI_Forming_CodiciAbilitatiFormatura[idxForm].Code;
+								Forming[idxForm].GUID						:= HMI_Forming_GUID;
+								Forming[idxForm].Pallet						:= HMI_Forming_Supporto;
+								HMI_Forming_IndiceFormaturaAttivata := idxForm;
+								HMI_Forming_FormaturaAttivata[idxForm] 	:= TRUE;
+								HMI_ConfermaAttivazioneFormatura[idxForm] := TRUE;
+								//Valorizzo la struttura del WAPL per ogni elemento da elaborare
+								FOR jj := 1 TO MAXELEMENTLIST DO
+									IF jj < ElementiElaborati[IdxLista] THEN
+										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].PElement 		:= TFCalcoloFormaturaDaLista.FormingSlab.PElement[jj];	
+										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_DA_ELABORARE;
+									
+										IF Picking.HMI_PareggiaturaLastraAbilitata THEN
+											WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DA_ESEGUIRE;
+										ELSE
+											WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DISABILITATA;
+										END_IF
+									ELSE
+										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_NOT_DEFINED;
+									END_IF
+								END_FOR
+							ELSE
+								HMI_Forming_ErroreCalcoli := TFCalcoloFormaturaDaLista.Errore;
+							END_IF
+							HMI_Forming_Attivazione[idxForm] := FALSE;
+						END_IF
+					ELSIF HMI_Forming_Attivazione[idxForm]  AND NOT Formacion_De_listaOk[idxForm] THEN
+						memset(destAddr:=ADR(TFCalcoloFormaturaDaLista.Errore),fillByte:=(UINT_TO_USINT(ErrNumeroMassimoFormatureAmmesse)),n:=SIZEOF(TFCalcoloFormaturaDaLista.Errore));
+					END_IF
+				
+					//Disattivazione formatura
+					IF HMI_Forming_Disattivazione[idxForm] THEN
+						HMI_Forming_Disattivazione[idxForm] := FALSE;
+						Forming[idxForm] := FormingEmpty;	//Pulisco la formatura selezionata e di consegenza la disattivo
+					END_IF
+						
+				//END_FOR
+				
+//####################################################################						 
+
+						  
+				(* Metto in stato di esecuzione il nuovo W.O. se tutto si è attivato *)
+				IF HMI_Forming_FormaturaAttivata[IdxLista] THEN
+
+					ActualPickingListFromHMI[IdxLista].State := e_StatoWorkOrder.DA_ESEGUIRE;
+					//Azzero le liste per le postazioni dove non avviene la pallettizzazione
+					FOR i:= Iforstart TO Iforend DO		 
+						WorkAreaProductionList[i].Stato := e_Stato_ListaDiProduzione.LISTA_PROD_ASSENTE;
+					END_FOR
+					//WorkAreaProductionList[NumPostazioneDeposito].Support := Forming[idxForm].Pallet;
+					WorkAreaProductionList[NumPostazioneDeposito].Stato 					:= LISTA_PROD_DA_ESEGUIRE;
+					WorkAreaProductionList[NumPostazioneDeposito].NumeroListaAssociata 		:= IdxLista;
+					WorkAreaState[NumPostazioneDeposito].F 									:= idxForm;
+					Picking.Cmd_CalcolaLista[IdxLista] 										:= FALSE;
+					HMI_Forming_FormaturaAttivata[IdxLista] 								:= FALSE;
+					//CalcolaFormingRT[IdxLista] 												:= TRUE;
+				END_IF
+				//TFCalcoloFormaturaDaLista();
+			END_IF	
+		
+			TFCalcoloFormaturaDaLista();
+		END_IF	
+		
+		//verifico che la lista sia in esecuzione o terminata
+		IF NOT ListaInEsecuzione[IdxLista] THEN
+			FOR i:= Iforstart TO Iforend DO	
+				IF WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_IN_ESECUZIONE THEN
+					ListaInEsecuzione[IdxLista] := TRUE;
+					EXIT;	
+				END_IF
+			END_FOR
+		ELSE
+			FOR i:= Iforstart TO Iforend DO	
+				IF WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_ESEGUITA THEN
+					ListaInEsecuzione[IdxLista] := FALSE;
+					EXIT;	
+				END_IF
+			END_FOR
+		END_IF
+		
+		//
+		FOR i:= Iforstart TO Iforend DO	
+			IF NumeroPezziPresentiPostazioneStart[i] = 0 AND WorkAreaState[i].P > 1 THEN
+				NumeroPezziPresentiPostazioneStart[i] := TO_UINT(WorkAreaState[i].P);
+			END_IF
+		
+			IF NOT HMI_WorkAreaDataPicking[i].Destinazione THEN
+				IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare > 0 THEN
+					//IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare >= TO_UINT(WorkAreaState[i].P)-1 THEN
+					//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - TO_UINT(WorkAreaState[i].P);
+					//ELSE
+					//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+					//END_IF
+					IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - (TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]) > 0 THEN
+						HMI_NumeroLastreRimanentiOrdineAttuale[i] := MIN(HMI_WorkAreaDataPicking[i].NumElementiDaLavorare,HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - 
+																	(NumeroPezziPresentiPostazioneStart[i] - TO_UINT(WorkAreaState[i].P)));
+					ELSE
+						HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+					END_IF
+				ELSE
+					HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+				END_IF
+			ELSE
+				IF NumeroPezziPresentiPostazioneStart[i] <= (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
+					HMI_NumeroLastreRimanentiOrdineAttuale[i] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]+1;
+				ELSE
+					HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+				END_IF
+			END_IF
+			IF (WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_IN_ESECUZIONE OR WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_ESEGUITA) AND WorkAreaState[i].P > 1 THEN
+					//P:	(* Pack Pointer - Puntatore tabella ELEMENTO (0..n-1=, -1 dato non valido),Numero ELEMENTO successivo da depositare *)
+					HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P-1);
+				IF NumeroPezziPresentiPostazioneStart[i] < (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
+					HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i];
+				ELSE
+					HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P) - 1;
+				END_IF
+			END_IF	
+		END_FOR
+		
+		//trasferisco i valori alla variabile in lettura x HMI
+		MEMCPY(destAddr:=ADR(HMI_WorkAreaProductionList),srcAddr:=ADR(WorkAreaProductionList),n:=SIZEOF(HMI_WorkAreaProductionList));
+		//IF CalcolaFormingRT[IdxLista] AND NOT CalcolaFormingRT2[IdxLista] THEN //original	
+			 
+				  
+					   
+		//##################################añadido	############################################################ 
+		IF 	NOT CalcolaFormingRT[IdxLista] AND NOT CalcolaFormingRT2[IdxLista] AND Temp_UINT[9] = IdxLista THEN
+			
+				CalcolaFormaturaTrig2 		:= FALSE ;
+				CalcolaFormingRT[IdxLista] 	:= TRUE ;
+	 
+		END_IF
+  		//#######################################################################################################
+					   
+							
+		IF CalcolaFormingRT[IdxLista] AND NOT CalcolaFormingRT2[IdxLista] AND ActualPickingListFromHMI[IdxLista].State = 1   THEN //###############################  If  Principal calculos formaciones bendel y cabaleta
+				 		//Para quitar
+		Control1 := control1 +1 ;
+			IF TFCalcoloFormaturaRT[IdxLista].CalcolaFormaturaDone THEN
+				CalcolaFormaturaTrig2 := TRUE;	  
+			END_IF
+			IF NOT CalcolaFormaturaTrig2 AND NOT Formacion_bandelCalOk[idxForm]  THEN//11111111111111111
+			///////////////////////////
+				//CalcolaFormaturaTrig2 := TRUE;
+				TFCalcoloFormaturaRT[IdxLista].PulisciMemoria 	:= TRUE;
+				IF TFCalcoloFormaturaRT[IdxLista].PulisciMemoriaDone THEN		
+					FOR i:= 1 TO MAXFORMINGSLAB DO
+						IF i <= 40 THEN
+						//IF i <= HMI_Forming_NumeroElementiDaDepositare THEN
+							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := LASTRA;//Settiamo tutte lastre!!
+						ELSE
+							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
+						END_IF
+					END_FOR
+					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].XDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.XDim; 
+					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].YDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.YDim; 
+					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].ZDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.ZDim; 
+					TFCalcoloFormaturaRT[IdxLista].Supporto.Code											:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.Code;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.XDim											:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.XDim;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.YDim											:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.YDim*2;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim				:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.ZDim;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.TipoPianoAppoggio 	:= 1;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta:= 15;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim_Ext1        	:= TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim + TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.DimBaseUtile		:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.DimBaseUtile;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.DimVertice 			:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.DimVertice*2;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.HMAX 				:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.HMAX;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.Tipologia 			:= BUNDLE;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.LatoDeposito 		:= 180;
+					TFCalcoloFormaturaRT[IdxLista].TipoOrdinamento				:= 4;	//Ordinamento di deposito, prima un lato poi l'altro
+					TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura 			:= TRUE;//Lancio esecuzione dei calcoli
+					MEMSET(ADR(FormaturaBundleRT[IdxLista]),0,SIZEOF(FormaturaBundleRT[IdxLista]));	//Pulisco la memoria di destinazione
+					TFCalcoloFormaturaRT[IdxLista].PulisciMemoria := FALSE;
+				END_IF
+			ELSIF (TFCalcoloFormaturaRT[IdxLista].CalcolaFormaturaDone OR TFCalcoloFormaturaRT[IdxLista].Errore > 0) AND CalcolaFormaturaTrig2 THEN
+				CalcolaFormaturaTrig2 := FALSE;
+				TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura := FALSE;
+				TFFormacionBandelCalculada := TFCalcoloFormaturaRT[IdxLista]; 
+				FormaturaBundleRT[IdxLista] := TFCalcoloFormaturaRT[IdxLista].FormingSlab;
+				IF TFCalcoloFormaturaRT[IdxLista].Errore = 0 THEN
+					CalcolaFormaturaTrig2 			:= FALSE;
+					CalcolaFormingRT[IdxLista] 		:= FALSE;
+					CalcolaFormingRT2[IdxLista]		:= TRUE;
+					Formacion_bandelCalOk[idxForm] 			:= TRUE ;
+				ELSE
+					CalcolaFormingRT[IdxLista] 		:= TRUE;
+					CalcolaFormaturaTrig2 			:= FALSE;
+				END_IF
+			END_IF
+		//##############################Inicio##############################################		 
+		//#########################Calculo cavaleta##########################################
+		ELSIF CalcolaFormingRT2[IdxLista] AND NOT CalcolaFormingRT[IdxLista] AND ActualPickingListFromHMI[IdxLista].State = 1  THEN 
+			IF NOT CalcolaFormaturaTrig2 AND NOT Formacion_FrameCalOk[idxForm] THEN
+			///////////////////////////
+				TFCalcoloFormaturaRT[IdxLista].PulisciMemoria 	:= TRUE;	  
+				
+					
+				//TFCalcoloFormaturaRT[IdxLista].PulisciMemoria 	:= TRUE;
+				IF TFCalcoloFormaturaRT[IdxLista].PulisciMemoriaDone THEN
+					CalcolaFormaturaTrig2 := TRUE;		
+					FOR i:= 1 TO MAXFORMINGSLAB DO
+						//IF i <= 10  THEN
+						IF i <= 40 THEN
+						//IF i <= HMI_Forming_NumeroElementiDaDepositare  THEN
+							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := LASTRA;//Settiamo tutte lastre!!
+						ELSE
+							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
+						END_IF
+					END_FOR
+					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].XDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.XDim; 
+					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].YDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.YDim; 
+					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].ZDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.ZDim; 
+					TFCalcoloFormaturaRT[IdxLista].HabiCalTodasCordenadas := true ;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.Code											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.Code;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.XDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.XDim;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.YDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.YDim(**2*);
+					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim				:= RequestPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.TipoPianoAppoggio 	:= 1;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta:= 13;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim_Ext1        	:= TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim + TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.DimBaseUtile		:= RequestPickingListFromHMI[IdxLista].SupportVertCav.DimBaseUtile;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.DimVertice 			:= RequestPickingListFromHMI[IdxLista].SupportVertCav.DimVertice(**2*);
+					TFCalcoloFormaturaRT[IdxLista].Supporto.HMAX 				:= RequestPickingListFromHMI[IdxLista].SupportVertCav.HMAX;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.Tipologia 			:= CAVALLETTO;
+					TFCalcoloFormaturaRT[IdxLista].Supporto.LatoDeposito 		:= 0;
+					TFCalcoloFormaturaRT[IdxLista].TipoOrdinamento				:= 1;	//Ordinamento di deposito, prima un lato poi l'altro
+					TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura 			:= TRUE;//Lancio esecuzione dei calcoli
+					MEMSET(ADR(FormaturaAFRAMERT[IdxLista]),0,SIZEOF(FormaturaAFRAMERT[IdxLista]));	//Pulisco la memoria di destinazione
+					TFCalcoloFormaturaRT[IdxLista].PulisciMemoria := FALSE;
+				END_IF
+			ELSIF (TFCalcoloFormaturaRT[IdxLista].CalcolaFormaturaDone OR TFCalcoloFormaturaRT[IdxLista].Errore > 0) AND CalcolaFormaturaTrig2 THEN
+				CalcolaFormaturaTrig2 		:= FALSE;
+				TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura := FALSE;
+				TFFormacionCavalleteCalculada := TFCalcoloFormaturaRT[IdxLista] ;
+				FormaturaAFRAMERT[IdxLista] := TFCalcoloFormaturaRT[IdxLista].FormingSlab;
+				
+				//CalcolaFormingRT[IdxLista] := TRUE ; // modificacion probar
+				IF TFCalcoloFormaturaRT[IdxLista].Errore = 0 THEN
+					CalcolaFormaturaTrig2 		:= FALSE;
+					CalcolaFormingRT[IdxLista] 	:= TRUE;
+					CalcolaFormingRT2[IdxLista]	:= FALSE;
+					Formacion_FrameCalOk[idxForm] 		:= TRUE ;
+				ELSE
+					//CalcolaFormingRT[IdxLista] := TRUE; // original	  
+					CalcolaFormingRT2[IdxLista] := TRUE;
+				//##############################Fin ##############################################		 
+				//#########################Calculo cavaleta##########################################
+				END_IF
+			END_IF
+		END_IF //###############################  If  Principal calculos formaciones bendel y cabaleta
+	
+	TFCalcoloFormaturaRT[IdxLista]();
+END_FOR	 
+	 
+
+	HMI_WorkAreaDataPicking_1_8 := ActualPickingListFromHMI[1].State >= 1;//Ordine postazioni 1..8 in lavoro
+		 
+	HMI_WorkAreaDataPicking_1_4 := (ActualPickingListFromHMI[2].State >= 1);//Ordine postazioni 1..4 in lavoro
+	HMI_WorkAreaDataPicking_5_8 := (ActualPickingListFromHMI[3].State >= 1);//Ordine postazioni 5..8 in lavoro
+
+//FOR IdxLista := 1 TO 3 DO
+//	CASE IdxLista OF	 
+//		1: Iforstart := 1; Iforend := MAXAREAPRESENT;
+//		2: Iforstart := 1; Iforend := 4;
+//		3: Iforstart := 5; Iforend := MAXAREAPRESENT;
+//	END_CASE		 		   
+//	FOR i:= Iforstart TO Iforend DO	
+//		IF NumeroPezziPresentiPostazioneStart[i] = 0 AND WorkAreaState[i].P > 1 THEN
+//			NumeroPezziPresentiPostazioneStart[i] := TO_UINT(WorkAreaState[i].P);
+//		END_IF
+//	
+//		IF NOT HMI_WorkAreaDataPicking[i].Destinazione THEN
+//			IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare > 0 THEN
+//				//IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare >= TO_UINT(WorkAreaState[i].P)-1 THEN
+//				//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - TO_UINT(WorkAreaState[i].P);
+//				//ELSE
+//				//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+//				//END_IF
+//				IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - (TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]) > 0 THEN
+//					HMI_NumeroLastreRimanentiOrdineAttuale[i] := MIN(HMI_WorkAreaDataPicking[i].NumElementiDaLavorare,HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - 
+//																(NumeroPezziPresentiPostazioneStart[i] - TO_UINT(WorkAreaState[i].P)));
+//				ELSE
+//					HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+//				END_IF
+//			ELSE
+//				HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+//			END_IF
+//		ELSE
+//			IF NumeroPezziPresentiPostazioneStart[i] <= (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
+//				HMI_NumeroLastreRimanentiOrdineAttuale[i] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]+1;
+//			ELSE
+//				HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
+//			END_IF
+//		END_IF
+//		IF (WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_IN_ESECUZIONE OR WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_ESEGUITA) AND WorkAreaState[i].P > 1 THEN
+//			HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P-1);
+//			IF NumeroPezziPresentiPostazioneStart[i] < (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
+//				HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i] +1;
+//			ELSE
+//				HMI_NumeroLastreDepOrdineAttuale[IdxLista] := 0;
+//			END_IF
+//		END_IF	
+//	END_FOR		  
+//END_FOR			   
+					
+						 
+							  
+								   
+{endregion}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="_11_CalcolaListaProduzioneNew" Id="{aef0e38f-9c55-4f0c-8209-0f05e5b59d79}">
+      <Implementation>
+        <ST><![CDATA[{region "Gestione zona GLOBALE - Postazioni da 1 a 8"}
+
+
+//#############################################################################################################
+
+{region "Gestione zona GLOBALE - Postazioni da 1 a 8"}
+
+//Traferisco i valori dei supporti della lista 1 nella lista 2 e 3
+(*RequestPickingListFromHMI[2].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
+RequestPickingListFromHMI[3].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
+RequestPickingListFromHMI[2].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
+RequestPickingListFromHMI[3].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
+RequestPickingListFromHMI[2].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
+RequestPickingListFromHMI[3].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
+RequestPickingListFromHMI[2].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
+RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;	*)	  
+	  
+
+FOR LoopLista := 1 TO 3 DO
+	IdxLista := LoopLista;		 
+	 // IdxLista := 2;		  
+	CASE IdxLista OF	 
+		1: Iforstart := 1; Iforend := MAXAREAPRESENT;
+		2: Iforstart := 1; Iforend := 4;
+		3: Iforstart := 5; Iforend := MAXAREAPRESENT;
+	END_CASE	 
+	IF MachinePalletizer_TF.IN.Mode.Man AND
+		(MachinePalletizer_TF.CmdExe.Code = CmdNOP OR MachinePalletizer_TF.CmdExe.Code = CmdMAN) THEN
+
+//--------------------------------------------------------
+			//AZZERAMENTO (Reset) lista di picking	
+//--------------------------------------------------------		 
+			IF Cmd_AzzeraLista[IdxLista] THEN
+				IF Prueva THEN
+					MissionClr := ADR(Mission) ;
+	 				MEMSET(destAddr := ADR(MissionClr^),fillByte := 0 , n := SIZEOF(MissionClr^));
+				END_IF
+					ClrEstructura := ADR(PosCavalleteOrdenPikin) ;
+					MEMSET(destAddr := ADR(ClrEstructura^),fillByte := 0 , n := SIZEOF(ClrEstructura^));	  
+					NuEstacionesPiking := 0 ;	  
+					NuEstacionPiking   := 0 ;
+					NuPosGuiroPiking := 0;
+					PosFinOrdenPikingCaballete := 0 ;
+					
+					MultiplesCavalletesReceta := FALSE ;
+					CoordenadaPasillo0_Y := 0 ;
+					CoordenadaPasillo180_Y := 0 ;
+				
+				//FOR i:= 1 TO 3 DO
+						//CalcolaFormingRT2[i] := FALSE ;
+					CalcolaFormingRT[IdxLista] := FALSE ;
+					CalcolaFormingRT2[IdxLista] := FALSE ;	 
+						//#Añadido 4_7_2025########################
+					Formacion_bandelCalOk[IdxLista]			:= FALSE ;
+					Formacion_FrameCalOk[IdxLista]			:= FALSE ;
+					Formacion_De_listaOk[IdxLista]			:= FALSE ;
+					FormaturaAFRAMERT[IdxLista]		   	:=	FormingEmpty;
+					FormaturaBundleRT[IdxLista]	 		:=	FormingEmpty;
+				//Añadido 4_7_2025##########################
+						
+				// END_FOR
+				ActualPickingListFromHMI[IdxLista].State := e_StatoWorkOrder.NON_ESEGUITO;
+				HMI_NumeroLastreDepOrdineAttuale[IdxLista] := 0; 
+				//Disattivazione formatura
+				Forming[1] := FormingEmpty;	//Pulisco la formatura selezionata e di consegenza la disattivo
+				Forming[2] := FormingEmpty;	//Pulisco la formatura selezionata e di consegenza la disattivo
+				Forming[3] := FormingEmpty;	//Pulisco la formatura selezionata e di consegenza la disattivo
+				Forming[4] := FormingEmpty;	//Pulisco la formatura selezionata e di consegenza la disattivo
+				ActualPickingListFromHMI[IdxLista].State := e_StatoWorkOrder.NON_ESEGUITO;
+				Cmd_AttivaLista[IdxLista] := FALSE;
+				HMI_Forming_NumeroElementiDaDepositare := 0;
+ 				RequestPickingListFromHMI[IdxLista].SlabNumber :=0;
+	 
+				//Azzero le liste per le postazioni dove non avviene la pallettizzazione
+				FOR i:= Iforstart TO Iforend DO	
+					TFClearWorkAreaArray(ADR(Workarea),ADR(WorkAreaState),k:=i);
+					HMI_WorkAreaDataPicking[i].Destinazione := FALSE;
+					HMI_WorkAreaDataPicking[i].NumElementiDaLavorare := 0;
+					WorkAreaState[i].P 			:= 1;
+					WorkAreaProductionList[i] 	:= ListaEmpty;
+					WorkAreaOffset[i].Y 		:= 0;
+					//HMI_NumeroPezziPresentiPostazione[i] 	:= 0; // Quitado Para No resetear posiciones
+					NumeroPezziPresentiPostazioneStart[i] 	:= 0;
+					WorkAreaProductionList[i].Stato 		:= e_Stato_ListaDiProduzione.LISTA_PROD_ASSENTE;	 
+				END_FOR			  
+				ActualPickingListFromHMI[IdxLista].SlabNumber 		  			:= 0;
+				ActualPickingListFromHMI[IdxLista].SlabDimension.XDim 			:= 0;
+				ActualPickingListFromHMI[IdxLista].SlabDimension.YDim 			:= 0;
+				ActualPickingListFromHMI[IdxLista].SlabDimension.ZDim 			:= 0;
+				ActualPickingListFromHMI[IdxLista].SupportPianoLegno 			:= SupportDataEmpty;
+				ActualPickingListFromHMI[IdxLista].SupportPianoFerro 			:= SupportDataEmpty;
+				ActualPickingListFromHMI[IdxLista].SupportVertBundle 			:= SupportDataEmpty;
+				ActualPickingListFromHMI[IdxLista].SupportVertCav 			 	:= SupportDataEmpty;
+				
+				HMI_ErroreCalcoloLista 		:= 0;
+				Cmd_CalcolaLista[IdxLista] 	:= FALSE;
+				HMI_Forming_Attivazione[IdxLista] 	:= FALSE;//attivo nuova formatura
+				Cmd_AzzeraLista[IdxLista] := FALSE;
+				//Ack 
+				//IF HMI_ErrAckCalcolaFormatura THEN
+					HMI_Forming_ErroreCalcoli := 0;
+					HMI_ErrAckCalcolaFormatura := FALSE;
+					FOR i:= 1 TO MAXFORMING DO
+						HMI_ConfermaAttivazioneFormatura[i] := FALSE;
+						HMI_Forming_FormaturaAttivata[i] := FALSE;
+					END_FOR
+				//END_IF
+				CalcolaFormaturaTrig := FALSE;
+			END_IF
+
+
+
+//--------------------------------------------------------
+		// COMANDO ATTIVAZIONE  lista di picking	
+//--------------------------------------------------------		 		  
+			//Se non ho una Destinazione impostata, Num.pezzi impostato, o Num.pezzi richiesto...
+			//	Resetto il comando		
+					IF Cmd_AttivaLista[1] = TRUE  THEN
+						IF 	(HMI_WorkAreaDataPicking[1].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[2].Destinazione =0 AND
+							HMI_WorkAreaDataPicking[3].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[4].Destinazione =0 AND	 
+							HMI_WorkAreaDataPicking[5].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[6].Destinazione =0 AND
+							HMI_WorkAreaDataPicking[7].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[8].Destinazione =0)							 
+							OR
+							(HMI_NumeroPezziPresentiPostazione[1] =0 AND 
+							HMI_NumeroPezziPresentiPostazione[2] =0 AND
+							HMI_NumeroPezziPresentiPostazione[3] =0 AND 
+							HMI_NumeroPezziPresentiPostazione[4] =0 AND
+							HMI_NumeroPezziPresentiPostazione[5] =0 AND 
+	 						HMI_NumeroPezziPresentiPostazione[6] =0 AND
+							HMI_NumeroPezziPresentiPostazione[7] =0 AND 
+							HMI_NumeroPezziPresentiPostazione[8] =0)
+							OR	 	 
+							RequestPickingListFromHMI[1].SlabNumber = 0	 
+						THEN
+							Cmd_AttivaLista[1] := FALSE;
+						 END_IF
+					END_IF		  
+					IF Cmd_AttivaLista[2] = TRUE  THEN
+						IF 	(HMI_WorkAreaDataPicking[1].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[2].Destinazione =0 AND
+							HMI_WorkAreaDataPicking[3].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[4].Destinazione =0)
+							OR
+							(HMI_NumeroPezziPresentiPostazione[1] =0 AND 
+							HMI_NumeroPezziPresentiPostazione[2] =0 AND
+							HMI_NumeroPezziPresentiPostazione[3] =0 AND 
+							HMI_NumeroPezziPresentiPostazione[4] =0)
+							OR	 
+							RequestPickingListFromHMI[2].SlabNumber = 0	 	 
+						THEN
+							Cmd_AttivaLista[2] := FALSE;
+						 END_IF
+					END_IF		
+					IF Cmd_AttivaLista[3] = TRUE  THEN
+						IF 	(HMI_WorkAreaDataPicking[5].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[6].Destinazione =0 AND
+							HMI_WorkAreaDataPicking[7].Destinazione =0 AND 
+							HMI_WorkAreaDataPicking[8].Destinazione =0)
+							OR
+							(HMI_NumeroPezziPresentiPostazione[5] =0 AND 
+							HMI_NumeroPezziPresentiPostazione[6] =0 AND
+							HMI_NumeroPezziPresentiPostazione[7] =0 AND 
+							HMI_NumeroPezziPresentiPostazione[8] =0)
+							OR	 	 
+							RequestPickingListFromHMI[3].SlabNumber = 0	 	 
+						THEN
+							Cmd_AttivaLista[3] := FALSE;
+						 END_IF
+					END_IF		
+{Region "Prmer Bucle cuenta las piezas a coger y rellena el workareastate Con el Tipo Palet"}
+
+			// COMANDO ATTIVAZIONE  lista di picking	
+		    IF Cmd_AttivaLista[IdxLista] AND ActualPickingListFromHMI[IdxLista].State <> e_StatoWorkOrder.IN_ESECUZIONE THEN
+				ElementiDaDepositare[IdxLista]   :=0;
+				HMI_ErroreCalcoloLista := 0;
+				HMI_NumeroLastreDepOrdineAttuale[IdxLista] := 0;
+				FOR i:= Iforstart TO Iforend DO	
+					//HMI_WorkAreaDataPicking[i].Destinazione := FALSE;
+					//HMI_WorkAreaDataPicking[i].NumElementiDaLavorare := 0;
+					WorkAreaState[i].P := 1;
+					WorkAreaProductionList[i] := ListaEmpty;
+				END_FOR	 
+				
+				FOR i:= Iforstart TO Iforend DO	
+					IF NOT HMI_WorkAreaDataPicking[i].Destinazione THEN
+						ElementiDaDepositare[IdxLista] := ElementiDaDepositare[IdxLista] + HMI_WorkAreaDataPicking[i].NumElementiDaLavorare;
+						WorkAreaState[i].P := HMI_WorkAreaDataPicking[i].NumElementiDaLavorare +1;
+					//#####################################################################################
+							FOR InPiezasPos := 1 TO HMI_NumeroPezziPresentiPostazione[i] + 1 DO
+								WorkAreaProductionList[i].PElementList[InPiezasPos].PElement.SlabDimension :=
+																	 RequestPickingListFromHMIWorkArea[i].SlabDimension ;
+								WorkAreaProductionList[i].PElementList[InPiezasPos].PElement.Typology := LASTRA ;
+											   
+							END_FOR
+					//#################################################################################################	
+						CASE HMI_WorkAreaDataPicking[i].Typology OF
+							LEGNO_PIANO,TELAIO_PIANO:
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.CASSA_STANDARD;
+							A_FRAME_VERT:	
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.CAVALLETTO;
+								
+							IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare > 0 THEN 
+								NuEstacionesPiking := NuEstacionesPiking + 1 ;	
+								PosCavalleteOrdenPikin[i]	:=  e_Tipo_Pallet.CAVALLETTO;  
+							END_IF
+							BUNDLE_VERT:
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.BUNDLE;	
+							
+						 ELSE
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.CASSA_STANDARD;		   
+						 END_CASE
+					ELSE
+						NumPostazioneDeposito := i; NuEstacionPiking := i;
+						
+						HMI_WorkAreaDataPicking[NumPostazioneDeposito].NumElementiDaLavorare := RequestPickingListFromHMI[IdxLista].SlabNumber;
+						CASE HMI_WorkAreaDataPicking[i].Typology OF
+							LEGNO_PIANO,TELAIO_PIANO:
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.CASSA_STANDARD;
+							A_FRAME_VERT:	
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.CAVALLETTO;
+								NuEstacionesPiking := NuEstacionesPiking + 1 ;	
+								PosCavalleteOrdenPikin[i]	:=  e_Tipo_Pallet.CAVALLETTO;  	 
+							BUNDLE_VERT:
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.BUNDLE;	
+								
+							
+						 ELSE
+								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.CASSA_STANDARD;		   
+						 END_CASE
+					END_IF
+
+		  
+//HMI_NumeroPezziPresentiPostazione[i] := WorkAreaState[i].P -1; //NB:cancellato xckè alla attivazione azzerava il num.pezzi presenti sulle postazioni di prelievo
+				END_FOR
+	
+				IF ElementiDaDepositare[IdxLista] <= HMI_WorkAreaDataPicking[NumPostazioneDeposito].NumElementiDaLavorare THEN
+					ActualPickingListFromHMI[IdxLista] 			:= RequestPickingListFromHMI[IdxLista];
+					ActualPickingListFromHMI[IdxLista].State 	:= e_StatoWorkOrder.DA_ESEGUIRE;
+
+				ELSE
+					HMI_ErroreCalcoloLista := 1;
+				END_IF
+				Cmd_AttivaLista[IdxLista] 				:= FALSE;
+				 
+			ELSE
+				Cmd_AttivaLista[IdxLista] 				:= FALSE;
+				 
+			END_IF
+{endregion}	
+
+{region "Cotas posicione de trabajo"}
+
+//--------------------------------------------------------------------				
+//////// attivazione lista di picking : StatoWorkOrder.DA_ESEGUIRE ///
+//--------------------------------------------------------------------				
+			IF ActualPickingListFromHMI[IdxLista].State = e_StatoWorkOrder.DA_ESEGUIRE  THEN
+				ListaInEsecuzione[IdxLista] := FALSE;
+				NumeroListaInEsecuzione := 0;
+			
+				(* Inserimento sequenza di prelievo dalle postazioni in base al quello che l'operatore ha editato da HMI*)
+				ElementiDaDepositare[IdxLista] := 0;
+				ElementiElaborati[IdxLista]    := 1;
+				NumPostazioneDeposito := 0;
+				//FOR i:= 1 TO MAXAREAPRESENT DO
+				//	WorkAreaState[i].P := 1;
+				//END_FOR		
+				
+				FOR i:= Iforstart TO Iforend DO//---------- For 1 HMI_WorkAreaDataPicking[i].Destinazione 
+					IF HMI_WorkAreaDataPicking[i].Destinazione THEN  //-------> Palet destino
+						NumPostazioneDeposito := i;
+						HMI_WorkAreaDataPicking[NumPostazioneDeposito].NumElementiDaLavorare 	:= RequestPickingListFromHMI[IdxLista].SlabNumber;
+						(*CASE HMI_WorkAreaDataPicking[i].Typology OF     // case Pricipal1*)		 
+						CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF     // case Pricipal1	
+							(* Se ho un legno in piano *)	 
+							LEGNO_PIANO:	
+								//WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.Code; 
+								WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.Code; 	   
+								//WorkAreaState[NumPostazioneDeposito].Supporto.AltezzaDenteRitenuta 		:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.DimBaseUtile;
+								WorkAreaState[NumPostazioneDeposito].Supporto.AltezzaDenteRitenuta 		:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.DimBaseUtile;
+								//WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.DimVertice;
+								WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.DimVertice;			   
+								//WorkAreaState[NumPostazioneDeposito].Supporto.HMAX 						:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.HMAX;
+							   	WorkAreaState[NumPostazioneDeposito].Supporto.HMAX 						:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.HMAX;
+								//WorkAreaState[NumPostazioneDeposito].Supporto.Tipologia 				:= e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI.Support.Tipologia;
+								WorkAreaState[NumPostazioneDeposito].Supporto.Tipologia 				:= e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI.Support.Tipologia;   
+								//WorkAreaState[NumPostazioneDeposito].Supporto.XDim 						:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.XDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.XDim 						:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.XDim;
+								//WorkAreaState[NumPostazioneDeposito].Supporto.YDim 						:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.YDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.YDim 						:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.YDim;
+								//WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.ZDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.ZDim;
+								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportPianoLegno.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+								
+								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF
+									LEGNO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CASSA_STANDARD; 
+									TELAIO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CASSA_STANDARD; 
+									BUNDLE_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support := WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia	:= e_Tipo_Pallet.BUNDLE; 
+												
+									A_FRAME_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support := WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia	:= e_Tipo_Pallet.CAVALLETTO; 
+												
+								END_CASE
+								FOR j:= Iforstart TO Iforend DO
+									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
+										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
+											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
+											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################
+												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
+											END_FOR
+											CASE HMI_WorkAreaDataPicking[j].Typology OF 
+												(* Se ho una cassa pianale in legno *)
+												LEGNO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportPianoLegno.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+													
+																   
+												(* Se ho una cassa pianale in ferro su supporto *)
+												TELAIO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:=  e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_TELAIO - ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												(* Se ho un bundle *)
+												BUNDLE_VERT:
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= e_Tipo_Pallet.BUNDLE;//ActualPickingListFromHMI.SupportVert.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;
+													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 20; 
+													WorkAreaState[j].Supporto.LatoDeposito 			:= 180;    
+													//Lo que HABIA	
+													//WorkAreaOffset[j].Y 							:= HMI_OffsetDepositoLastra.Y180 ;
+													//Mod 25/&/2025	  
+													WorkAreaOffset[NumPostazioneDeposito].Y 		:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.YDim - RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimBaseUtile -40 ;			
+												(* Se ho un A_Frame *)	  
+												A_FRAME_VERT:  						
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= CAVALLETTO;//ActualPickingListFromHMI.SupportVertCav.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15;     	
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+											   		CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
+											END_CASE	
+											WorkAreaProductionList[j].Support := WorkAreaState[j].Supporto; 
+										END_IF
+									END_IF     
+									TFClearApprendimento(ADR(WorkAreaState[j].Apprendimento));//Azzeramento apprendimento 
+								END_FOR
+								EXIT; 
+							(* Se ho un telaio in piano *)	 
+							TELAIO_PIANO:	
+								WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= ActualPickingListFromHMI[IdxLista].SupportPianoFerro.Code;
+								WorkAreaState[NumPostazioneDeposito].Supporto.AltezzaDenteRitenuta 		:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimBaseUtile;
+								WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimVertice;
+								WorkAreaState[NumPostazioneDeposito].Supporto.HMAX 						:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.HMAX;
+								WorkAreaState[NumPostazioneDeposito].Supporto.Tipologia 				:= CASSA_STANDARD;//ActualPickingListFromHMI.Support.Tipologia;
+								WorkAreaState[NumPostazioneDeposito].Supporto.XDim 						:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.XDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.YDim 						:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.YDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim;
+								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_TELAIO - ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF
+									LEGNO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support := WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia	:= e_Tipo_Pallet.CASSA_STANDARD; 
+									TELAIO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support := WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia	:= e_Tipo_Pallet.CASSA_STANDARD; 
+									BUNDLE_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support := WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia	:= e_Tipo_Pallet.BUNDLE; 
+									A_FRAME_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support := WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia	:= e_Tipo_Pallet.CAVALLETTO; 
+								END_CASE
+								
+								FOR j:= Iforstart TO Iforend DO
+									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
+										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
+											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
+											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################
+												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
+											END_FOR
+											CASE HMI_WorkAreaDataPicking[j].Typology OF 
+												(* Se ho una cassa pianale in legno *)
+												LEGNO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:=  e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportPianoLegno.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												(* Se ho una cassa pianale in ferro su supporto *)
+												TELAIO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportPianoFerro.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:=  e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_TELAIO - ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												(* Se ho un bundle *)
+												BUNDLE_VERT:
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= e_Tipo_Pallet.BUNDLE;//ActualPickingListFromHMI.SupportVertBundle.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													  
+													WorkAreaOffset[j].Y 		:= 0 ;	
+													//Mod 25/&/2025	  
+													//WorkAreaOffset[j].Y 		:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.YDim-ActualPickingListFromHMI[IdxLista].SupportVertBundle.DimBaseUtile -40;				
+												(* Se ho un A_Frame *)	  
+												A_FRAME_VERT:  						
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertcav.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= CAVALLETTO;//ActualPickingListFromHMI.SupportVert.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 	
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+											   		CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
+											END_CASE	
+											WorkAreaProductionList[j].Support := HMI_Formatura.HMI_Forming_Supporto; 
+										END_IF
+									END_IF     
+									TFClearApprendimento(ADR(WorkAreaState[j].Apprendimento));//Azzeramento apprendimento 
+								END_FOR
+								EXIT; 
+							(* Se ho un bundle *)
+							BUNDLE_VERT:
+								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF
+									LEGNO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CASSA_STANDARD; 
+									TELAIO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CASSA_STANDARD; 
+									BUNDLE_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.BUNDLE; 
+									A_FRAME_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CAVALLETTO; 
+								END_CASE
+								//Se ho deposito verticale su bundle
+								WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.Code;
+								WorkAreaState[NumPostazioneDeposito].Supporto.DimBaseUtile		 		:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimBaseUtile;
+								WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimVertice;
+								WorkAreaState[NumPostazioneDeposito].Supporto.HMAX 						:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.HMAX;
+								WorkAreaState[NumPostazioneDeposito].Supporto.Tipologia 				:= e_Tipo_Pallet.BUNDLE;
+								WorkAreaState[NumPostazioneDeposito].Supporto.XDim 						:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.XDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.YDim 						:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.YDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim;
+								//Lo que HABIA
+								//PruevaWorkAreaOffset[NumPostazioneDeposito].Y 								:= -40;	
+								//Mod 25/&/2025	  
+								//WorkAreaOffset[NumPostazioneDeposito].Y 								:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.YDim-ActualPickingListFromHMI[IdxLista].SupportVertBundle.DimBaseUtile -20;
+								FOR j:= Iforstart TO Iforend DO
+									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
+										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
+											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
+											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################
+												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
+											END_FOR
+											CASE HMI_WorkAreaDataPicking[j].Typology OF 
+												(* Se ho una cassa pianale in legno *)
+												LEGNO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:=  e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportPianoLegno.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												(* Se ho una cassa pianale in ferro su supporto *)
+												TELAIO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportPianoFerro.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:=  e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_TELAIO - ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												(* Se ho un bundle *)
+												BUNDLE_VERT:
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= e_Tipo_Pallet.BUNDLE;//ActualPickingListFromHMI.SupportVert.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													// **Lo Que Habia	
+													WorkAreaOffset[j].Y 							:= 0;
+													//Mod 25/&/2025	  
+													//WorkAreaOffset[j].Y 		:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.YDim-ActualPickingListFromHMI[IdxLista].SupportVertBundle.DimBaseUtile -40;	
+			
+												(* Se ho un A_Frame *)	  
+												A_FRAME_VERT:  						
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= CAVALLETTO;//ActualPickingListFromHMI.SupportVert.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 	
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+													CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;		  
+											END_CASE
+											//WorkAreaProductionList[j].Support := HMI_Formatura.HMI_Forming_Supporto;		  
+											WorkAreaProductionList[j].Support := WorkAreaState[j].Supporto;
+										END_IF
+									END_IF
+									TFClearApprendimento(ADR(WorkAreaState[j].Apprendimento));//Azzeramento apprendimento
+								END_FOR
+								EXIT; 
+							(* Se ho un A_Frame *)	
+							A_FRAME_VERT:
+								WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= ActualPickingListFromHMI[IdxLista].SupportVertCav.Code;
+								WorkAreaState[NumPostazioneDeposito].Supporto.DimBaseUtile		 		:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimBaseUtile;
+								WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimVertice;
+								WorkAreaState[NumPostazioneDeposito].Supporto.HMAX 						:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.HMAX;
+								WorkAreaState[NumPostazioneDeposito].Supporto.Tipologia 				:= e_Tipo_Pallet.CAVALLETTO;//ActualPickingListFromHMI.SupportVertBundle.Tipologia;
+								WorkAreaState[NumPostazioneDeposito].Supporto.XDim 						:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.XDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.YDim 						:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.YDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim;
+								WorkAreaState[NumPostazioneDeposito].Supporto.TipoPianoAppoggio 		:= 1;                      
+								WorkAreaState[NumPostazioneDeposito].Supporto.AltezzaDenteRitenuta		:= 15; 
+								//WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO (*- ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2*);
+								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;	 
+								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF
+									LEGNO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CASSA_STANDARD; 
+									TELAIO_PIANO:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CASSA_STANDARD; 
+									BUNDLE_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.BUNDLE; 
+									A_FRAME_VERT:
+										 		WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
+												WorkAreaProductionList[NumPostazioneDeposito].Support.Tipologia		:= e_Tipo_Pallet.CAVALLETTO; 
+												CoordenadaPasillo0_Y 												:= WorkArea[NumPostazioneDeposito].Y +  WorkAreaOffset[NumPostazioneDeposito].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[NumPostazioneDeposito].Supporto.YDim /2;
+												CoordenadaPasillo180_Y 												:= WorkArea[NumPostazioneDeposito].Y + WorkAreaState[NumPostazioneDeposito].Supporto.YDim /2 + WorkAreaOffset[NumPostazioneDeposito].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;		
+					  
+								END_CASE
+								FOR j:= Iforstart TO Iforend DO
+									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
+										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
+											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
+											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
+												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################
+												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
+											END_FOR
+											CASE HMI_WorkAreaDataPicking[j].Typology OF 
+												(* Se ho una cassa pianale in legno *)
+												LEGNO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:=  e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + RequestPickingListFromHMIWorkArea[j].SupportPianoLegno.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												(* Se ho una cassa pianale in ferro su supporto *)
+												TELAIO_PIANO:
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportPianoFerro.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:=  e_Tipo_Pallet.CASSA_STANDARD;//ActualPickingListFromHMI[1].Support.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.ZDim;
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_TELAIO - RequestPickingListFromHMIWorkArea[j].SupportPianoFerro.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												(* Se ho un bundle *)
+												BUNDLE_VERT:
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= e_Tipo_Pallet.BUNDLE;//ActualPickingListFromHMI.SupportVert.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													//**Lo Que Habia
+													WorkAreaOffset[j].Y 							:= 0;
+													//Mod 25/&/2025	  
+													//WorkAreaOffset[j].Y 		:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.YDim-ActualPickingListFromHMI[IdxLista].SupportVertBundle.DimBaseUtile -40;					
+												(* Se ho un A_Frame *)	  
+												A_FRAME_VERT:  						
+													//WorkAreaState[j].P := ElementiDaDepositare;
+													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.Code;
+													WorkAreaState[j].Supporto.DimBaseUtile		 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimBaseUtile;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta 	:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim+20;
+													WorkAreaState[j].Supporto.DimVertice 			:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.DimVertice;
+													WorkAreaState[j].Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.HMAX;
+													WorkAreaState[j].Supporto.Tipologia 			:= CAVALLETTO;//ActualPickingListFromHMI.SupportVertCav.Tipologia;
+													WorkAreaState[j].Supporto.XDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.XDim;
+													WorkAreaState[j].Supporto.YDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.YDim;
+													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim;
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 		
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + RequestPickingListFromHMIWorkArea[j].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												   	CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
+												
+											END_CASE
+													  
+											WorkAreaProductionList[j].Support := HMI_Formatura.HMI_Forming_Supporto;
+										END_IF
+									END_IF
+									TFClearApprendimento(ADR(WorkAreaState[j].Apprendimento));//Azzeramento apprendimento
+								END_FOR
+								EXIT; 
+						END_CASE // case Pricipal1
+					END_IF	//-------->	 //-------> Palet destino
+				END_FOR//----------For 1 HMI_WorkAreaDataPicking[i].Destinazione 
+				
+				Picking.Cmd_CalcolaLista[IdxLista] := TRUE;
+				HMI_Forming_Attivazione[IdxLista] := TRUE;//attivo nuova formatura
+			END_IF //------------------------------ActualPickingListFromHMI[IdxLista].State = e_StatoWorkOrder.DA_ESEGUIRE 
+{endregion }
+
+
+		IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] THEN
+			FOR CalFor := Iforstart TO Iforend DO
+				IF CalFor = NumPostazioneDeposito THEN
+					CASE CrearFormacion OF
+		  				1:  
+							// borra las estructuras Anteas hacer el calculo
+							TFCalcoloFormaturaWA[CalFor].PulisciMemoria := TRUE ;
+							HMI_Forming_FormaturaAttivata[idxForm] 	:= FALSE;	
+							TFCalcoloFormaturaWA[CalFor]() ;	  
+						2:
+							IF 	 TFCalcoloFormaturaWA[CalFor].PulisciMemoria AND TFCalcoloFormaturaWA[CalFor].PulisciMemoriaDone THEN 
+								
+								//CASE HMI_WorkAreaDataPicking[j].Typology OF //**Mod	 
+								CASE WorkAreaState[NumPostazioneDeposito].Supporto.Tipologia OF //**Mod
+									BUNDLE_VERT:
+										TFCalcoloFormaturaDaLista.TipoOrdinamento := 4;//Ordinamento di deposito òato 180°
+									A_FRAME_VERT:
+										TFCalcoloFormaturaDaLista.TipoOrdinamento := 1;//Ordinamento di deposito, prima un lato poi l'altro	
+										TFCalcoloFormaturaWA[CalFor].HabiCalTodasCordenadas := TRUE ;
+									ELSE
+										TFCalcoloFormaturaDaLista.TipoOrdinamento := 2;//Ordinamento di deposito consecutivo	 
+								END_CASE
+										  
+							END_IF 
+						3:	
+					END_CASE	  
+					ELSE
+								  
+							
+				END_IF
+			END_FOR
+			END_IF	 
+			
+			//una volta calcolata la lista per stabilire le postazioni di prelievo e quella di deposito, calcolo la formatura della postazione di deposito
+			IF Picking.Cmd_CalcolaLista[IdxLista] THEN
+				
+				//CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF 	 
+				//CASE HMI_WorkAreaDataPicking[j].Typology OF 
+				CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF 
+					TELAIO_PIANO:
+						HMI_Formatura.HMI_Forming_Supporto.Code						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.Code;
+						HMI_Formatura.HMI_Forming_Supporto.XDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.XDim;
+						HMI_Formatura.HMI_Forming_Supporto.YDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.YDim;
+						HMI_Formatura.HMI_Forming_Supporto.ZDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.ZDim;
+						HMI_Formatura.HMI_Forming_Supporto.DimBaseUtile				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.DimBaseUtile;
+						HMI_Formatura.HMI_Forming_Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.DimVertice;
+						HMI_Formatura.HMI_Forming_Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.HMAX;
+						HMI_Formatura.HMI_Forming_Supporto.Tipologia				:= e_Tipo_Pallet.CASSA_STANDARD;// RequestPickingListFromHMI[1].Support.Tipologia;		
+
+					A_FRAME_VERT:
+						HMI_Formatura.HMI_Forming_Supporto.Code						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.Code;
+						HMI_Formatura.HMI_Forming_Supporto.XDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.XDim;
+						HMI_Formatura.HMI_Forming_Supporto.YDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.YDim;
+						HMI_Formatura.HMI_Forming_Supporto.ZDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.ZDim;
+						HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio 		:= 1;                      
+						HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta		:= 15;              
+						HMI_Formatura.HMI_Forming_Supporto.ZDim_Ext1        		:= HMI_Formatura.HMI_Forming_Supporto.ZDim + HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta;
+						HMI_Formatura.HMI_Forming_Supporto.DimBaseUtile				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.DimBaseUtile;
+						HMI_Formatura.HMI_Forming_Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.DimVertice;
+						HMI_Formatura.HMI_Forming_Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.HMAX;
+						HMI_Formatura.HMI_Forming_Supporto.Tipologia 				:= e_Tipo_Pallet.CAVALLETTO;                  
+			
+					BUNDLE_VERT:
+						HMI_Formatura.HMI_Forming_Supporto.Code						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.Code;
+						HMI_Formatura.HMI_Forming_Supporto.XDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.XDim;
+						HMI_Formatura.HMI_Forming_Supporto.YDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.YDim*2;
+						HMI_Formatura.HMI_Forming_Supporto.ZDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.ZDim;
+						HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio 		:= 1;                      
+						HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta		:= 20; 
+						HMI_Formatura.HMI_Forming_Supporto.LatoDeposito 			:= 180;             
+						HMI_Formatura.HMI_Forming_Supporto.ZDim_Ext1        		:= HMI_Formatura.HMI_Forming_Supporto.ZDim +	HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta;
+						HMI_Formatura.HMI_Forming_Supporto.DimBaseUtile				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.DimBaseUtile;
+						HMI_Formatura.HMI_Forming_Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.DimVertice*2;
+						HMI_Formatura.HMI_Forming_Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.HMAX;
+						HMI_Formatura.HMI_Forming_Supporto.Tipologia 				:= e_Tipo_Pallet.BUNDLE;                  
+						                     
+					ELSE	
+						HMI_Formatura.HMI_Forming_Supporto.Code						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoLegno.Code;
+						HMI_Formatura.HMI_Forming_Supporto.XDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoLegno.XDim;
+						HMI_Formatura.HMI_Forming_Supporto.YDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoLegno.YDim;
+						HMI_Formatura.HMI_Forming_Supporto.ZDim						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoLegno.ZDim;
+						HMI_Formatura.HMI_Forming_Supporto.DimBaseUtile				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoLegno.DimBaseUtile;
+						HMI_Formatura.HMI_Forming_Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoLegno.DimVertice;
+						HMI_Formatura.HMI_Forming_Supporto.HMAX 					:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoLegno.HMAX;
+						HMI_Formatura.HMI_Forming_Supporto.Tipologia				:= e_Tipo_Pallet.CASSA_STANDARD;// RequestPickingListFromHMI[1].Support.Tipologia;		
 				END_CASE	
 				WorkAreaProductionList[j].Support := HMI_Formatura.HMI_Forming_Supporto;		   
 				//WorkAreaProductionList[NumPostazioneDeposito].Support := HMI_Formatura.HMI_Forming_Supporto;												 
@@ -6176,6 +7466,545 @@ END_IF
       <LineId Id="3119" Count="0" />
       <LineId Id="3169" Count="0" />
       <LineId Id="3130" Count="20" />
+      <LineId Id="3118" Count="0" />
+      <LineId Id="4760" Count="0" />
+      <LineId Id="3113" Count="0" />
+      <LineId Id="3115" Count="0" />
+      <LineId Id="765" Count="23" />
+      <LineId Id="3869" Count="0" />
+      <LineId Id="789" Count="20" />
+      <LineId Id="3623" Count="0" />
+      <LineId Id="810" Count="0" />
+      <LineId Id="3619" Count="3" />
+      <LineId Id="3618" Count="0" />
+      <LineId Id="812" Count="2" />
+      <LineId Id="836" Count="1" />
+      <LineId Id="4751" Count="1" />
+      <LineId Id="4748" Count="0" />
+      <LineId Id="3653" Count="0" />
+      <LineId Id="4743" Count="0" />
+      <LineId Id="839" Count="2" />
+      <LineId Id="3626" Count="3" />
+      <LineId Id="844" Count="1" />
+      <LineId Id="4762" Count="0" />
+      <LineId Id="846" Count="0" />
+      <LineId Id="4765" Count="0" />
+      <LineId Id="847" Count="5" />
+      <LineId Id="4763" Count="0" />
+      <LineId Id="853" Count="9" />
+      <LineId Id="4766" Count="0" />
+      <LineId Id="863" Count="6" />
+      <LineId Id="1373" Count="0" />
+      <LineId Id="3701" Count="0" />
+      <LineId Id="3174" Count="0" />
+      <LineId Id="3181" Count="0" />
+      <LineId Id="3184" Count="0" />
+      <LineId Id="3188" Count="0" />
+      <LineId Id="3190" Count="0" />
+      <LineId Id="3185" Count="1" />
+      <LineId Id="3178" Count="0" />
+      <LineId Id="3191" Count="0" />
+      <LineId Id="871" Count="1" />
+      <LineId Id="874" Count="3" />
+      <LineId Id="3860" Count="0" />
+      <LineId Id="878" Count="0" />
+      <LineId Id="3630" Count="0" />
+      <LineId Id="879" Count="13" />
+      <LineId Id="3871" Count="0" />
+      <LineId Id="893" Count="1" />
+      <LineId Id="1270" Count="0" />
+      <LineId Id="895" Count="1" />
+      <LineId Id="1223" Count="0" />
+      <LineId Id="897" Count="4" />
+      <LineId Id="1271" Count="0" />
+      <LineId Id="1275" Count="0" />
+      <LineId Id="1273" Count="0" />
+      <LineId Id="902" Count="3" />
+      <LineId Id="907" Count="13" />
+      <LineId Id="3624" Count="0" />
+      <LineId Id="3631" Count="0" />
+      <LineId Id="3625" Count="0" />
+      <LineId Id="921" Count="1" />
+      <LineId Id="3632" Count="0" />
+      <LineId Id="923" Count="0" />
+      <LineId Id="1103" Count="0" />
+      <LineId Id="3336" Count="0" />
+      <LineId Id="1109" Count="0" />
+      <LineId Id="1099" Count="0" />
+      <LineId Id="1110" Count="0" />
+      <LineId Id="1060" Count="0" />
+      <LineId Id="2671" Count="0" />
+      <LineId Id="3383" Count="0" />
+      <LineId Id="1039" Count="0" />
+      <LineId Id="924" Count="0" />
+      <LineId Id="1548" Count="0" />
+      <LineId Id="925" Count="0" />
+      <LineId Id="3702" Count="0" />
+      <LineId Id="392" Count="0" />
+      <LineId Id="3649" Count="0" />
+      <LineId Id="1038" Count="0" />
+      <LineId Id="318" Count="0" />
+      <LineId Id="1097" Count="0" />
+      <LineId Id="1083" Count="0" />
+      <LineId Id="1061" Count="0" />
+      <LineId Id="1077" Count="1" />
+      <LineId Id="1080" Count="2" />
+      <LineId Id="1062" Count="0" />
+      <LineId Id="1084" Count="0" />
+      <LineId Id="1091" Count="1" />
+      <LineId Id="1094" Count="2" />
+      <LineId Id="1085" Count="1" />
+      <LineId Id="1293" Count="0" />
+      <LineId Id="1291" Count="0" />
+      <LineId Id="1281" Count="0" />
+      <LineId Id="1609" Count="2" />
+      <LineId Id="1606" Count="0" />
+      <LineId Id="1332" Count="0" />
+      <LineId Id="1328" Count="0" />
+      <LineId Id="1592" Count="0" />
+      <LineId Id="1329" Count="0" />
+      <LineId Id="1593" Count="2" />
+      <LineId Id="1623" Count="1" />
+      <LineId Id="1628" Count="0" />
+      <LineId Id="1625" Count="1" />
+      <LineId Id="1622" Count="0" />
+      <LineId Id="1330" Count="1" />
+      <LineId Id="1327" Count="0" />
+      <LineId Id="1337" Count="0" />
+      <LineId Id="1612" Count="0" />
+      <LineId Id="1338" Count="0" />
+      <LineId Id="1613" Count="2" />
+      <LineId Id="1336" Count="0" />
+      <LineId Id="1287" Count="1" />
+      <LineId Id="3535" Count="0" />
+      <LineId Id="1617" Count="3" />
+      <LineId Id="1616" Count="0" />
+      <LineId Id="1282" Count="0" />
+      <LineId Id="1292" Count="0" />
+      <LineId Id="999" Count="0" />
+      <LineId Id="309" Count="0" />
+      <LineId Id="311" Count="1" />
+      <LineId Id="3842" Count="2" />
+      <LineId Id="3829" Count="0" />
+      <LineId Id="3834" Count="0" />
+      <LineId Id="3837" Count="0" />
+      <LineId Id="3841" Count="0" />
+      <LineId Id="3840" Count="0" />
+      <LineId Id="3839" Count="0" />
+      <LineId Id="3838" Count="0" />
+      <LineId Id="3836" Count="0" />
+      <LineId Id="3831" Count="1" />
+      <LineId Id="1475" Count="0" />
+      <LineId Id="3651" Count="1" />
+      <LineId Id="4738" Count="2" />
+      <LineId Id="1493" Count="0" />
+      <LineId Id="1522" Count="0" />
+      <LineId Id="3862" Count="0" />
+      <LineId Id="1523" Count="1" />
+      <LineId Id="1559" Count="0" />
+      <LineId Id="3808" Count="0" />
+      <LineId Id="1560" Count="5" />
+      <LineId Id="3742" Count="1" />
+      <LineId Id="3718" Count="0" />
+      <LineId Id="3720" Count="0" />
+      <LineId Id="3730" Count="11" />
+      <LineId Id="3719" Count="0" />
+      <LineId Id="3827" Count="0" />
+      <LineId Id="1539" Count="2" />
+      <LineId Id="3863" Count="0" />
+      <LineId Id="1542" Count="0" />
+      <LineId Id="4771" Count="0" />
+      <LineId Id="1551" Count="0" />
+      <LineId Id="1629" Count="0" />
+      <LineId Id="1544" Count="0" />
+      <LineId Id="1549" Count="0" />
+      <LineId Id="3192" Count="0" />
+      <LineId Id="4736" Count="0" />
+      <LineId Id="1631" Count="1" />
+      <LineId Id="3851" Count="0" />
+      <LineId Id="1545" Count="1" />
+      <LineId Id="3846" Count="1" />
+      <LineId Id="3194" Count="2" />
+      <LineId Id="3714" Count="1" />
+      <LineId Id="3712" Count="0" />
+      <LineId Id="3197" Count="1" />
+      <LineId Id="3872" Count="0" />
+      <LineId Id="3199" Count="0" />
+      <LineId Id="4767" Count="0" />
+      <LineId Id="3809" Count="0" />
+      <LineId Id="3200" Count="5" />
+      <LineId Id="3768" Count="1" />
+      <LineId Id="3767" Count="0" />
+      <LineId Id="3761" Count="0" />
+      <LineId Id="3795" Count="12" />
+      <LineId Id="3762" Count="0" />
+      <LineId Id="3766" Count="0" />
+      <LineId Id="3225" Count="2" />
+      <LineId Id="3861" Count="0" />
+      <LineId Id="3228" Count="0" />
+      <LineId Id="4770" Count="0" />
+      <LineId Id="3229" Count="0" />
+      <LineId Id="4769" Count="0" />
+      <LineId Id="3828" Count="0" />
+      <LineId Id="3231" Count="3" />
+      <LineId Id="4735" Count="0" />
+      <LineId Id="3235" Count="0" />
+      <LineId Id="3845" Count="0" />
+      <LineId Id="3236" Count="0" />
+      <LineId Id="3849" Count="1" />
+      <LineId Id="3717" Count="0" />
+      <LineId Id="3238" Count="0" />
+      <LineId Id="3193" Count="0" />
+      <LineId Id="3645" Count="0" />
+      <LineId Id="1547" Count="0" />
+      <LineId Id="3240" Count="0" />
+      <LineId Id="3388" Count="0" />
+      <LineId Id="3633" Count="0" />
+      <LineId Id="3639" Count="3" />
+      <LineId Id="3638" Count="0" />
+      <LineId Id="3395" Count="0" />
+      <LineId Id="3435" Count="3" />
+      <LineId Id="3432" Count="0" />
+      <LineId Id="3396" Count="35" />
+      <LineId Id="3389" Count="5" />
+      <LineId Id="1476" Count="0" />
+      <LineId Id="1480" Count="12" />
+      <LineId Id="313" Count="2" />
+      <LineId Id="308" Count="0" />
+      <LineId Id="12" Count="0" />
+    </LineIds>
+    <LineIds Name="TFMachinePalletizerMain._11_CalcolaListaProduzioneNew">
+      <LineId Id="3875" Count="0" />
+      <LineId Id="4728" Count="0" />
+      <LineId Id="4709" Count="0" />
+      <LineId Id="3874" Count="0" />
+      <LineId Id="4726" Count="0" />
+      <LineId Id="2670" Count="0" />
+      <LineId Id="3364" Count="0" />
+      <LineId Id="3363" Count="0" />
+      <LineId Id="3350" Count="7" />
+      <LineId Id="3359" Count="0" />
+      <LineId Id="3362" Count="0" />
+      <LineId Id="3242" Count="0" />
+      <LineId Id="3643" Count="1" />
+      <LineId Id="3328" Count="0" />
+      <LineId Id="3332" Count="3" />
+      <LineId Id="3243" Count="0" />
+      <LineId Id="738" Count="0" />
+      <LineId Id="3539" Count="0" />
+      <LineId Id="3542" Count="2" />
+      <LineId Id="3657" Count="1" />
+      <LineId Id="3662" Count="0" />
+      <LineId Id="3660" Count="0" />
+      <LineId Id="3705" Count="0" />
+      <LineId Id="4773" Count="0" />
+      <LineId Id="4775" Count="0" />
+      <LineId Id="4774" Count="0" />
+      <LineId Id="4776" Count="0" />
+      <LineId Id="4801" Count="0" />
+      <LineId Id="4808" Count="1" />
+      <LineId Id="4777" Count="0" />
+      <LineId Id="4783" Count="1" />
+      <LineId Id="4733" Count="0" />
+      <LineId Id="3708" Count="2" />
+      <LineId Id="3810" Count="0" />
+      <LineId Id="4754" Count="5" />
+      <LineId Id="4753" Count="0" />
+      <LineId Id="4741" Count="0" />
+      <LineId Id="3707" Count="0" />
+      <LineId Id="1118" Count="0" />
+      <LineId Id="1294" Count="0" />
+      <LineId Id="1168" Count="0" />
+      <LineId Id="1145" Count="0" />
+      <LineId Id="1154" Count="0" />
+      <LineId Id="3365" Count="2" />
+      <LineId Id="3533" Count="0" />
+      <LineId Id="3537" Count="1" />
+      <LineId Id="3536" Count="0" />
+      <LineId Id="1155" Count="0" />
+      <LineId Id="3282" Count="9" />
+      <LineId Id="3272" Count="0" />
+      <LineId Id="1170" Count="0" />
+      <LineId Id="1172" Count="0" />
+      <LineId Id="1178" Count="1" />
+      <LineId Id="1182" Count="0" />
+      <LineId Id="1177" Count="0" />
+      <LineId Id="3368" Count="2" />
+      <LineId Id="1403" Count="0" />
+      <LineId Id="1407" Count="1" />
+      <LineId Id="1171" Count="0" />
+      <LineId Id="1457" Count="4" />
+      <LineId Id="3870" Count="0" />
+      <LineId Id="1462" Count="1" />
+      <LineId Id="1454" Count="0" />
+      <LineId Id="1583" Count="0" />
+      <LineId Id="1169" Count="0" />
+      <LineId Id="3545" Count="7" />
+      <LineId Id="3556" Count="55" />
+      <LineId Id="3553" Count="2" />
+      <LineId Id="3612" Count="0" />
+      <LineId Id="1049" Count="0" />
+      <LineId Id="1112" Count="0" />
+      <LineId Id="1295" Count="0" />
+      <LineId Id="1265" Count="4" />
+      <LineId Id="1261" Count="0" />
+      <LineId Id="3672" Count="0" />
+      <LineId Id="1043" Count="0" />
+      <LineId Id="1045" Count="0" />
+      <LineId Id="1047" Count="0" />
+      <LineId Id="1256" Count="0" />
+      <LineId Id="4839" Count="0" />
+      <LineId Id="4837" Count="0" />
+      <LineId Id="4835" Count="0" />
+      <LineId Id="4840" Count="0" />
+      <LineId Id="4857" Count="0" />
+      <LineId Id="4856" Count="0" />
+      <LineId Id="4836" Count="0" />
+      <LineId Id="4818" Count="0" />
+      <LineId Id="3100" Count="4" />
+      <LineId Id="4779" Count="0" />
+      <LineId Id="4790" Count="0" />
+      <LineId Id="4780" Count="0" />
+      <LineId Id="4799" Count="0" />
+      <LineId Id="4791" Count="0" />
+      <LineId Id="3105" Count="4" />
+      <LineId Id="1468" Count="0" />
+      <LineId Id="1050" Count="1" />
+      <LineId Id="4778" Count="0" />
+      <LineId Id="1113" Count="0" />
+      <LineId Id="1471" Count="0" />
+      <LineId Id="3086" Count="0" />
+      <LineId Id="3091" Count="1" />
+      <LineId Id="3090" Count="0" />
+      <LineId Id="4798" Count="0" />
+      <LineId Id="4800" Count="0" />
+      <LineId Id="3088" Count="0" />
+      <LineId Id="3093" Count="0" />
+      <LineId Id="4797" Count="0" />
+      <LineId Id="3089" Count="0" />
+      <LineId Id="3096" Count="1" />
+      <LineId Id="3087" Count="0" />
+      <LineId Id="3099" Count="0" />
+      <LineId Id="3669" Count="1" />
+      <LineId Id="3613" Count="0" />
+      <LineId Id="1046" Count="0" />
+      <LineId Id="3674" Count="0" />
+      <LineId Id="1041" Count="0" />
+      <LineId Id="1040" Count="0" />
+      <LineId Id="1035" Count="0" />
+      <LineId Id="3617" Count="0" />
+      <LineId Id="1052" Count="1" />
+      <LineId Id="1042" Count="0" />
+      <LineId Id="1055" Count="0" />
+      <LineId Id="3654" Count="0" />
+      <LineId Id="1057" Count="1" />
+      <LineId Id="3655" Count="0" />
+      <LineId Id="1030" Count="0" />
+      <LineId Id="1033" Count="0" />
+      <LineId Id="3675" Count="2" />
+      <LineId Id="3614" Count="2" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="230" Count="0" />
+      <LineId Id="1018" Count="0" />
+      <LineId Id="438" Count="0" />
+      <LineId Id="452" Count="0" />
+      <LineId Id="478" Count="0" />
+      <LineId Id="468" Count="0" />
+      <LineId Id="1193" Count="1" />
+      <LineId Id="1197" Count="0" />
+      <LineId Id="1196" Count="0" />
+      <LineId Id="453" Count="1" />
+      <LineId Id="467" Count="0" />
+      <LineId Id="1056" Count="0" />
+      <LineId Id="3664" Count="0" />
+      <LineId Id="2775" Count="0" />
+      <LineId Id="2781" Count="0" />
+      <LineId Id="2776" Count="0" />
+      <LineId Id="1229" Count="0" />
+      <LineId Id="4810" Count="0" />
+      <LineId Id="1230" Count="0" />
+      <LineId Id="4811" Count="0" />
+      <LineId Id="1232" Count="0" />
+      <LineId Id="4812" Count="0" />
+      <LineId Id="1233" Count="0" />
+      <LineId Id="4813" Count="0" />
+      <LineId Id="1234" Count="0" />
+      <LineId Id="4814" Count="0" />
+      <LineId Id="1235" Count="0" />
+      <LineId Id="4815" Count="0" />
+      <LineId Id="1236" Count="0" />
+      <LineId Id="4816" Count="0" />
+      <LineId Id="1237" Count="0" />
+      <LineId Id="4817" Count="0" />
+      <LineId Id="1584" Count="0" />
+      <LineId Id="1587" Count="0" />
+      <LineId Id="455" Count="0" />
+      <LineId Id="3445" Count="0" />
+      <LineId Id="3487" Count="0" />
+      <LineId Id="3448" Count="1" />
+      <LineId Id="3488" Count="0" />
+      <LineId Id="3454" Count="0" />
+      <LineId Id="3451" Count="0" />
+      <LineId Id="3489" Count="0" />
+      <LineId Id="3455" Count="0" />
+      <LineId Id="4781" Count="0" />
+      <LineId Id="3453" Count="0" />
+      <LineId Id="3490" Count="0" />
+      <LineId Id="3456" Count="0" />
+      <LineId Id="4785" Count="0" />
+      <LineId Id="3446" Count="0" />
+      <LineId Id="3444" Count="0" />
+      <LineId Id="456" Count="1" />
+      <LineId Id="477" Count="0" />
+      <LineId Id="458" Count="1" />
+      <LineId Id="474" Count="0" />
+      <LineId Id="4821" Count="0" />
+      <LineId Id="4819" Count="0" />
+      <LineId Id="4822" Count="0" />
+      <LineId Id="4820" Count="0" />
+      <LineId Id="461" Count="0" />
+      <LineId Id="2719" Count="0" />
+      <LineId Id="2731" Count="0" />
+      <LineId Id="2730" Count="0" />
+      <LineId Id="2743" Count="9" />
+      <LineId Id="4832" Count="1" />
+      <LineId Id="2787" Count="11" />
+      <LineId Id="2737" Count="1" />
+      <LineId Id="2753" Count="10" />
+      <LineId Id="4905" Count="1" />
+      <LineId Id="4904" Count="0" />
+      <LineId Id="3692" Count="0" />
+      <LineId Id="3666" Count="0" />
+      <LineId Id="3689" Count="0" />
+      <LineId Id="3688" Count="0" />
+      <LineId Id="2739" Count="0" />
+      <LineId Id="2742" Count="0" />
+      <LineId Id="2764" Count="10" />
+      <LineId Id="4891" Count="1" />
+      <LineId Id="2785" Count="0" />
+      <LineId Id="4804" Count="1" />
+      <LineId Id="2729" Count="0" />
+      <LineId Id="3443" Count="0" />
+      <LineId Id="462" Count="1" />
+      <LineId Id="1246" Count="0" />
+      <LineId Id="464" Count="1" />
+      <LineId Id="2799" Count="10" />
+      <LineId Id="3491" Count="13" />
+      <LineId Id="2810" Count="7" />
+      <LineId Id="4824" Count="1" />
+      <LineId Id="4823" Count="0" />
+      <LineId Id="2818" Count="1" />
+      <LineId Id="2878" Count="37" />
+      <LineId Id="4893" Count="0" />
+      <LineId Id="4772" Count="0" />
+      <LineId Id="3384" Count="0" />
+      <LineId Id="3693" Count="0" />
+      <LineId Id="2916" Count="12" />
+      <LineId Id="4895" Count="1" />
+      <LineId Id="2929" Count="0" />
+      <LineId Id="4802" Count="1" />
+      <LineId Id="2872" Count="0" />
+      <LineId Id="3442" Count="0" />
+      <LineId Id="2873" Count="4" />
+      <LineId Id="2782" Count="0" />
+      <LineId Id="2777" Count="0" />
+      <LineId Id="3505" Count="13" />
+      <LineId Id="1340" Count="0" />
+      <LineId Id="1343" Count="7" />
+      <LineId Id="3686" Count="0" />
+      <LineId Id="3685" Count="0" />
+      <LineId Id="3687" Count="0" />
+      <LineId Id="3386" Count="0" />
+      <LineId Id="1351" Count="6" />
+      <LineId Id="4827" Count="1" />
+      <LineId Id="4826" Count="0" />
+      <LineId Id="1358" Count="1" />
+      <LineId Id="2982" Count="37" />
+      <LineId Id="3697" Count="0" />
+      <LineId Id="3385" Count="0" />
+      <LineId Id="3695" Count="1" />
+      <LineId Id="3694" Count="0" />
+      <LineId Id="3020" Count="12" />
+      <LineId Id="4897" Count="1" />
+      <LineId Id="3033" Count="0" />
+      <LineId Id="4795" Count="1" />
+      <LineId Id="1424" Count="0" />
+      <LineId Id="4761" Count="0" />
+      <LineId Id="3440" Count="0" />
+      <LineId Id="1369" Count="3" />
+      <LineId Id="1341" Count="0" />
+      <LineId Id="2783" Count="0" />
+      <LineId Id="2778" Count="0" />
+      <LineId Id="2673" Count="7" />
+      <LineId Id="4899" Count="1" />
+      <LineId Id="3665" Count="0" />
+      <LineId Id="3855" Count="0" />
+      <LineId Id="3858" Count="0" />
+      <LineId Id="3520" Count="11" />
+      <LineId Id="4787" Count="2" />
+      <LineId Id="3532" Count="0" />
+      <LineId Id="2681" Count="6" />
+      <LineId Id="4830" Count="1" />
+      <LineId Id="4829" Count="0" />
+      <LineId Id="2688" Count="1" />
+      <LineId Id="3034" Count="37" />
+      <LineId Id="3700" Count="0" />
+      <LineId Id="3387" Count="0" />
+      <LineId Id="3698" Count="1" />
+      <LineId Id="3072" Count="12" />
+      <LineId Id="4901" Count="1" />
+      <LineId Id="3085" Count="0" />
+      <LineId Id="4806" Count="1" />
+      <LineId Id="2713" Count="0" />
+      <LineId Id="4793" Count="0" />
+      <LineId Id="4792" Count="0" />
+      <LineId Id="3439" Count="0" />
+      <LineId Id="2714" Count="4" />
+      <LineId Id="1342" Count="0" />
+      <LineId Id="2780" Count="0" />
+      <LineId Id="439" Count="0" />
+      <LineId Id="1186" Count="0" />
+      <LineId Id="1021" Count="0" />
+      <LineId Id="3667" Count="0" />
+      <LineId Id="1399" Count="0" />
+      <LineId Id="3678" Count="4" />
+      <LineId Id="4848" Count="0" />
+      <LineId Id="4858" Count="1" />
+      <LineId Id="4862" Count="1" />
+      <LineId Id="4890" Count="0" />
+      <LineId Id="4864" Count="0" />
+      <LineId Id="4860" Count="0" />
+      <LineId Id="4865" Count="0" />
+      <LineId Id="4869" Count="5" />
+      <LineId Id="4879" Count="0" />
+      <LineId Id="4889" Count="0" />
+      <LineId Id="4876" Count="1" />
+      <LineId Id="4868" Count="0" />
+      <LineId Id="4867" Count="0" />
+      <LineId Id="4866" Count="0" />
+      <LineId Id="4861" Count="0" />
+      <LineId Id="4878" Count="0" />
+      <LineId Id="4851" Count="0" />
+      <LineId Id="4854" Count="1" />
+      <LineId Id="4852" Count="0" />
+      <LineId Id="4844" Count="0" />
+      <LineId Id="3853" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="3110" Count="0" />
+      <LineId Id="3683" Count="1" />
+      <LineId Id="3116" Count="0" />
+      <LineId Id="3371" Count="0" />
+      <LineId Id="3375" Count="7" />
+      <LineId Id="3374" Count="0" />
+      <LineId Id="3156" Count="11" />
+      <LineId Id="3119" Count="0" />
+      <LineId Id="3169" Count="0" />
+      <LineId Id="3130" Count="5" />
+      <LineId Id="4903" Count="0" />
+      <LineId Id="3136" Count="14" />
       <LineId Id="3118" Count="0" />
       <LineId Id="4760" Count="0" />
       <LineId Id="3113" Count="0" />

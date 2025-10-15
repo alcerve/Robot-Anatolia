@@ -1716,6 +1716,9 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <SubObject Include="TFMachinePalletizerMain._11_CalcolaListaProduzioneNew">
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </SubObject>
     <SubObject Include="TFMachinePalletizerMain._11_CalcolaListaProduzioneold">
       <ExcludeFromBuild>true</ExcludeFromBuild>
     </SubObject>

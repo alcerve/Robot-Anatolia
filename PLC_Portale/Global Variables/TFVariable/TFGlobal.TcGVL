@@ -406,6 +406,7 @@ VAR_GLOBAL PERSISTENT
 	RegistroCotaApolloY									:UINT ;
 	TFFormacionBandelCalculada							: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
 	TFFormacionCavalleteCalculada						: Calcolo_Formatura_Completa;//FB per il calcolo della formatura
+	TFCalcoloFormaturaWA								: ARRAY[1..MAXAREA] OF Calcolo_Formatura_Completa;//FB per il calcolo della formatura
 	TipoLLenarCavellete									 :UINT := 4 ;
 	ReControlPiezaCogida								: REAL ;
 	
