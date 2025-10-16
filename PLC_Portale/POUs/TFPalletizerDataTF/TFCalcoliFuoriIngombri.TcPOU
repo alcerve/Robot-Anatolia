@@ -1775,7 +1775,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	IngombroDestinazioneY_Pos -
 																	OffsetSicurezza.Y.Avuoto);*)
 																			  *)
-								IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								IF QuotaFuoriIngombro_Y_Calcolata (*+ IngombroDestinazioneY_Pos*) >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
 									Errore := ErrCOLLISIONE_PINZA;
 									ErrCollisioneDebug := 10;			 
 									RETURN; 

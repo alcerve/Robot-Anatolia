@@ -27,6 +27,7 @@ STRUCT
 																			-1 dato non valido) *)
 	F					: INT	:= 0;	(* Forming Pointer - Puntatore tabella formature (1..n=, -1 dato non valido *)
 	P					: INT	:= 0;	(* Pack Pointer - Puntatore tabella ELEMENTO (0..n-1=, -1 dato non valido),Numero ELEMENTO successivo da depositare *)
+	P_Cava				: Es_PiezasCaballete ;
 	
 	Code				: INT	:= 0;	(* Codice di Pallettizzazione (0..n=, -1 dato non valido) x lastre, se Magazzino Falde, codice della falda *)
 	

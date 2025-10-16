@@ -73,6 +73,7 @@ VAR
 	CalFor: UINT;
 	// Recorre los casos para crear la formacion
 	CrearFormacion: UINT;
+	uu: UINT;
 END_VAR
 
 
@@ -136,7 +137,7 @@ IF MachinePalletizerInitVariables THEN
 
 	ORDINE_DISPOSIZIONE_POSTAZIONI		:= CRESCENTE;
 	
-	OFFSET_POSTAZIONE_LEGNO 	:= 1330;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_LEGNO 	:= 1335;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
 	OFFSET_POSTAZIONE_TELAIO 	:= 3157 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
 	
 	INGOMBRO_RISCONTRO_BUNDLE := 100;
@@ -3194,6 +3195,20 @@ IF MachinePalletizer_TF.CmdExe.Code = CmdNOP THEN
 			WorkAreaState[i].P := HMI_NumeroPezziPresentiPostazione[i]+1;
 		END_IF	
 		
+		IF HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_A_Cavaleto <> WorkAreaState[i].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto -1	THEN 
+			WorkAreaState[i].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto 
+								:= HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +1 ;
+		END_IF
+		IF HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_B_Cavaleto <> WorkAreaState[i].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto -1	THEN 
+			WorkAreaState[i].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto 
+								:= HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_B_Cavaleto +1 ;
+		END_IF
+		IF (ActualPickingListFromHMI[1].State <> 0 OR ActualPickingListFromHMI[2].State <> 0 OR ActualPickingListFromHMI[3].State <>0)
+				AND WorkAreaState[i].Supporto.Tipologia = CAVALLETTO THEN 
+			WorkAreaState[i].P := HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_A_Cavaleto 
+					+ HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_B_Cavaleto +1 ;
+		END_IF		
+		
 		IF WorkAreaState[i].PackPointerModified THEN//Se sto facendo una modifica da HMI
 			WorkAreaState[i].PackPointer:= MIN(MAX(1,WorkAreaState[i].PackPointer ),MAXFORMINGSLAB);//limito i valori con quelli ammissibili
 			IF WorkAreaState[i].PackPointer > WorkAreaState[i].P THEN 
@@ -3260,15 +3275,7 @@ END_IF
 {region "Gestione zona GLOBALE - Postazioni da 1 a 8"}
 
 //Traferisco i valori dei supporti della lista 1 nella lista 2 e 3
-RequestPickingListFromHMI[2].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
-RequestPickingListFromHMI[3].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
-RequestPickingListFromHMI[2].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
-RequestPickingListFromHMI[3].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
-RequestPickingListFromHMI[2].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
-RequestPickingListFromHMI[3].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
-RequestPickingListFromHMI[2].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
-RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
-	  
+ 
 
 FOR LoopLista := 1 TO 3 DO
 	IdxLista := LoopLista;		 
@@ -3374,6 +3381,24 @@ FOR LoopLista := 1 TO 3 DO
 			//Se non ho una Destinazione impostata, Num.pezzi impostato, o Num.pezzi richiesto...
 			//	Resetto il comando		
 					IF Cmd_AttivaLista[1] = TRUE  THEN
+						FOR uu := Iforstart TO Iforend DO
+							 	IF	HMI_WorkAreaDataPicking[uu].Typology = CAVALLETTO THEN 
+									CASE HMI_WorkAreaDataPicking[uu].TipoTrabajoLado_Cavallete OF 
+	 									0:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +
+												 HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+										1:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto ;									 ;
+											 
+										2:	
+		   									HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+												 
+									END_CASE
+								END_IF 	 
+							END_FOR		  
+											
+													  
+																
 						IF 	(HMI_WorkAreaDataPicking[1].Destinazione =0 AND 
 							HMI_WorkAreaDataPicking[2].Destinazione =0 AND
 							HMI_WorkAreaDataPicking[3].Destinazione =0 AND 
@@ -3447,6 +3472,7 @@ FOR LoopLista := 1 TO 3 DO
 					IF NOT HMI_WorkAreaDataPicking[i].Destinazione THEN
 						ElementiDaDepositare[IdxLista] := ElementiDaDepositare[IdxLista] +HMI_WorkAreaDataPicking[i].NumElementiDaLavorare;
 						WorkAreaState[i].P := HMI_WorkAreaDataPicking[i].NumElementiDaLavorare +1;
+									   
 						CASE HMI_WorkAreaDataPicking[i].Typology OF
 							LEGNO_PIANO,TELAIO_PIANO:
 								WorkareaState[i].Supporto.Tipologia := e_Tipo_Pallet.CASSA_STANDARD;
@@ -4473,17 +4499,9 @@ END_FOR
 
 //#############################################################################################################
 
-{region "Gestione zona GLOBALE - Postazioni da 1 a 8"}
 
-//Traferisco i valori dei supporti della lista 1 nella lista 2 e 3
-(*RequestPickingListFromHMI[2].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
-RequestPickingListFromHMI[3].SupportPianoFerro 	:= RequestPickingListFromHMI[1].SupportPianoFerro;		  
-RequestPickingListFromHMI[2].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
-RequestPickingListFromHMI[3].SupportPianoLegno 	:= RequestPickingListFromHMI[1].SupportPianoLegno;		  
-RequestPickingListFromHMI[2].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
-RequestPickingListFromHMI[3].SupportVertBundle 	:= RequestPickingListFromHMI[1].SupportVertBundle;		  
-RequestPickingListFromHMI[2].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;		  
-RequestPickingListFromHMI[3].SupportVertCav 	:= RequestPickingListFromHMI[1].SupportVertCav;	*)	  
+
+	  
 	  
 
 FOR LoopLista := 1 TO 3 DO
@@ -4496,7 +4514,11 @@ FOR LoopLista := 1 TO 3 DO
 	END_CASE	 
 	IF MachinePalletizer_TF.IN.Mode.Man AND
 		(MachinePalletizer_TF.CmdExe.Code = CmdNOP OR MachinePalletizer_TF.CmdExe.Code = CmdMAN) THEN
-
+			 
+				  
+					   
+							
+{region "Reset Litas"}
 //--------------------------------------------------------
 			//AZZERAMENTO (Reset) lista di picking	
 //--------------------------------------------------------		 
@@ -4585,7 +4607,7 @@ FOR LoopLista := 1 TO 3 DO
 				CalcolaFormaturaTrig := FALSE;
 			END_IF
 
-
+{endregion}
 
 //--------------------------------------------------------
 		// COMANDO ATTIVAZIONE  lista di picking	
@@ -4593,6 +4615,22 @@ FOR LoopLista := 1 TO 3 DO
 			//Se non ho una Destinazione impostata, Num.pezzi impostato, o Num.pezzi richiesto...
 			//	Resetto il comando		
 					IF Cmd_AttivaLista[1] = TRUE  THEN
+							FOR uu := Iforstart TO Iforend DO
+							 	IF	HMI_WorkAreaDataPicking[uu].Typology = CAVALLETTO THEN 
+									CASE HMI_WorkAreaDataPicking[uu].TipoTrabajoLado_Cavallete OF 
+	 									0:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +
+												 HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+										1:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto ;									 ;
+											 
+										2:	
+		   									HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+												 
+									END_CASE
+								END_IF 	 
+							END_FOR
+								  
 						IF 	(HMI_WorkAreaDataPicking[1].Destinazione =0 AND 
 							HMI_WorkAreaDataPicking[2].Destinazione =0 AND
 							HMI_WorkAreaDataPicking[3].Destinazione =0 AND 
@@ -5642,52 +5680,7 @@ END_FOR
 	HMI_WorkAreaDataPicking_1_4 := (ActualPickingListFromHMI[2].State >= 1);//Ordine postazioni 1..4 in lavoro
 	HMI_WorkAreaDataPicking_5_8 := (ActualPickingListFromHMI[3].State >= 1);//Ordine postazioni 5..8 in lavoro
 
-//FOR IdxLista := 1 TO 3 DO
-//	CASE IdxLista OF	 
-//		1: Iforstart := 1; Iforend := MAXAREAPRESENT;
-//		2: Iforstart := 1; Iforend := 4;
-//		3: Iforstart := 5; Iforend := MAXAREAPRESENT;
-//	END_CASE		 		   
-//	FOR i:= Iforstart TO Iforend DO	
-//		IF NumeroPezziPresentiPostazioneStart[i] = 0 AND WorkAreaState[i].P > 1 THEN
-//			NumeroPezziPresentiPostazioneStart[i] := TO_UINT(WorkAreaState[i].P);
-//		END_IF
-//	
-//		IF NOT HMI_WorkAreaDataPicking[i].Destinazione THEN
-//			IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare > 0 THEN
-//				//IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare >= TO_UINT(WorkAreaState[i].P)-1 THEN
-//				//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - TO_UINT(WorkAreaState[i].P);
-//				//ELSE
-//				//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-//				//END_IF
-//				IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - (TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]) > 0 THEN
-//					HMI_NumeroLastreRimanentiOrdineAttuale[i] := MIN(HMI_WorkAreaDataPicking[i].NumElementiDaLavorare,HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - 
-//																(NumeroPezziPresentiPostazioneStart[i] - TO_UINT(WorkAreaState[i].P)));
-//				ELSE
-//					HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-//				END_IF
-//			ELSE
-//				HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-//			END_IF
-//		ELSE
-//			IF NumeroPezziPresentiPostazioneStart[i] <= (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
-//				HMI_NumeroLastreRimanentiOrdineAttuale[i] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]+1;
-//			ELSE
-//				HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-//			END_IF
-//		END_IF
-//		IF (WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_IN_ESECUZIONE OR WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_ESEGUITA) AND WorkAreaState[i].P > 1 THEN
-//			HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P-1);
-//			IF NumeroPezziPresentiPostazioneStart[i] < (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
-//				HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i] +1;
-//			ELSE
-//				HMI_NumeroLastreDepOrdineAttuale[IdxLista] := 0;
-//			END_IF
-//		END_IF	
-//	END_FOR		  
-//END_FOR			   
-					
-						 
+
 							  
 								   
 {endregion}
@@ -7143,7 +7136,18 @@ END_IF
       <LineId Id="115" Count="1" />
       <LineId Id="257" Count="0" />
       <LineId Id="263" Count="0" />
-      <LineId Id="117" Count="0" />
+      <LineId Id="266" Count="0" />
+      <LineId Id="273" Count="1" />
+      <LineId Id="277" Count="0" />
+      <LineId Id="279" Count="0" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="281" Count="1" />
+      <LineId Id="284" Count="0" />
+      <LineId Id="280" Count="0" />
+      <LineId Id="276" Count="0" />
+      <LineId Id="275" Count="0" />
+      <LineId Id="286" Count="1" />
+      <LineId Id="285" Count="0" />
       <LineId Id="256" Count="0" />
       <LineId Id="213" Count="1" />
       <LineId Id="216" Count="0" />
@@ -7175,7 +7179,6 @@ END_IF
       <LineId Id="2670" Count="0" />
       <LineId Id="3364" Count="0" />
       <LineId Id="3363" Count="0" />
-      <LineId Id="3350" Count="7" />
       <LineId Id="3359" Count="0" />
       <LineId Id="3362" Count="0" />
       <LineId Id="3242" Count="0" />
@@ -7234,7 +7237,10 @@ END_IF
       <LineId Id="1583" Count="0" />
       <LineId Id="1169" Count="0" />
       <LineId Id="3545" Count="7" />
-      <LineId Id="3556" Count="55" />
+      <LineId Id="3556" Count="0" />
+      <LineId Id="4821" Count="13" />
+      <LineId Id="4817" Count="3" />
+      <LineId Id="3557" Count="54" />
       <LineId Id="3553" Count="2" />
       <LineId Id="3612" Count="0" />
       <LineId Id="1049" Count="0" />
@@ -7247,6 +7253,7 @@ END_IF
       <LineId Id="1045" Count="0" />
       <LineId Id="1047" Count="0" />
       <LineId Id="1256" Count="0" />
+      <LineId Id="4835" Count="0" />
       <LineId Id="3100" Count="4" />
       <LineId Id="4779" Count="0" />
       <LineId Id="4790" Count="0" />
@@ -7647,8 +7654,7 @@ END_IF
       <LineId Id="4726" Count="0" />
       <LineId Id="2670" Count="0" />
       <LineId Id="3364" Count="0" />
-      <LineId Id="3363" Count="0" />
-      <LineId Id="3350" Count="7" />
+      <LineId Id="3357" Count="0" />
       <LineId Id="3359" Count="0" />
       <LineId Id="3362" Count="0" />
       <LineId Id="3242" Count="0" />
@@ -7657,6 +7663,7 @@ END_IF
       <LineId Id="3332" Count="3" />
       <LineId Id="3243" Count="0" />
       <LineId Id="738" Count="0" />
+      <LineId Id="5106" Count="3" />
       <LineId Id="3539" Count="0" />
       <LineId Id="3542" Count="2" />
       <LineId Id="3657" Count="1" />
@@ -7712,7 +7719,17 @@ END_IF
       <LineId Id="1583" Count="0" />
       <LineId Id="1169" Count="0" />
       <LineId Id="3545" Count="7" />
-      <LineId Id="3556" Count="55" />
+      <LineId Id="3556" Count="0" />
+      <LineId Id="5110" Count="0" />
+      <LineId Id="5114" Count="0" />
+      <LineId Id="5117" Count="1" />
+      <LineId Id="5115" Count="1" />
+      <LineId Id="5120" Count="3" />
+      <LineId Id="5126" Count="1" />
+      <LineId Id="5119" Count="0" />
+      <LineId Id="5112" Count="1" />
+      <LineId Id="5111" Count="0" />
+      <LineId Id="3557" Count="54" />
       <LineId Id="3553" Count="2" />
       <LineId Id="3612" Count="0" />
       <LineId Id="1049" Count="0" />
@@ -7734,7 +7751,7 @@ END_IF
       <LineId Id="4836" Count="0" />
       <LineId Id="4818" Count="0" />
       <LineId Id="3100" Count="4" />
-      <LineId Id="4779" Count="0" />
+      <LineId Id="5130" Count="0" />
       <LineId Id="4790" Count="0" />
       <LineId Id="4780" Count="0" />
       <LineId Id="4799" Count="0" />
@@ -8180,11 +8197,7 @@ END_IF
       <LineId Id="3633" Count="0" />
       <LineId Id="3639" Count="3" />
       <LineId Id="3638" Count="0" />
-      <LineId Id="3395" Count="0" />
-      <LineId Id="3435" Count="3" />
-      <LineId Id="3432" Count="0" />
-      <LineId Id="3396" Count="35" />
-      <LineId Id="3389" Count="5" />
+      <LineId Id="3392" Count="2" />
       <LineId Id="1476" Count="0" />
       <LineId Id="1480" Count="12" />
       <LineId Id="313" Count="2" />

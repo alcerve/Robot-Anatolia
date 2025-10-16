@@ -35,6 +35,9 @@ WorkAreaState^.State		:= WORKAREA_STATE_FREE_ENABLED;	(* Stato Area di Lavoro/Pi
 																			-1 dato non valido) *)
 WorkAreaState^.F					:= 0;	(* Forming Pointer - Puntatore tabella formature (1..n=, -1 dato non valido *)
 WorkAreaState^.P					:= 1;	(* Pack Pointer - Puntatore tabella ELEMENTO (0..n-1=, -1 dato non valido),Numero ELEMENTO successivo da depositare *)
+WorkAreaState^.P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto		:= 1 ;
+WorkAreaState^.P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto		:= 1 ;
+
               
 WorkAreaState^.Code					:= 0;	(* Codice di Pallettizzazione (0..n=, -1 dato non valido) x lastre, se Magazzino Falde, codice della falda *)
               
@@ -83,7 +86,10 @@ TFClearWorkArea := TRUE;
     <LineIds Name="TFClearWorkArea">
       <LineId Id="174" Count="1" />
       <LineId Id="181" Count="0" />
-      <LineId Id="95" Count="25" />
+      <LineId Id="95" Count="20" />
+      <LineId Id="210" Count="1" />
+      <LineId Id="209" Count="0" />
+      <LineId Id="116" Count="4" />
       <LineId Id="122" Count="0" />
       <LineId Id="191" Count="0" />
       <LineId Id="190" Count="0" />
