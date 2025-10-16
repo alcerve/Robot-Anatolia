@@ -122,6 +122,9 @@
     <Compile Include="Data types\AlbertoPruevas\Estructuras\ProgramaEjecucion.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\FunLadoTrabajoCaballete.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -1430,6 +1433,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_CompletaNew.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Backup16_10_25.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Back.TcPOU">

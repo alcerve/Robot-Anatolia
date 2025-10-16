@@ -4412,6 +4412,7 @@ FOR LoopLista := 1 TO 3 DO
 				//#########################Calculo cavaleta##########################################
 				END_IF
 			END_IF
+				  
 		END_IF //###############################  If  Principal calculos formaciones bendel y cabaleta
 	
 	TFCalcoloFormaturaRT[IdxLista]();
@@ -7627,6 +7628,7 @@ END_IF
       <LineId Id="3849" Count="1" />
       <LineId Id="3717" Count="0" />
       <LineId Id="3238" Count="0" />
+      <LineId Id="4836" Count="0" />
       <LineId Id="3193" Count="0" />
       <LineId Id="3645" Count="0" />
       <LineId Id="1547" Count="0" />

@@ -17,6 +17,7 @@ STRUCT
 	Y			: LREAL							:= 0.0;	(* (mm) Destination - Coordinata Y *)
 	Z			: LREAL							:= 0.0;	(* (mm) Destination - Coordinata Z *)
 	J			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata J (PITCH)*)
+	CooCavallete : Es_CoordenadasCaballeteLadoA_ladoB  ;
 	//K			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata K (ROLL)*)
 	//W			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata W (YAW)*)
 
