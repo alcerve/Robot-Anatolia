@@ -1983,6 +1983,17 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 					//WorkAreaState[Mission.PPlace].SlabData[WorkAreaState[Mission.PPlace].P] := MachinePalletizerModules.Pinza.DataElement^;
 					WorkAreaState[Mission.PPlace].P := WorkAreaState[Mission.PPlace].P +1;
 					HMI_NumeroPezziPresentiPostazione[Mission.PPlace] := HMI_NumeroPezziPresentiPostazione[Mission.PPlace] + 1;
+					IF  WorkAreaState[Mission.PPlace].Supporto.Tipologia = CAVALLETTO  THEN
+						IF PosicionJDestino = 0 THEN
+							WorkAreaState[Mission.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState[Mission.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto+1;
+							HMI_NumeroPezziPresentiCavallete[Mission.PPlace].HMI_NumeroPezziPresentiPostazione_A_Cavaleto := HMI_NumeroPezziPresentiCavallete[Mission.PPlace].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +1 ;
+						END_IF
+						IF PosicionJDestino = 180 THEN
+							WorkAreaState[Mission.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState[Mission.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto+1;
+							HMI_NumeroPezziPresentiCavallete[Mission.PPlace].HMI_NumeroPezziPresentiPostazione_B_Cavaleto := HMI_NumeroPezziPresentiCavallete[Mission.PPlace].HMI_NumeroPezziPresentiPostazione_B_Cavaleto +1 ;
+						END_IF 
+					END_IF
+					
 					FOR i := 1 TO MAXELEMENTLIST DO
 						IF WorkAreaProductionList[Mission.PPlace].PElementList[i].Stato = ELEMENTO_DA_ELABORARE THEN
 							WorkAreaProductionList[Mission.PPlace].PElementList[i].Stato := ELEMENTO_ELABORATO; //Dichiaro che l'elemento della lista è stato elaborato
@@ -2000,6 +2011,16 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 					//WorkAreaState[Mission.PPlace].SlabData[WorkAreaState[Mission.PPlace].P] := MachinePalletizerModules.Pinza.DataElement^;
 					WorkAreaState[Mission.PPick].P := WorkAreaState[Mission.PPick].P +1;
 					HMI_NumeroPezziPresentiPostazione[Mission.PPick] := HMI_NumeroPezziPresentiPostazione[Mission.PPick] + 1;
+					IF  WorkAreaState[Mission.PPlace].Supporto.Tipologia = CAVALLETTO  THEN
+						IF PosicionJDestino = 0 THEN
+							WorkAreaState[Mission.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState[Mission.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto+1;
+							HMI_NumeroPezziPresentiCavallete[Mission.PPick].HMI_NumeroPezziPresentiPostazione_A_Cavaleto := HMI_NumeroPezziPresentiCavallete[Mission.PPick].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +1 ;
+						END_IF
+						IF PosicionJDestino = 180 THEN
+							WorkAreaState[Mission.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState[Mission.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto+1;
+							HMI_NumeroPezziPresentiCavallete[Mission.PPick].HMI_NumeroPezziPresentiPostazione_B_Cavaleto := HMI_NumeroPezziPresentiCavallete[Mission.PPick].HMI_NumeroPezziPresentiPostazione_B_Cavaleto +1 ;
+						END_IF 
+					END_IF
 					EseguitoAllinementoPezziDeposito := TRUE;	
 				ELSE
 					;
@@ -6872,6 +6893,16 @@ END_IF
       <LineId Id="982" Count="0" />
       <LineId Id="940" Count="3" />
       <LineId Id="960" Count="0" />
+      <LineId Id="999" Count="0" />
+      <LineId Id="989" Count="0" />
+      <LineId Id="995" Count="0" />
+      <LineId Id="992" Count="0" />
+      <LineId Id="997" Count="0" />
+      <LineId Id="993" Count="0" />
+      <LineId Id="996" Count="0" />
+      <LineId Id="994" Count="0" />
+      <LineId Id="998" Count="0" />
+      <LineId Id="990" Count="1" />
       <LineId Id="983" Count="0" />
       <LineId Id="955" Count="0" />
       <LineId Id="958" Count="0" />
@@ -6886,6 +6917,8 @@ END_IF
       <LineId Id="961" Count="0" />
       <LineId Id="969" Count="4" />
       <LineId Id="984" Count="0" />
+      <LineId Id="1001" Count="8" />
+      <LineId Id="1000" Count="0" />
       <LineId Id="988" Count="0" />
       <LineId Id="980" Count="1" />
       <LineId Id="968" Count="0" />

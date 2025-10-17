@@ -1449,12 +1449,13 @@ WorkAreaState^[Mission^.PPlace].Slab[WorkAreaState^[Mission^.PPlace].P] := Missi
 (* Incremento WorkArea^[cwa].P (P=P+1) *)
 WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1;
 
-IF PosicionJDestino = 0 THEN 
-	WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto +1 ;
-ELSIF PosicionJDestino = 180 THEN 	
-	WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto +1 ;
+IF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO THEN 
+		IF PosicionJDestino = 0 THEN 
+			WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto +1 ;
+		ELSIF PosicionJDestino = 180 THEN 	
+			WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto +1 ;
+		END_IF
 END_IF
-
 (* Imposto lo stato dell' apprendimento *)
 CASE LatoDeposito OF			
 	(*0:
@@ -2751,12 +2752,13 @@ END_IF**)
 
 
 WorkAreaState^[Mission^.PPick].P := WorkAreaState^[Mission^.PPick].P - 1;
-IF PosicionJOrigen = 0 THEN 
-	WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto -1 ;
-ELSIF PosicionJOrigen = 180 THEN 	
-	WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto -1 ;
+IF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO THEN 
+	IF PosicionJOrigen = 0 THEN 
+		WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto -1 ;
+	ELSIF PosicionJOrigen = 180 THEN 	
+		WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto -1 ;
+	END_IF
 END_IF
-
 
 WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN;
 RestoreCWA^ := TRUE;
@@ -2928,6 +2930,7 @@ END_IF	]]></ST>
       <LineId Id="116" Count="2" />
       <LineId Id="122" Count="0" />
       <LineId Id="32" Count="4" />
+      <LineId Id="140" Count="0" />
       <LineId Id="135" Count="4" />
       <LineId Id="134" Count="0" />
       <LineId Id="39" Count="0" />
@@ -3283,6 +3286,7 @@ END_IF	]]></ST>
       <LineId Id="2" Count="4" />
       <LineId Id="11" Count="9" />
       <LineId Id="272" Count="2" />
+      <LineId Id="291" Count="0" />
       <LineId Id="285" Count="0" />
       <LineId Id="288" Count="2" />
       <LineId Id="284" Count="0" />
