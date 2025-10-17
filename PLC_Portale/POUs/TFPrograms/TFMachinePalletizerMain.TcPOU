@@ -2504,6 +2504,11 @@ FOR i:=1 TO MAXAREAPRESENT DO
 	HMI_Stato_Postazione[i].TipologiaSupporto 	:= WorkAreaState[i].Supporto.Tipologia;
 	IF Status_TF.Macchina.Auto THEN
 		HMI_NumeroPezziPresentiPostazione[i] := MAX(0,WorkAreaState[i].P-1);
+		IF WorkAreaState[i].Supporto.Tipologia = CAVALLETTO THEN 
+			HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_A_Cavaleto := MAX(0,WorkAreaState[i].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto-1);
+			HMI_NumeroPezziPresentiCavallete[i].HMI_NumeroPezziPresentiPostazione_B_Cavaleto := MAX(0,WorkAreaState[i].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto-1);
+		END_IF
+		
 	END_IF
 END_FOR
 
@@ -3999,7 +4004,7 @@ FOR LoopLista := 1 TO 3 DO
 						HMI_Formatura.HMI_Forming_Supporto.XDim				:= RequestPickingListFromHMI[IdxLista].SupportVertCav.XDim;
 						HMI_Formatura.HMI_Forming_Supporto.YDim				:= RequestPickingListFromHMI[IdxLista].SupportVertCav.YDim;
 						HMI_Formatura.HMI_Forming_Supporto.ZDim				:= RequestPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
-						HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio := 1;                      
+						HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio 		:= 1;                      
 						HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta		:= 15;              
 						HMI_Formatura.HMI_Forming_Supporto.ZDim_Ext1        := HMI_Formatura.HMI_Forming_Supporto.ZDim + HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta;
 						HMI_Formatura.HMI_Forming_Supporto.DimBaseUtile		:= RequestPickingListFromHMI[IdxLista].SupportVertCav.DimBaseUtile;
@@ -4140,6 +4145,7 @@ FOR LoopLista := 1 TO 3 DO
 										TFCalcoloFormaturaDaLista.TipoOrdinamento := 4;//Ordinamento di deposito òato 180°
 									A_FRAME_VERT:
 										TFCalcoloFormaturaDaLista.TipoOrdinamento := 1;//Ordinamento di deposito, prima un lato poi l'altro	
+										TFCalcoloFormaturaDaLista.HabiCalTodasCordenadas := TRUE ;
 									ELSE
 										TFCalcoloFormaturaDaLista.TipoOrdinamento := 2;//Ordinamento di deposito consecutivo	 
 								END_CASE
@@ -6990,6 +6996,11 @@ END_IF
       <LineId Id="615" Count="0" />
       <LineId Id="598" Count="0" />
       <LineId Id="702" Count="1" />
+      <LineId Id="1120" Count="0" />
+      <LineId Id="1122" Count="0" />
+      <LineId Id="1124" Count="0" />
+      <LineId Id="1123" Count="0" />
+      <LineId Id="1121" Count="0" />
       <LineId Id="705" Count="0" />
       <LineId Id="591" Count="0" />
       <LineId Id="614" Count="0" />
@@ -7475,6 +7486,7 @@ END_IF
       <LineId Id="3184" Count="0" />
       <LineId Id="3188" Count="0" />
       <LineId Id="3190" Count="0" />
+      <LineId Id="4837" Count="0" />
       <LineId Id="3185" Count="1" />
       <LineId Id="3178" Count="0" />
       <LineId Id="3191" Count="0" />

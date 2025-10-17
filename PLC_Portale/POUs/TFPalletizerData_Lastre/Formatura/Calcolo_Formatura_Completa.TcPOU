@@ -596,8 +596,8 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Y := YEsternoLastra[counter2] + Supporto.OFSDE_Y0;
 											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Z := ZEsternoLastra[counter2] + Supporto.OFSDE_Z0;
 										4:	
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Y := YCoordinataAppoggioLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Z := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
+											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Y := YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y0;
+											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Z := ZEsternoLastra[counter2] + Supporto.OFSDE_Z0;
 									END_CASE
 									CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
 								END_FOR
