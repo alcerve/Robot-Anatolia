@@ -3668,7 +3668,8 @@ FOR LoopLista := 1 TO 3 DO
 													WorkAreaState[j].Supporto.XDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.XDim;
 													WorkAreaState[j].Supporto.YDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim;
 													WorkAreaState[j].Supporto.ZDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
-													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;		
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ;	
 													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
 											   		CoordenadaPasillo0_Y := WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y := WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
@@ -3767,7 +3768,8 @@ FOR LoopLista := 1 TO 3 DO
 													WorkAreaState[j].Supporto.XDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.XDim;
 													WorkAreaState[j].Supporto.YDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim;
 													WorkAreaState[j].Supporto.ZDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
-													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;		
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ;	
 													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
 											   		CoordenadaPasillo0_Y := WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y := WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
@@ -3871,7 +3873,8 @@ FOR LoopLista := 1 TO 3 DO
 													WorkAreaState[j].Supporto.XDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.XDim;
 													WorkAreaState[j].Supporto.YDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim;
 													WorkAreaState[j].Supporto.ZDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
-													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;		
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ;	
 													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
 													CoordenadaPasillo0_Y := WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y := WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;		  
@@ -3894,7 +3897,8 @@ FOR LoopLista := 1 TO 3 DO
 								WorkAreaState[NumPostazioneDeposito].Supporto.YDim 						:= ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim;
 								WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= ActualPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
 								//WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO (*- ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2*);
-								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;	 
+								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;	
+								WorkAreaState[NumPostazioneDeposito].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[NumPostazioneDeposito].TipoTrabajoLado_Cavallete ;
 								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF
 									LEGNO_PIANO:
 										 		WorkAreaProductionList[NumPostazioneDeposito].Support := WorkAreaState[NumPostazioneDeposito].Supporto;
@@ -3975,7 +3979,8 @@ FOR LoopLista := 1 TO 3 DO
 													WorkAreaState[j].Supporto.XDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.XDim;
 													WorkAreaState[j].Supporto.YDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim;
 													WorkAreaState[j].Supporto.ZDim 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
-													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;		
+													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ;	
 													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
 												   CoordenadaPasillo0_Y := WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y := WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
@@ -7398,6 +7403,7 @@ END_IF
       <LineId Id="2739" Count="0" />
       <LineId Id="2742" Count="0" />
       <LineId Id="2764" Count="10" />
+      <LineId Id="4842" Count="0" />
       <LineId Id="2785" Count="0" />
       <LineId Id="4804" Count="1" />
       <LineId Id="2729" Count="0" />
@@ -7412,7 +7418,9 @@ END_IF
       <LineId Id="4772" Count="0" />
       <LineId Id="3384" Count="0" />
       <LineId Id="3693" Count="0" />
-      <LineId Id="2916" Count="13" />
+      <LineId Id="2916" Count="12" />
+      <LineId Id="4841" Count="0" />
+      <LineId Id="2929" Count="0" />
       <LineId Id="4802" Count="1" />
       <LineId Id="2872" Count="0" />
       <LineId Id="3442" Count="0" />
@@ -7432,7 +7440,9 @@ END_IF
       <LineId Id="3385" Count="0" />
       <LineId Id="3695" Count="1" />
       <LineId Id="3694" Count="0" />
-      <LineId Id="3020" Count="13" />
+      <LineId Id="3020" Count="12" />
+      <LineId Id="4840" Count="0" />
+      <LineId Id="3033" Count="0" />
       <LineId Id="4795" Count="1" />
       <LineId Id="1424" Count="0" />
       <LineId Id="4761" Count="0" />
@@ -7444,6 +7454,7 @@ END_IF
       <LineId Id="2673" Count="7" />
       <LineId Id="3665" Count="0" />
       <LineId Id="3855" Count="0" />
+      <LineId Id="4838" Count="0" />
       <LineId Id="3858" Count="0" />
       <LineId Id="3520" Count="11" />
       <LineId Id="4787" Count="2" />
@@ -7453,7 +7464,9 @@ END_IF
       <LineId Id="3700" Count="0" />
       <LineId Id="3387" Count="0" />
       <LineId Id="3698" Count="1" />
-      <LineId Id="3072" Count="13" />
+      <LineId Id="3072" Count="12" />
+      <LineId Id="4839" Count="0" />
+      <LineId Id="3085" Count="0" />
       <LineId Id="4806" Count="1" />
       <LineId Id="2713" Count="0" />
       <LineId Id="4793" Count="0" />

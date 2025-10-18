@@ -1907,7 +1907,7 @@ ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLET
 	AguloDeRecogida := FunLadoTrabajoCaballete(Piezas_LadoA := 
 						HMI_NumeroPezziPresentiCavallete[Mission^.PPick].HMI_NumeroPezziPresentiPostazione_A_Cavaleto , 
 								Piezas_Ladob := HMI_NumeroPezziPresentiCavallete[Mission^.PPick].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ,
-								Recoger := TRUE ,dejar := FALSE );
+								Recoger := TRUE ,dejar := FALSE ,GestionLadoTrabajo := WorkareaState^[Mission^.PPick].Supporto.TipoTrabajoLado_Cavallete);
 	LatoPrelievo := AguloDeRecogida ;
 	IF FALSE THEN 
 			IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J > 90 THEN
@@ -2188,8 +2188,8 @@ IF LatoPrelievo = 180 THEN
 				Mission^.ZPick				:= Mission^.ZPick + (25 +20) ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			ELSE
-				Mission^.YPick 				:= Mission^.YPick - 70 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
-				Mission^.ZPick				:= Mission^.ZPick + 20 ;
+				Mission^.YPick 				:= Mission^.YPick - 60 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+				Mission^.ZPick				:= Mission^.ZPick + 28 ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			
 		END_IF
@@ -2215,7 +2215,7 @@ ELSIF LatoPrelievo = 0 THEN
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		ELSE
 			Mission^.YPick 				:= Mission^.YPick  + 25; // + 50 (*+ 50 *);
-			Mission^.ZPick				:= Mission^.ZPick + 25 ;
+			Mission^.ZPick				:= Mission^.ZPick + 12 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;	
 	END_IF
 	
@@ -2235,7 +2235,7 @@ IF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO
 	AguloDeDeposito := FunLadoTrabajoCaballete(Piezas_LadoA := 
 						HMI_NumeroPezziPresentiCavallete[Mission^.PPlace].HMI_NumeroPezziPresentiPostazione_A_Cavaleto , 
 								Piezas_Ladob := HMI_NumeroPezziPresentiCavallete[Mission^.PPlace].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ,
-								Recoger := FALSE ,dejar := TRUE );
+								Recoger := FALSE ,dejar := TRUE, GestionLadoTrabajo := WorkareaState^[Mission^.PPlace].Supporto.TipoTrabajoLado_Cavallete);
 	LatoDeposito := AguloDeDeposito ;
 
 	IF FALSE THEN

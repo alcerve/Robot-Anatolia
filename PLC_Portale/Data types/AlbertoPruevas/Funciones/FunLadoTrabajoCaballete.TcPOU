@@ -5,8 +5,9 @@
 VAR_INPUT
 	Piezas_LadoA 			: UINT ;
 	Piezas_Ladob			: UINT ;
-	Recoger: BOOL;
-	Dejar	:BOOL ;
+	Recoger					: BOOL;
+	Dejar					: BOOL ;
+	GestionLadoTrabajo		: INT ;
 	
 END_VAR
 VAR
@@ -15,7 +16,7 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[IF  Dejar THEN 
+      <ST><![CDATA[IF  Dejar AND GestionLadoTrabajo = 0 THEN 
   
 	IF Piezas_LadoA = 0 AND Piezas_Ladob =0 THEN 
 		FunLadoTrabajoCaballete := 0 ;
@@ -38,7 +39,7 @@ END_VAR
 	END_IF
 END_IF
 
-IF  Recoger THEN 
+IF  Recoger AND GestionLadoTrabajo = 0 THEN 
   
 	IF Piezas_LadoA = Piezas_Ladob  THEN 
 		FunLadoTrabajoCaballete := 180 ;
@@ -59,6 +60,17 @@ IF  Recoger THEN
 				FunLadoTrabajoCaballete := 180 ;
 			END_IF
 	END_IF
+END_IF
+
+IF GestionLadoTrabajo <> 0 THEN
+	IF GestionLadoTrabajo = 1 THEN
+		FunLadoTrabajoCaballete := 0 ;
+	ELSIF GestionLadoTrabajo = 2 THEN 
+		FunLadoTrabajoCaballete := 180 ;	
+	END_IF
+	
+
+
 END_IF]]></ST>
     </Implementation>
     <LineIds Name="FunLadoTrabajoCaballete">
@@ -82,6 +94,17 @@ END_IF]]></ST>
       <LineId Id="33" Count="0" />
       <LineId Id="43" Count="21" />
       <LineId Id="42" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="81" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

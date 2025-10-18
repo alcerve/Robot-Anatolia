@@ -15,11 +15,12 @@ STRUCT
 	//ZDim_Int2 				: REAL  := 0.0; // Altezza della base interna 2 della cavallina
 	//ZDim_Ext2 				: REAL  := 0.0; // Altezza della base esterna 2 della cavallina
 	
-	DimVertice 				: REAL  := 0.0; // Larghezza parte alta della cavallina
-	DimBaseUtile 			: REAL  := 0.0; // Larghezza della base utile di appoggio delle lastre x cavallina
+	DimVertice 					: REAL  := 0.0; // Larghezza parte alta della cavallina
+	DimBaseUtile 				: REAL  := 0.0; // Larghezza della base utile di appoggio delle lastre x cavallina
+	TipoTrabajoLado_Cavallete 	: INT := 0; // // 0-trabaja aambos lados 1-Lado 0 Grados 2-Lado 180 Grados
 	
-	AltezzaDenteRitenuta	: REAL := 0.0; 	(* (mm) Altezza del dente di ritenuta (per cavalletti) *)
-	TipoPianoAppoggio		: UINT := 0; //0=Con dente di ritenuta e in piano, 1=piano inclinato
+	AltezzaDenteRitenuta		: REAL := 0.0; 	(* (mm) Altezza del dente di ritenuta (per cavalletti) *)
+	TipoPianoAppoggio			: UINT := 0; //0=Con dente di ritenuta e in piano, 1=piano inclinato
 	//Spessore_DenteRitenuta	: REAL := 0.0;	(* (mm) Spessore del dente di ritenuta (per cavalletti) *)
 	//OffsetY_DenteRitenuta 	: REAL := 0.0;	(* (mm) Posizione del dente di ritenuta rispetto la quota Y del cavalletto (per cavalletti) *)
 	
