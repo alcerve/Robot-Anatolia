@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="E_Ul_RecogidaCaballete" Id="{2b7975a3-e0cf-4296-b329-3f97b5e67120}">
+    <Declaration><![CDATA[
+TYPE E_Ul_RecogidaCaballete :
+(
+	Primera_Pieza   := 0,
+	LadoAMayor		:= 1,
+	LadoBMayor		:= 2
+);
+END_TYPE
+
+
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

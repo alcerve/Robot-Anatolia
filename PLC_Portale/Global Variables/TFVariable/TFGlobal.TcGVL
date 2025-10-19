@@ -433,6 +433,8 @@ VAR_GLOBAL PERSISTENT
 	EjeYPosFueraIngombroCargado                         : BOOL;
 	CuotaOffSetZRecogidaBundel							: LREAL ;
 	CuotaOffSetZRecogidaCaballete						: LREAL ;
+	GestionDescargaCaballete							: Es_LadosCaballete;
+	GestionCargaCaballete								: Es_LadosCaballete;
 END_VAR
 ]]></Declaration>
   </GVL>

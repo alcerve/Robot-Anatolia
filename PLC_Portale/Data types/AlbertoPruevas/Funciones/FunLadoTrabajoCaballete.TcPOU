@@ -8,11 +8,13 @@ VAR_INPUT
 	Recoger					: BOOL;
 	Dejar					: BOOL ;
 	GestionLadoTrabajo		: INT ;
-	
+	//Tiporecogida			: UINT;
+	GestionDescargaCaballete			: POINTER TO Es_LadosCaballete ;
 END_VAR
 VAR
 	DifPiezas 				: UINT;
-	
+	Piezas_ladoAdif			: UINT;
+	Piezas_ladoBdif			: UINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -39,28 +41,129 @@ END_VAR
 	END_IF
 END_IF
 
-IF  Recoger AND GestionLadoTrabajo = 0 THEN 
-  
-	IF Piezas_LadoA = Piezas_Ladob  THEN 
-		FunLadoTrabajoCaballete := 180 ;
+IF  Recoger AND GestionLadoTrabajo = 0  THEN 
+	IF Piezas_LadoA <> Piezas_Ladob AND GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.Primera_Pieza  THEN 
+		GestionDescargaCaballete^.TipoRecogida := 1 ;
+		IF Piezas_LadoA > Piezas_Ladob THEN 
+			IF Piezas_Ladob > 0 THEN
+				GestionDescargaCaballete^.Dif_PiezasLados := Piezas_LadoA - Piezas_Ladob;
+			ELSE 
+				GestionDescargaCaballete^.Dif_PiezasLados := 0 ;	
+			END_IF
+			GestionDescargaCaballete^.Lado_trabajo := E_Ul_RecogidaCaballete.LadoAMayor ;
+		ELSIF Piezas_Ladob > Piezas_LadoA THEN 
+			IF Piezas_LadoA > 0 THEN 
+				GestionDescargaCaballete^.Dif_PiezasLados := Piezas_Ladob - Piezas_LadoA;
+			ELSE
+				GestionDescargaCaballete^.Dif_PiezasLados := 0 ;	
+			END_IF 
+			GestionDescargaCaballete^.Lado_trabajo := E_Ul_RecogidaCaballete.LadoBMayor ;	
+		END_IF
+	ELSIF Piezas_LadoA = Piezas_Ladob AND GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.Primera_Pieza THEN 
+		GestionDescargaCaballete^.TipoRecogida := 0 ;
+		GestionDescargaCaballete^.Dif_PiezasLados := 0;
+	END_IF 	
+
+	IF GestionDescargaCaballete^.TipoRecogida = 1  THEN
+		IF GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.LadoAMayor THEN 
+			Piezas_ladoAdif := Piezas_LadoA - GestionDescargaCaballete^.Dif_PiezasLados;
+			Piezas_ladoBdif := Piezas_Ladob ;
+		ELSIF GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.LadoBMayor THEN
+ 			Piezas_ladoBdif := Piezas_Ladob  - GestionDescargaCaballete^.Dif_PiezasLados ;
+			Piezas_ladoAdif := Piezas_LadoA ;	
+		END_IF
+	END_IF
+	IF GestionDescargaCaballete^.TipoRecogida = 0 THEN
+		Piezas_ladoAdif := Piezas_LadoA ;
+		Piezas_ladoBdif := Piezas_Ladob ;
+	END_IF
 	
-	ELSIF Piezas_LadoA <> Piezas_Ladob THEN 
-		DifPiezas := ABS (Piezas_LadoA - Piezas_Ladob) ;
-			IF DifPiezas > 1 AND Piezas_LadoA > Piezas_Ladob THEN 
-				FunLadoTrabajoCaballete := 0 ;
-			ELSIF DifPiezas > 1 AND Piezas_Ladob > Piezas_LadoA	THEN
+	
+
+
+	IF GestionDescargaCaballete^.TipoRecogida >= 0 THEN 
+			IF Piezas_ladoAdif = Piezas_ladoBdif AND  Piezas_ladoBdif > 0 AND Piezas_ladoAdif >0  THEN 
 				FunLadoTrabajoCaballete := 180 ;
+			ELSIF Piezas_ladoAdif <> Piezas_ladoBdif THEN 
+				DifPiezas := ABS (Piezas_ladoAdif - Piezas_ladoBdif) ;
+					IF DifPiezas > 1 AND Piezas_ladoAdif > Piezas_ladoBdif THEN 
+						FunLadoTrabajoCaballete := 0 ;
+					ELSIF DifPiezas > 1 AND Piezas_ladoBdif > Piezas_ladoAdif	THEN
+						FunLadoTrabajoCaballete := 180 ;
+					END_IF
 			END_IF
-	END_IF
-		
-	IF DifPiezas = 1   THEN
-			IF  Piezas_Ladob < Piezas_LadoA THEN 
-				FunLadoTrabajoCaballete := 00 ;
-			ELSIF Piezas_LadoA < Piezas_LadoB THEN 
-				FunLadoTrabajoCaballete := 180 ;
+			
+			 
+	
+			IF DifPiezas = 1  THEN
+					IF  Piezas_ladoBdif < Piezas_ladoAdif THEN 
+						FunLadoTrabajoCaballete := 0 ;
+					ELSIF Piezas_ladoAdif < Piezas_ladoBdif THEN 
+						FunLadoTrabajoCaballete := 180 ;
+					END_IF
+			ELSIF	DifPiezas < 0  THEN	
+				IF  Piezas_ladoAdif < 0 THEN 
+						FunLadoTrabajoCaballete := 0 ;
+					ELSIF Piezas_ladoBdif < 0 THEN 
+						FunLadoTrabajoCaballete := 180 ;
+					END_IF
+					
 			END_IF
-	END_IF
+	END_IF 
 END_IF
+(*ELSIF  Recoger AND GestionLadoTrabajo = 0  AND Tiporecogida =1 THEN
+	
+
+
+
+
+
+
+
+
+
+
+
+
+		IF  ( Piezas_LadoA > 0 ) = ( Piezas_Ladob > 0) THEN 
+			    IF 	Piezas_LadoA MOD 2  = Piezas_Ladob MOD 2 THEN
+							IF UltimaRecogida^ = E_Ul_RecogidaCaballete.Primera_Pieza THEN
+								FunLadoTrabajoCaballete := 180 ;
+							ELSIF UltimaRecogida^  <> 0 THEN 
+								IF  UltimaRecogida^ =  E_Ul_RecogidaCaballete.LadoA THEN
+									FunLadoTrabajoCaballete := 180 ;
+								ELSIF  UltimaRecogida^ = E_Ul_RecogidaCaballete.LadoB  THEN 
+									FunLadoTrabajoCaballete := 0 ;
+								END_IF
+							END_IF
+				ELSIF Piezas_LadoA MOD 2  <> Piezas_Ladob MOD 2 THEN
+						IF UltimaRecogida^ =  E_Ul_RecogidaCaballete.Primera_Pieza THEN
+							IF Piezas_LadoA MOD 2 = 1  THEN
+								FunLadoTrabajoCaballete := 0 ;
+							ELSIF Piezas_Ladob MOD 2 = 1 THEN 
+								FunLadoTrabajoCaballete := 180 ;
+							END_IF
+						
+						ELSIF (*(Piezas_LadoA MOD 2 = 1 AND NOT E_Ul_RecogidaCaballete.LadoA = 1 ) OR *)E_Ul_RecogidaCaballete.LadoB = 2 THEN
+								FunLadoTrabajoCaballete := 0 ;
+						ELSIF (*(Piezas_Ladob MOD 2 =1 AND NOT E_Ul_RecogidaCaballete.LadoB = 2)   OR *)E_Ul_RecogidaCaballete.LadoA =1  THEN 
+								FunLadoTrabajoCaballete := 180 ;
+						END_IF
+				END_IF
+				
+		ELSIF Piezas_LadoA = 0 AND Piezas_Ladob <> 0 THEN 
+				FunLadoTrabajoCaballete := 180 ;
+		ELSIF Piezas_Ladob = 0 AND Piezas_LadoA <> 0 THEN 
+				FunLadoTrabajoCaballete := 0 ;		
+		END_IF
+	
+	IF FunLadoTrabajoCaballete = 180 THEN 
+		UltimaRecogida^ := E_Ul_RecogidaCaballete.LadoB ;
+	ELSIF FunLadoTrabajoCaballete = 0 THEN 	
+		UltimaRecogida^ := E_Ul_RecogidaCaballete.LadoA ;
+	END_IF
+	
+END_IF *)
 
 IF GestionLadoTrabajo <> 0 THEN
 	IF GestionLadoTrabajo = 1 THEN
@@ -74,36 +177,9 @@ IF GestionLadoTrabajo <> 0 THEN
 END_IF]]></ST>
     </Implementation>
     <LineIds Name="FunLadoTrabajoCaballete">
-      <LineId Id="7" Count="0" />
-      <LineId Id="32" Count="0" />
-      <LineId Id="29" Count="2" />
-      <LineId Id="28" Count="0" />
-      <LineId Id="10" Count="0" />
-      <LineId Id="17" Count="0" />
-      <LineId Id="20" Count="0" />
-      <LineId Id="18" Count="0" />
-      <LineId Id="21" Count="0" />
-      <LineId Id="19" Count="0" />
-      <LineId Id="39" Count="1" />
-      <LineId Id="22" Count="0" />
-      <LineId Id="27" Count="0" />
-      <LineId Id="37" Count="0" />
-      <LineId Id="36" Count="0" />
-      <LineId Id="24" Count="1" />
-      <LineId Id="38" Count="0" />
-      <LineId Id="33" Count="0" />
-      <LineId Id="43" Count="21" />
-      <LineId Id="42" Count="0" />
-      <LineId Id="79" Count="0" />
-      <LineId Id="78" Count="0" />
-      <LineId Id="80" Count="0" />
-      <LineId Id="87" Count="0" />
-      <LineId Id="86" Count="0" />
-      <LineId Id="88" Count="0" />
-      <LineId Id="83" Count="0" />
-      <LineId Id="85" Count="0" />
-      <LineId Id="84" Count="0" />
-      <LineId Id="82" Count="0" />
+      <LineId Id="314" Count="40" />
+      <LineId Id="467" Count="2" />
+      <LineId Id="355" Count="111" />
       <LineId Id="81" Count="0" />
     </LineIds>
   </POU>

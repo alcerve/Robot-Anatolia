@@ -22,6 +22,7 @@
     <Folder Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete" />
     <Folder Include="Data types\AlbertoPruevas\Funciones" />
     <Folder Include="Data types\AlbertoPruevas\BloqueFunciones" />
+    <Folder Include="Data types\AlbertoPruevas\Enumeraciones" />
     <Folder Include="Data types\DatiVari" />
     <Folder Include="Data types\DatiVari\EAP" />
     <Folder Include="Data types\DatiVari\Workorder" />
@@ -101,6 +102,9 @@
     <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Enumeraciones\E_Ul_RecogidaCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_CoordenadasCaballeteLadoA.TcDUT">
       <SubType>Code</SubType>
     </Compile>
@@ -114,6 +118,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_Ingombro_PorPosicion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_LadosCaballete.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_PiezasCaballete.TcDUT">

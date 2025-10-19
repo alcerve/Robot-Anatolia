@@ -1081,10 +1081,44 @@ External Setpoint Generation:
 			</ArrayInfo>
 		</DataType>
 		<DataType>
-			<Name GUID="{3BD42FCA-85FC-C899-2F71-A9346CD54EAB}" Namespace="Tc2_System" AutoDeleteType="true">T_AmsNetIdArr</Name>
-			<Comment><![CDATA[ TwinCAT AMS netID address bytes. ]]></Comment>
-			<BitSize>48</BitSize>
-			<BaseType GUID="{18071995-0000-0000-0000-000000000041}">AMSNETID</BaseType>
+			<Name GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}" PersistentType="true">STATO_ELEMENTO_GENERAL</Name>
+			<BitSize>16</BitSize>
+			<BaseType GUID="{18071995-0000-0000-0000-000000000006}">INT</BaseType>
+			<EnumInfo>
+				<Text><![CDATA[NOP]]></Text>
+				<Enum>0</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[CAMBIO_PRODUZIONE_RICEVUTO]]></Text>
+				<Enum>10</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[ATTESA_CAMBIO_ESEGUITO_MACCHINA_LOCALE]]></Text>
+				<Enum>15</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[CAMBIO_PRODUZIONE_MACCHINA_OK]]></Text>
+				<Enum>20</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[ATTESA_CAMBIO_PRODUZIONE_DA_LINEA]]></Text>
+				<Enum>25</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[CAMBIO_PRODUZIONE_LINEA_OK]]></Text>
+				<Enum>30</Enum>
+			</EnumInfo>
+			<Properties>
+				<Property>
+					<Name>plcAttribute_textlistenumeration</Name>
+				</Property>
+				<Property>
+					<Name>plcAttribute_qualified_only</Name>
+				</Property>
+				<Property>
+					<Name>plcAttribute_strict</Name>
+				</Property>
+			</Properties>
 		</DataType>
 		<DataType>
 			<Name GUID="{D375DDDA-CEF0-4071-A06A-CE925D22E9A7}" PersistentType="true">DATI_RICETTA_CONDIVISA</Name>
@@ -1191,46 +1225,6 @@ External Setpoint Generation:
 			</SubItem>
 		</DataType>
 		<DataType>
-			<Name GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}" PersistentType="true">STATO_ELEMENTO_GENERAL</Name>
-			<BitSize>16</BitSize>
-			<BaseType GUID="{18071995-0000-0000-0000-000000000006}">INT</BaseType>
-			<EnumInfo>
-				<Text><![CDATA[NOP]]></Text>
-				<Enum>0</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[CAMBIO_PRODUZIONE_RICEVUTO]]></Text>
-				<Enum>10</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[ATTESA_CAMBIO_ESEGUITO_MACCHINA_LOCALE]]></Text>
-				<Enum>15</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[CAMBIO_PRODUZIONE_MACCHINA_OK]]></Text>
-				<Enum>20</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[ATTESA_CAMBIO_PRODUZIONE_DA_LINEA]]></Text>
-				<Enum>25</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[CAMBIO_PRODUZIONE_LINEA_OK]]></Text>
-				<Enum>30</Enum>
-			</EnumInfo>
-			<Properties>
-				<Property>
-					<Name>plcAttribute_textlistenumeration</Name>
-				</Property>
-				<Property>
-					<Name>plcAttribute_qualified_only</Name>
-				</Property>
-				<Property>
-					<Name>plcAttribute_strict</Name>
-				</Property>
-			</Properties>
-		</DataType>
-		<DataType>
 			<Name GUID="{BFD9276C-9053-4F86-9DF2-C4526EE3C497}" PersistentType="true">COMUNICAZIONE_GENERAL</Name>
 			<BitSize>64</BitSize>
 			<SubItem>
@@ -1279,6 +1273,12 @@ External Setpoint Generation:
 				<BitSize>64</BitSize>
 				<BitOffs>1216</BitOffs>
 			</SubItem>
+		</DataType>
+		<DataType>
+			<Name GUID="{3BD42FCA-85FC-C899-2F71-A9346CD54EAB}" Namespace="Tc2_System" AutoDeleteType="true">T_AmsNetIdArr</Name>
+			<Comment><![CDATA[ TwinCAT AMS netID address bytes. ]]></Comment>
+			<BitSize>48</BitSize>
+			<BaseType GUID="{18071995-0000-0000-0000-000000000041}">AMSNETID</BaseType>
 		</DataType>
 		<DataType>
 			<Name GUID="{875D2B22-B7EB-497E-B933-0C004593CCF3}" Namespace="MC" TcBaseType="true" HideType="true" IecDeclaration="DWORD;">PLCTONC_AXIS_REF_CTRL</Name>
@@ -1843,7 +1843,7 @@ External Setpoint Generation:
 		<ImageData Id="1007">424de6000000000000007600000028000000100000000e000000010004000000000070000000000000000000000000000000000000000000000000008000008000000080800080000000800080008080000080808000c0c0c0000000ff0000ff000000ffff00ff000000ff00ff00ffff0000ffffff00ffffffff8ffffffffffffff77ffffffffffffff7787fffffffff8ffffff7fffffff7ffffffff7ffffff8ff7777ff8fffff88ff8888ff88ffff88ff8888ff88fffff8ff7777ff7ffffff7ffffffff7fffffff7ffffff8fffffffff7877ffffffffffffff77fffffffffffffffffffffff</ImageData>
 		<ImageData Id="1008">424dd6020000000000003600000028000000100000000e0000000100180000000000a002000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000f2ff00f2ff00f2ff00f2ff00f2ff000000ffffffffffffffffffffffffffffffffffffffffffffffff00000000f2ff00f2ff00f2ff00f2ff00f2ff00f2ff00f2ff000000ffffffffffffffffffffffffffffffffffff00000000f2ff00f2ff00f2ff241ced241ced241ced00f2ff00f2ff00f2ff000000ffffffffffffffffffffffffffffff00000000f2ff00f2ff241ced241ced241ced241ced241ced00f2ff00f2ff000000ffffffffffffffffffffffffffffff00000000f2ff00f2ff241ced241ced241ced241ced241ced00f2ff00f2ff000000ffffffffffffffffffffffffffffff00000000f2ff00f2ff00f2ff241ced241ced241ced00f2ff00f2ff00f2ff000000ffffffffffffffffffffffffffffffffffff00000000f2ff00f2ff00f2ff00f2ff00f2ff00f2ff00f2ff000000ffffffffffffffffffffffffffffffffffffffffffffffff00000000f2ff00f2ff00f2ff00f2ff00f2ff000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff</ImageData>
 	</ImageDatas>
-	<Project ProjectGUID="{3D691DF6-6C4D-4054-937D-36ED7F4C3C4A}" TargetNetId="10.10.120.28.1.1" Target64Bit="true" RelativeTargetNetId="true" RelativeIpAddresses="true" ShowHideConfigurations="#x346">
+	<Project ProjectGUID="{3D691DF6-6C4D-4054-937D-36ED7F4C3C4A}" TargetNetId="10.10.120.28.1.1" RelativeTargetNetId="true" RelativeIpAddresses="true" ShowHideConfigurations="#x346">
 		<System>
 			<Settings MaxCpus="8">
 				<Cpu CpuId="2"/>
@@ -1867,7 +1867,7 @@ External Setpoint Generation:
 		</Motion>
 		<Plc>
 			<Project GUID="{F5E1106F-7BEA-4E24-8B06-B4FF587F31D3}" Name="PLC_Portale" PrjFilePath="PLC_Portale\PLC_Portale.plcproj" TmcFilePath="PLC_Portale\PLC_Portale.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" CopyTmcToTarget="true" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="PLC_Portale\PLC_Portale.tmc" TmcHash="{245B1C3E-57CC-F6CF-C3A8-4E68FDCA95E9}">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="PLC_Portale\PLC_Portale.tmc" TmcHash="{00D4A126-3306-3191-BE2A-D1F5CA6C5083}">
 					<Name>PLC_Portale Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="1">
@@ -2200,6 +2200,10 @@ O_AttivaTastatoriPinza		: BOOL; // X1.7 pin 2 - Aspirazione Cartone Interno Lato
 							<Type GUID="{18071995-0000-0000-0000-000000000042}">AMSADDR</Type>
 						</Var>
 						<Var>
+							<Name>.I_PortQualCiabattaK515_X01</Name>
+							<Type>WORD</Type>
+						</Var>
+						<Var>
 							<Name>.I_TimeStampCiabattaPinzaK515</Name>
 							<Type>ULINT</Type>
 						</Var>
@@ -2241,10 +2245,6 @@ O_AttivaTastatoriPinza		: BOOL; // X1.7 pin 2 - Aspirazione Cartone Interno Lato
 I_K516 AT %I* : ARRAY[0..31] OF BYTE;
 Q_K516 AT %Q* : ARRAY[0..31] OF BYTE;]]></Comment>
 							<Type GUID="{A6CC6AFE-FE37-C02D-2C0C-FB1479660FEB}">ARRAY [0..31] OF BYTE</Type>
-						</Var>
-						<Var>
-							<Name>.I_PortQualCiabattaK515_X01</Name>
-							<Type>WORD</Type>
 						</Var>
 						<Var>
 							<Name>.I_PortQualCiabattaK515_X02</Name>
@@ -2555,8 +2555,8 @@ I_PresenzaVeicolo[8]	: BOOL; // 4=
 							<Type GUID="{064EA673-04B6-D0C1-CD14-82E56022843A}">ARRAY [1..4] OF BOOL</Type>
 						</Var>
 						<Var>
-							<Name>.AmsNetId</Name>
-							<Type GUID="{3BD42FCA-85FC-C899-2F71-A9346CD54EAB}" Namespace="Tc2_System">T_AmsNetIdArr</Type>
+							<Name>.StatoElementoPrecedente</Name>
+							<Type GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}">STATO_ELEMENTO_GENERAL</Type>
 						</Var>
 						<Var>
 							<Name>.DatiCambioProduzione_IN</Name>
@@ -2564,8 +2564,8 @@ I_PresenzaVeicolo[8]	: BOOL; // 4=
 							<Type GUID="{A5AA0D45-34F1-4694-914C-E08F40675103}">DATI_CAMBIO_PRODUZIONE_GENERAL</Type>
 						</Var>
 						<Var>
-							<Name>.StatoElementoPrecedente</Name>
-							<Type GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}">STATO_ELEMENTO_GENERAL</Type>
+							<Name>.AmsNetId</Name>
+							<Type GUID="{3BD42FCA-85FC-C899-2F71-A9346CD54EAB}" Namespace="Tc2_System">T_AmsNetIdArr</Type>
 						</Var>
 					</Vars>
 					<Vars VarGrpType="2" AreaNo="1">
