@@ -3,9 +3,9 @@
   <DUT Name="Es_LadosCaballete" Id="{830d41a8-cff4-46f7-9308-92c18bd94e1b}">
     <Declaration><![CDATA[TYPE Es_LadosCaballete :
 STRUCT
-	Lado_trabajo 			: E_Ul_RecogidaCaballete ;
-	Dif_PiezasLados			: UINT ;
-	TipoRecogida			: INT ;
+	Lado_trabajo 			: E_Ul_RecogidaCaballete ; // Estado del lugar Difine el estado de la rutina de descarga
+	Dif_PiezasLados			: UINT ; // Contiene la diferencia de piezas entre los lados del Caballete
+	TipoRecogida			: INT ; // Contine la rutina de descarga
 END_STRUCT
 END_TYPE
 ]]></Declaration>

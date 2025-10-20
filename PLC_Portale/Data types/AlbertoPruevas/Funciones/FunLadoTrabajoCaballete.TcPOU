@@ -111,59 +111,7 @@ IF  Recoger AND GestionLadoTrabajo = 0  THEN
 			END_IF
 	END_IF 
 END_IF
-(*ELSIF  Recoger AND GestionLadoTrabajo = 0  AND Tiporecogida =1 THEN
-	
 
-
-
-
-
-
-
-
-
-
-
-
-		IF  ( Piezas_LadoA > 0 ) = ( Piezas_Ladob > 0) THEN 
-			    IF 	Piezas_LadoA MOD 2  = Piezas_Ladob MOD 2 THEN
-							IF UltimaRecogida^ = E_Ul_RecogidaCaballete.Primera_Pieza THEN
-								FunLadoTrabajoCaballete := 180 ;
-							ELSIF UltimaRecogida^  <> 0 THEN 
-								IF  UltimaRecogida^ =  E_Ul_RecogidaCaballete.LadoA THEN
-									FunLadoTrabajoCaballete := 180 ;
-								ELSIF  UltimaRecogida^ = E_Ul_RecogidaCaballete.LadoB  THEN 
-									FunLadoTrabajoCaballete := 0 ;
-								END_IF
-							END_IF
-				ELSIF Piezas_LadoA MOD 2  <> Piezas_Ladob MOD 2 THEN
-						IF UltimaRecogida^ =  E_Ul_RecogidaCaballete.Primera_Pieza THEN
-							IF Piezas_LadoA MOD 2 = 1  THEN
-								FunLadoTrabajoCaballete := 0 ;
-							ELSIF Piezas_Ladob MOD 2 = 1 THEN 
-								FunLadoTrabajoCaballete := 180 ;
-							END_IF
-						
-						ELSIF (*(Piezas_LadoA MOD 2 = 1 AND NOT E_Ul_RecogidaCaballete.LadoA = 1 ) OR *)E_Ul_RecogidaCaballete.LadoB = 2 THEN
-								FunLadoTrabajoCaballete := 0 ;
-						ELSIF (*(Piezas_Ladob MOD 2 =1 AND NOT E_Ul_RecogidaCaballete.LadoB = 2)   OR *)E_Ul_RecogidaCaballete.LadoA =1  THEN 
-								FunLadoTrabajoCaballete := 180 ;
-						END_IF
-				END_IF
-				
-		ELSIF Piezas_LadoA = 0 AND Piezas_Ladob <> 0 THEN 
-				FunLadoTrabajoCaballete := 180 ;
-		ELSIF Piezas_Ladob = 0 AND Piezas_LadoA <> 0 THEN 
-				FunLadoTrabajoCaballete := 0 ;		
-		END_IF
-	
-	IF FunLadoTrabajoCaballete = 180 THEN 
-		UltimaRecogida^ := E_Ul_RecogidaCaballete.LadoB ;
-	ELSIF FunLadoTrabajoCaballete = 0 THEN 	
-		UltimaRecogida^ := E_Ul_RecogidaCaballete.LadoA ;
-	END_IF
-	
-END_IF *)
 
 IF GestionLadoTrabajo <> 0 THEN
 	IF GestionLadoTrabajo = 1 THEN
@@ -179,7 +127,8 @@ END_IF]]></ST>
     <LineIds Name="FunLadoTrabajoCaballete">
       <LineId Id="314" Count="40" />
       <LineId Id="467" Count="2" />
-      <LineId Id="355" Count="111" />
+      <LineId Id="355" Count="48" />
+      <LineId Id="456" Count="10" />
       <LineId Id="81" Count="0" />
     </LineIds>
   </POU>
