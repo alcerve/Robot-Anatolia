@@ -26,6 +26,8 @@ VAR_GLOBAL
 	
 	HMI_ConfermaAttivazioneFormatura		: ARRAY[1..MAXFORMING] OF BOOL;  //Bit per far uscire il popup di formatura attivata correttamente
 
+	HMI_NumPostazioneSel					:INT ;
+	HMI_ConfermaDati						:BOOL ;
 	
 	pippo : BOOL;
 
