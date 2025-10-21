@@ -13,9 +13,11 @@ VAR_INPUT
 	TipoRisultato 		: UINT := 3;// Punto utilizzato per coordinate finali di deposito lastra/falda, 1 interno, 2 centro, 3 esterno(default)
 	TipoOrdinamento 	: UINT := 1;//Tipologia di ordinamento in deposito 1= alternato (lastra DX-Lastra SX), 2 = consecutivo(prima un lato, poi l'altro lato), 3 = solo lato 0°, 4 = solo lato 180°
 	NumeroElementiDaDepositare : UINT;
-
-	PulisciMemoria : BOOL;
-	CalcolaFormatura : BOOL;
+	
+	
+	PulisciMemoria 				: BOOL;
+	CalcolaFormatura 			: BOOL;
+	In_PulisciMemoriaDone			:    BOOL;
 	HabiCalTodasCordenadas: BOOL;
 END_VAR
 
@@ -46,6 +48,11 @@ VAR_OUTPUT
 	CalcolaFormaturaDone 	: BOOL;
 	Errore 					: UINT;
 END_VAR
+
+VAR_IN_OUT
+	
+END_VAR
+
 VAR
 	TipoDeposito : e_TipologiaDeposito;				// ORIZZONTALE O INCLINATO
 	OrdineDepositoSxDx : ARRAY [1..MAXFORMINGSLAB] OF e_Tipo_Elemento_Da_Lavorare;	// Ordine deposito materiale per i due lati, sx e dx (considero di avere il medesimo ordine di deposito dai due lati) (CAVALLINA-INCLINATO)
@@ -103,7 +110,7 @@ VAR
 	ZEsternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
 
 	P_TextModeWrite : P_TextModeWrite;
-	MemoriaInizializzata : BOOL;
+	MemoriaInizializzata 		:    BOOL;
 	NuPiezasLadoDx : INT ;
 	NuPiezasLadoSx : INT ;
 	CalForCavallete: UINT;

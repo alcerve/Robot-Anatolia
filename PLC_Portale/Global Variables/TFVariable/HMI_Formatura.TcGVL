@@ -21,6 +21,7 @@ VAR_GLOBAL
 	
 	HMI_Forming_FormaturaCreata 			:  BOOL; //TRUE se la formatura è stata creata correttamente
 	HMI_Forming_FormaturaAttivata 			:  ARRAY[1..MAXFORMING] OF BOOL; //TRUE se la formatura è stata attivata correttamente
+	HMI_Forming_FormaturaAttivataWa			:  ARRAY[1..MAXFORMING] OF BOOL;
 
 	HMI_ErrAckCalcolaFormatura 				: BOOL; //Variabile che serve per dare ok acquisizione da operatore
 	
