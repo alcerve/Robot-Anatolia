@@ -791,7 +791,7 @@ ELSIF NOT CalcolaFormatura AND CalcolaFormaturaDone THEN
 END_IF
 
 //chiamata fb per log calcoli	
-P_TextModeWrite();
+//  P_TextModeWrite();
 IF P_TextModeWrite.bWriteDone AND P_TextModeWrite.bWrite THEN
 	P_TextModeWrite.bWrite := FALSE; 
 END_IF
