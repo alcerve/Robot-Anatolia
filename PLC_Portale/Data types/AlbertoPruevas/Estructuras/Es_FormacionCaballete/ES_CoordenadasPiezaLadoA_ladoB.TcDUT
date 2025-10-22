@@ -5,6 +5,7 @@
 STRUCT
 	DimPieza_LadoA 						: TFDimensionElement ;
 	DimPieza_LadoB 						: TFDimensionElement ;
+	Dim_Horizontal						: TFDimensionElement ;		
 END_STRUCT
 END_TYPE
 ]]></Declaration>

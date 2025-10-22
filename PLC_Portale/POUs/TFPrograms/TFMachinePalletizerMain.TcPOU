@@ -4942,7 +4942,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 											END_FOR
 											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
 												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												HMi_DimensionesPiezasWorkAreaDeposito[ja].Dim_Horizontal := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
 												//########################################################################################################		  
 											END_FOR
 												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
@@ -5045,7 +5045,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
 											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
 												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												HMi_DimensionesPiezasWorkAreaDeposito[ja].Dim_Horizontal := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
 												//########################################################################################################		  
 											END_FOR
 												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
@@ -5151,7 +5151,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 											END_FOR
 											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
 												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												HMi_DimensionesPiezasWorkAreaDeposito[ja].Dim_Horizontal := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
 												//########################################################################################################		  
 											END_FOR
 												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
@@ -5253,7 +5253,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 											END_FOR
 											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
 												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												HMi_DimensionesPiezasWorkAreaDeposito[ja].Dim_Horizontal := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
 												//########################################################################################################		  
 											END_FOR
 												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
@@ -5517,15 +5517,15 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 	(* Metto in stato di esecuzione il nuovo W.O. se tutto si è attivato *)
 		IF HMI_Forming_FormaturaAttivata[CalFor] THEN
 
-			ActualPickingListFromHMI[CalFor].State := e_StatoWorkOrder.DA_ESEGUIRE;
+			ActualPickingListFromHMI[idxForm].State := e_StatoWorkOrder.DA_ESEGUIRE;
 			//Azzero le liste per le postazioni dove non avviene la pallettizzazione
 			FOR i:= Iforstart TO Iforend DO		 
 				WorkAreaProductionList[i].Stato := e_Stato_ListaDiProduzione.LISTA_PROD_ASSENTE;
 			END_FOR
 			//WorkAreaProductionList[NumPostazioneDeposito].Support := Forming[idxForm].Pallet;
-			WorkAreaProductionList[CalFor].Stato 								:= LISTA_PROD_DA_ESEGUIRE;
-			WorkAreaProductionList[CalFor].NumeroListaAssociata 				:= CalFor;
-			WorkAreaState[CalFor].F 											:= CalFor;
+			WorkAreaProductionList[idxForm].Stato 								:= LISTA_PROD_DA_ESEGUIRE;
+			WorkAreaProductionList[CalFor].NumeroListaAssociata 				:= idxForm;
+			WorkAreaState[CalFor].F 											:= idxForm;
 			Picking.Cmd_CalcolaLista[IdxLista] 									:= FALSE;
 			HMI_Forming_FormaturaAttivata[IdxLista] 							:= FALSE;
 			

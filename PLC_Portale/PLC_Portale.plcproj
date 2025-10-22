@@ -135,6 +135,9 @@
     <Compile Include="Data types\AlbertoPruevas\Funciones\FunLadoTrabajoCaballete.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_PiezaLadoCaballete.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
