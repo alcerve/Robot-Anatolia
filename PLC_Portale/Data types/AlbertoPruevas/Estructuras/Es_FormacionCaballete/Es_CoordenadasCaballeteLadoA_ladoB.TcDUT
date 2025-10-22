@@ -3,8 +3,10 @@
   <DUT Name="Es_CoordenadasCaballeteLadoA_ladoB" Id="{4363d8da-bd39-481d-a655-a94509e55e13}">
     <Declaration><![CDATA[TYPE Es_CoordenadasCaballeteLadoA_ladoB :
 STRUCT
-	LadoA : Es_CoordenadasCaballeteLadoA ;
-	LadoB : Es_CoordenadasCaballeteLadoB ;
+	LadoA 								: Es_CoordenadasCaballeteLadoA ;
+	
+	LadoB 								: Es_CoordenadasCaballeteLadoB ;
+	
 END_STRUCT
 END_TYPE
 ]]></Declaration>

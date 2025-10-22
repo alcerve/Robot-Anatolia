@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="FunLadoTrabajoCaballete" Id="{03154322-5f1d-40a2-be63-9f98acb46263}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION FunLadoTrabajoCaballete : Uint
+VAR_INPUT
+	Piezas_LadoA 			: UINT ;
+	Piezas_Ladob			: UINT ;
+	Recoger					: BOOL;
+	Dejar					: BOOL ;
+	GestionLadoTrabajo		: INT ;
+	//Tiporecogida			: UINT;
+	GestionDescargaCaballete			: POINTER TO Es_LadosCaballete ;
+END_VAR
+VAR
+	DifPiezas 				: UINT;
+	Piezas_ladoAdif			: UINT;
+	Piezas_ladoBdif			: UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF  Dejar AND GestionLadoTrabajo = 0 THEN 
+  
+	IF Piezas_LadoA = 0 AND Piezas_Ladob =0 THEN 
+		FunLadoTrabajoCaballete := 0 ;
+	
+	ELSIF Piezas_LadoA <> Piezas_Ladob THEN 
+		DifPiezas := ABS (Piezas_LadoA - Piezas_Ladob) ;
+			IF DifPiezas > 1 AND Piezas_LadoA > Piezas_Ladob THEN 
+				FunLadoTrabajoCaballete := 180 ;
+			ELSIF DifPiezas > 1 AND Piezas_Ladob > Piezas_LadoA	THEN
+				FunLadoTrabajoCaballete := 0 ;
+			END_IF
+	END_IF
+		
+	IF DifPiezas = 1   THEN
+			IF  Piezas_Ladob < Piezas_LadoA THEN 
+				FunLadoTrabajoCaballete := 180 ;
+			ELSIF Piezas_LadoA < Piezas_LadoB THEN 
+				FunLadoTrabajoCaballete := 0 ;
+			END_IF
+	END_IF
+END_IF
+
+IF  Recoger AND GestionLadoTrabajo = 0  THEN 
+	IF Piezas_LadoA <> Piezas_Ladob AND GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.Primera_Pieza  THEN 
+		GestionDescargaCaballete^.TipoRecogida := 1 ;
+		IF Piezas_LadoA > Piezas_Ladob THEN 
+			IF Piezas_Ladob > 0 THEN
+				GestionDescargaCaballete^.Dif_PiezasLados := Piezas_LadoA - Piezas_Ladob;
+			ELSE 
+				GestionDescargaCaballete^.Dif_PiezasLados := 0 ;	
+			END_IF
+			GestionDescargaCaballete^.Lado_trabajo := E_Ul_RecogidaCaballete.LadoAMayor ;
+		ELSIF Piezas_Ladob > Piezas_LadoA THEN 
+			IF Piezas_LadoA > 0 THEN 
+				GestionDescargaCaballete^.Dif_PiezasLados := Piezas_Ladob - Piezas_LadoA;
+			ELSE
+				GestionDescargaCaballete^.Dif_PiezasLados := 0 ;	
+			END_IF 
+			GestionDescargaCaballete^.Lado_trabajo := E_Ul_RecogidaCaballete.LadoBMayor ;	
+		END_IF
+	ELSIF Piezas_LadoA = Piezas_Ladob AND GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.Primera_Pieza THEN 
+		GestionDescargaCaballete^.TipoRecogida := 0 ;
+		GestionDescargaCaballete^.Dif_PiezasLados := 0;
+	END_IF 	
+
+	IF GestionDescargaCaballete^.TipoRecogida = 1  THEN
+		IF GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.LadoAMayor THEN 
+			Piezas_ladoAdif := Piezas_LadoA - GestionDescargaCaballete^.Dif_PiezasLados;
+			Piezas_ladoBdif := Piezas_Ladob ;
+		ELSIF GestionDescargaCaballete^.Lado_trabajo = E_Ul_RecogidaCaballete.LadoBMayor THEN
+ 			Piezas_ladoBdif := Piezas_Ladob  - GestionDescargaCaballete^.Dif_PiezasLados ;
+			Piezas_ladoAdif := Piezas_LadoA ;	
+		END_IF
+	END_IF
+	IF GestionDescargaCaballete^.TipoRecogida = 0 THEN
+		Piezas_ladoAdif := Piezas_LadoA ;
+		Piezas_ladoBdif := Piezas_Ladob ;
+	END_IF
+	
+	
+
+
+	IF GestionDescargaCaballete^.TipoRecogida >= 0 THEN 
+			IF Piezas_ladoAdif = Piezas_ladoBdif AND  Piezas_ladoBdif > 0 AND Piezas_ladoAdif >0  THEN 
+				FunLadoTrabajoCaballete := 180 ;
+			ELSIF Piezas_ladoAdif <> Piezas_ladoBdif THEN 
+				DifPiezas := ABS (Piezas_ladoAdif - Piezas_ladoBdif) ;
+					IF DifPiezas > 1 AND Piezas_ladoAdif > Piezas_ladoBdif THEN 
+						FunLadoTrabajoCaballete := 0 ;
+					ELSIF DifPiezas > 1 AND Piezas_ladoBdif > Piezas_ladoAdif	THEN
+						FunLadoTrabajoCaballete := 180 ;
+					END_IF
+			END_IF
+			
+			 
+	
+			IF DifPiezas = 1  THEN
+					IF  Piezas_ladoBdif < Piezas_ladoAdif THEN 
+						FunLadoTrabajoCaballete := 0 ;
+					ELSIF Piezas_ladoAdif < Piezas_ladoBdif THEN 
+						FunLadoTrabajoCaballete := 180 ;
+					END_IF
+			ELSIF	DifPiezas < 0  THEN	
+				IF  Piezas_ladoAdif < 0 THEN 
+						FunLadoTrabajoCaballete := 0 ;
+					ELSIF Piezas_ladoBdif < 0 THEN 
+						FunLadoTrabajoCaballete := 180 ;
+					END_IF
+					
+			END_IF
+	END_IF 
+END_IF
+
+
+IF GestionLadoTrabajo <> 0 THEN
+	IF GestionLadoTrabajo = 1 THEN
+		FunLadoTrabajoCaballete := 0 ;
+	ELSIF GestionLadoTrabajo = 2 THEN 
+		FunLadoTrabajoCaballete := 180 ;	
+	END_IF
+	
+
+
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FunLadoTrabajoCaballete">
+      <LineId Id="314" Count="40" />
+      <LineId Id="467" Count="2" />
+      <LineId Id="355" Count="48" />
+      <LineId Id="456" Count="10" />
+      <LineId Id="81" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ES_CoordenadasPiezaLadoA_ladoB" Id="{6167ae39-3eb4-474d-9283-20d8cb389b98}">
+    <Declaration><![CDATA[TYPE ES_CoordenadasPiezaLadoA_ladoB :
+STRUCT
+	DimPieza_LadoA 						: TFDimensionElement ;
+	DimPieza_LadoB 						: TFDimensionElement ;
+	Dim_Horizontal						: TFDimensionElement ;		
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

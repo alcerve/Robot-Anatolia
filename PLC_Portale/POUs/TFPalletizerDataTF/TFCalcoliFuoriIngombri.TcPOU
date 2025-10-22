@@ -1684,7 +1684,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			WorkAreaState^[PosRobot].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;
+																			+ OffsetSicurezza.Y.Avuoto +INGOMBRO_RISCONTRO_FRAME )  ;
 										NuIngombroYCalculado180G_Depuracion := 9;			   			   
 		   								// Añadido 	29 -7-2025_________________________________________________
 										ELSIF PosRobot <> 0 AND  WorkAreaState^[PosRobot].Supporto.Tipologia = CAVALLETTO  AND ModuleAX_J^.Ax^.Status.ActPosition < 95    THEN 
@@ -1713,7 +1713,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;	
+																			+ OffsetSicurezza.Y.Avuoto + INGOMBRO_RISCONTRO_FRAME)  ;	
 										NuIngombroYCalculado180G_Depuracion := 11;		
 										// Añadido 	4 -9-2025_________________________________________________
 										ELSIF  WorkAreaState^[Mission^.PPick].Supporto.Tipologia = BUNDLE  AND  PosRobot = 0    THEN 
@@ -1738,7 +1738,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																	WorkAreaState^[iwa].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
-																	+ OffsetSicurezza.Y.Avuoto )  ;
+																	+ OffsetSicurezza.Y.Avuoto + INGOMBRO_RISCONTRO_FRAME )  ;
 										NuIngombroYCalculado180G_Depuracion := 13;
 										ELSIF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = BUNDLE    THEN  	
 											QuotaFuoriIngombro_Y_Calcolata := 
@@ -1747,7 +1747,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																	WorkAreaState^[iwa].Supporto.YDim /2  (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
-																	+ OffsetSicurezza.Y.Avuoto )  ;
+																	+ OffsetSicurezza.Y.Avuoto )+ INGOMBRO_RISCONTRO_FRAME   ;
 										NuIngombroYCalculado180G_Depuracion := 14;
 											ELSIF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO    THEN  	
 											QuotaFuoriIngombro_Y_Calcolata := 
@@ -1756,7 +1756,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																	WorkAreaState^[iwa].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
-																	+ OffsetSicurezza.Y.Avuoto )  ;	
+																	+ OffsetSicurezza.Y.Avuoto + INGOMBRO_RISCONTRO_FRAME )  ;	
 										NuIngombroYCalculado180G_Depuracion := 15;							
 										END_IF 
 					  
@@ -1775,7 +1775,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	IngombroDestinazioneY_Pos -
 																	OffsetSicurezza.Y.Avuoto);*)
 																			  *)
-								IF QuotaFuoriIngombro_Y_Calcolata + IngombroDestinazioneY_Pos >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
+								IF QuotaFuoriIngombro_Y_Calcolata (*+ IngombroDestinazioneY_Pos*) >= WorkFootprint^[6].Y THEN//Se supero la quota massimo dell'area di lavoro genro un allarme
 									Errore := ErrCOLLISIONE_PINZA;
 									ErrCollisioneDebug := 10;			 
 									RETURN; 

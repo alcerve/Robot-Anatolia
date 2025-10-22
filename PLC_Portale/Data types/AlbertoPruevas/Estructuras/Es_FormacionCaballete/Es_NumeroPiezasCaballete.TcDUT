@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Es_NumeroPiezasCaballete" Id="{b4d1cd92-7ac7-4ca5-b6b3-03f087d8d5b6}">
+    <Declaration><![CDATA[TYPE Es_NumeroPiezasCaballete :
+STRUCT
+	Nu_Piezas_lado_A :UINT ;
+	Nu_Piezas_lado_B :UINT ;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

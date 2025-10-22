@@ -6,6 +6,8 @@ STRUCT
 	(* Tipologia *)
 	Typology		: e_Tipo_Elemento_Da_Lavorare := TERMINATORE;	(* Tipo di ELEMENTO DA LAVORARE: 0: LASTRA,1:FALDA *)
 	TypologyCode	: INT						:= -1;	(* Descrittore tipo elemento *)
+	(*Dimensione Lastra*) // Añadido Alberto 14-10-2025
+	SlabDimension 	: TFDimensionElement; (* Dimensione Lastra *)
 	(* Dimensioni *)
 	XDim		: REAL							:= 0.0;	(* (mm) Dimensione X *)
 	YDim		: REAL							:= 0.0;	(* (mm) Dimensione Y *)
@@ -15,6 +17,7 @@ STRUCT
 	Y			: LREAL							:= 0.0;	(* (mm) Destination - Coordinata Y *)
 	Z			: LREAL							:= 0.0;	(* (mm) Destination - Coordinata Z *)
 	J			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata J (PITCH)*)
+	CooCavallete : Es_CoordenadasCaballeteLadoA_ladoB  ;
 	//K			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata K (ROLL)*)
 	//W			: LREAL							:= 0.0;	(* (°)  Destination - Coordinata W (YAW)*)
 

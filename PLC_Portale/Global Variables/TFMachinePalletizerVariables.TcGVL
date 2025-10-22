@@ -23,7 +23,7 @@ VAR_GLOBAL CONSTANT
 	
 	MAXFORMINGPACK 								: UINT := 128; //Numero di pacchi in formatura
 	
-	MAXFORMING 									: UINT := 6; //Numero di formature attive contemporaneamente = NUMERO DI POSTAZIONI IN MACCHINA
+	MAXFORMING 									: UINT := 12; //Numero di formature attive contemporaneamente = NUMERO DI POSTAZIONI IN MACCHINA
 	
 	MAXZONE 									: UINT := 8; //Numero massimo numero di zone
 	

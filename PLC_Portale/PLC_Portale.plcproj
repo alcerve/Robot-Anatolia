@@ -22,6 +22,7 @@
     <Folder Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete" />
     <Folder Include="Data types\AlbertoPruevas\Funciones" />
     <Folder Include="Data types\AlbertoPruevas\BloqueFunciones" />
+    <Folder Include="Data types\AlbertoPruevas\Enumeraciones" />
     <Folder Include="Data types\DatiVari" />
     <Folder Include="Data types\DatiVari\EAP" />
     <Folder Include="Data types\DatiVari\Workorder" />
@@ -101,6 +102,9 @@
     <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Enumeraciones\E_Ul_RecogidaCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_CoordenadasCaballeteLadoA.TcDUT">
       <SubType>Code</SubType>
     </Compile>
@@ -110,13 +114,28 @@
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_CoordenadasCaballeteLadoB.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\ES_CoordenadasPiezaLadoA_ladoB.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_NumeroPiezasCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_Ingombro_PorPosicion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_LadosCaballete.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_PiezasCaballete.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\ProgramaEjecucion.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\FunLadoTrabajoCaballete.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_PiezaLadoCaballete.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_SensoresTasteggio.TcPOU">
@@ -1429,6 +1448,9 @@
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_CompletaNew.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Backup16_10_25.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Back.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -1713,6 +1735,9 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <SubObject Include="TFMachinePalletizerMain._11_CalcolaListaProduzioneNew1">
+      <ExcludeFromBuild>true</ExcludeFromBuild>
+    </SubObject>
     <SubObject Include="TFMachinePalletizerMain._11_CalcolaListaProduzioneold">
       <ExcludeFromBuild>true</ExcludeFromBuild>
     </SubObject>

@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="Fun_PiezaLadoCaballete" Id="{9dba98a8-2d97-436f-a126-f7400ae2c80d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION Fun_PiezaLadoCaballete : Uint
+VAR_INPUT
+	Nu_PiezaGlobal 			: uint ;
+END_VAR
+VAR_OUTPUT
+	Nu_pieza_LadoA: UINT;
+	Nu_pieza_LadoB: UINT;
+END_VAR
+VAR
+	
+	RestoDiv: UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE Nu_PiezaGlobal OF
+	1:
+		Nu_pieza_LadoA :=  Nu_PiezaGlobal ;
+	2..100 :
+		IF Nu_PiezaGlobal > 1 THEN 
+			RestoDiv := Nu_PiezaGlobal MOD 2 ;
+			CASE RestoDiv OF
+				0:
+					Nu_pieza_LadoB := Nu_PiezaGlobal / 2 ;
+				1:
+					Nu_pieza_LadoA := ((Nu_PiezaGlobal-1) / 2)+1 ;	
+			END_CASE
+		END_IF
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="Fun_PiezaLadoCaballete">
+      <LineId Id="38" Count="12" />
+      <LineId Id="16" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

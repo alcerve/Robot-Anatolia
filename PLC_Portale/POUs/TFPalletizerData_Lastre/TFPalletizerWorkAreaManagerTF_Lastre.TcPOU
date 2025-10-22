@@ -158,6 +158,8 @@ VAR
 	Y_PuntoPrelievo0: REAL;
 	Y_PuntoPrelievo180: REAL;
 	OffSetY180Cavallete: REAL;
+	AguloDeRecogida: UINT;
+	AguloDeDeposito: UINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -1447,6 +1449,13 @@ WorkAreaState^[Mission^.PPlace].Slab[WorkAreaState^[Mission^.PPlace].P] := Missi
 (* Incremento WorkArea^[cwa].P (P=P+1) *)
 WorkAreaState^[Mission^.PPlace].P := WorkAreaState^[Mission^.PPlace].P + 1;
 
+IF WorkAreaState^[Mission^.PPlace].Supporto.Tipologia = CAVALLETTO THEN 
+		IF PosicionJDestino = 0 THEN 
+			WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto +1 ;
+		ELSIF PosicionJDestino = 180 THEN 	
+			WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto +1 ;
+		END_IF
+END_IF
 (* Imposto lo stato dell' apprendimento *)
 CASE LatoDeposito OF			
 	(*0:
@@ -1895,19 +1904,21 @@ IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN
 	END_IF
 ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto
 	
-	//IF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J > 90 THEN
-	//IF FormaturaAFRAMERT[cwa].PElement[WorkAreaState^[Mission^.PPick].P].J > 90 THEN
-	//IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPick].F].PElement[WorkAreaState^[Mission^.PPick].P].J > 90 THEN
-	//IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPick].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J > 90 THEN
-	IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J > 90 THEN
-		LatoPrelievo := 180;
-	//ELSIF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J < 90 THEN
-	//ELSIF FormaturaAFRAMERT[cwa].PElement[WorkAreaState^[Mission^.PPick].P].J  < 90 THEN
-	//ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPick].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J  < 90 THEN
-	ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J  < 90 THEN
-		LatoPrelievo := 0;
-	END_IF	
-		
+	AguloDeRecogida := FunLadoTrabajoCaballete(Piezas_LadoA := 
+						HMI_NumeroPezziPresentiCavallete[Mission^.PPick].HMI_NumeroPezziPresentiPostazione_A_Cavaleto , 
+							Piezas_Ladob := HMI_NumeroPezziPresentiCavallete[Mission^.PPick].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ,
+								Recoger := TRUE ,dejar := FALSE ,GestionLadoTrabajo := WorkareaState^[Mission^.PPick].Supporto.TipoTrabajoLado_Cavallete ,
+									GestionDescargaCaballete := ADR(GestionDescargaCaballete) 	);
+	LatoPrelievo := AguloDeRecogida ;
+	IF FALSE THEN 
+			IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J > 90 THEN
+				LatoPrelievo := 180;
+			
+			ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPick].P-1].J  < 90 THEN
+				LatoPrelievo := 0;
+			END_IF	
+	END_IF
+	
 	IF ppickOld <> Mission^.PPick THEN 	//Ad ogni cambio di postazione setto il valore del lato iniziale a 0
 		TFClearApprendimento(ADR(WorkAreaState^[Mission^.PPick].Apprendimento));//Pulisco la struttura dell'apprendimento
 		TFWAM_CreaMissione_PrelLastraDaWA.Quota_FormaturaJ := 180; //Assegno la quota di 0° per il prelievo, in questo modo la pinza parte a fare il tasteggio in questa posizione					
@@ -1961,14 +1972,21 @@ ppickOld := Mission^.PPick;
 IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //SE PRELIEVO SU BUNDLE O CASSA
 	IF LatoPrelievo = 180 THEN
 		AngoloPrelievo 					:= 180-2;
-		AltezzaCentroLastraInclinata 	:=  ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
+		AltezzaCentroLastraInclinata 	:=  	ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
 		QuotaLastraYRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
-		QuotaLastraZRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z +  (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel ;
+		QuotaLastraZRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z (*+  (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel *);
 	ELSIF LatoPrelievo = 0 THEN
-		AngoloPrelievo 					:= 2;
-		AltezzaCentroLastraInclinata 	:=  ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
-		QuotaLastraYRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
-		QuotaLastraZRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z + (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel ;
+		AngoloPrelievo 							:= 2;
+		AltezzaCentroLastraInclinata 			:=  ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
+		IF TRUE THEN 
+			QuotaLastraYRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto-1].CooCavallete.LadoA.CoordenadaFinale_Y;
+			QuotaLastraZRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto-1].CooCavallete.LadoA.CoordenadaFinale_Z;(*+  (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel *);
+		ELSE
+			QuotaLastraYRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
+			QuotaLastraZRealTimePrelievo 			:= FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z (*+ (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel*) ;		
+			
+		END_IF
+		
 	ELSE
 		AngoloPrelievo := 90;
 		AltezzaCentroLastraInclinata := 0;
@@ -1979,13 +1997,23 @@ ELSIF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.CAVALLET
 	IF LatoPrelievo = 180 THEN
 		AngoloPrelievo 					:= 180-2;
 		AltezzaCentroLastraInclinata 	:= ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
-		QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
-		QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z + (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaCaballete;
+		IF TRUE THEN
+			QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto-1].CooCavallete.LadoB.CoordenadaFinale_Y;
+			QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto-1].CooCavallete.LadoB.CoordenadaFinale_Z;(*+  (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel *);
+		ELSE
+ 			QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
+			QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z + (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaCaballete;
+		END_IF
 	ELSIF LatoPrelievo = 0 THEN
 		AngoloPrelievo 					:= 3;
 		AltezzaCentroLastraInclinata 	:= ABS((Mission^.YDim/2) * COS(DEG_TO_RAD(AngoloPrelievo)));
-		QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
-		QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z + (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaCaballete ;
+		IF TRUE THEN 
+			QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto-1].CooCavallete.LadoA.CoordenadaFinale_Y;
+			QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto-1].CooCavallete.LadoA.CoordenadaFinale_Z;(*+  (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaBundel *);
+		ELSE
+			QuotaLastraYRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Y;
+			QuotaLastraZRealTimePrelievo 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPick].P-1].Z (*+ (*Dimensioni_Pinza.DimTraveVerticale / 2*) CuotaOffSetZRecogidaCaballete *);
+		END_IF
 	ELSE
 		AngoloPrelievo := 90;
 		AltezzaCentroLastraInclinata := 0;
@@ -2146,7 +2174,7 @@ IF LatoPrelievo = 180 THEN
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 			ELSE
 				
-			Mission^.YPick 				:= Mission^.YPick  - (70 + 10 ) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+			Mission^.YPick 				:= Mission^.YPick  - (45) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
  			Mission^.ZPick				:= Mission^.ZPick + 15 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		 END_IF
@@ -2157,12 +2185,12 @@ IF LatoPrelievo = 180 THEN
 		Y_PuntoPrelievo180 := Mission^.YPick ;
 		Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		IF Mission^.YDim  < 1300 THEN
-				Mission^.YPick 				:= Mission^.YPick - Dimensioni_Pinza.DimTraveVerticale / 2 -30; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+				Mission^.YPick 				:= Mission^.YPick - (Dimensioni_Pinza.DimTraveVerticale -35) ;//(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
 				Mission^.ZPick				:= Mission^.ZPick + (25 +20) ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			ELSE
 				Mission^.YPick 				:= Mission^.YPick - 60 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
-				Mission^.ZPick				:= Mission^.ZPick + 70 ;
+				Mission^.ZPick				:= Mission^.ZPick + 28 ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			
 		END_IF
@@ -2187,8 +2215,8 @@ ELSIF LatoPrelievo = 0 THEN
 			Mission^.ZPick				:= Mission^.ZPick + (20) ; // pieza pequeña
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		ELSE
-			Mission^.YPick 				:= Mission^.YPick  + 0; // + 50 (*+ 50 *);
-			Mission^.ZPick				:= Mission^.ZPick + 25 ;
+			Mission^.YPick 				:= Mission^.YPick  + 25; // + 50 (*+ 50 *);
+			Mission^.ZPick				:= Mission^.ZPick + 12 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;	
 	END_IF
 	
@@ -2204,13 +2232,24 @@ END_IF
 
 (* Valorizzazione del lato di prelievo nel caso di depostio su cavallina *)
 IF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in prelievo il supporto di tipo cavalletto
-	//IF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J > 90 THEN
-	IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J > 90 THEN
-		LatoDeposito := 180;
-	//ELSIF WorkAreaProductionList^[cwa].PElementList[WorkAreaState^[cwa].P].PElement.J < 90 THEN
-	ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J  < 90 THEN
-		LatoDeposito := 0;
+	
+	AguloDeDeposito := FunLadoTrabajoCaballete(Piezas_LadoA := 
+						HMI_NumeroPezziPresentiCavallete[Mission^.PPlace].HMI_NumeroPezziPresentiPostazione_A_Cavaleto , 
+								Piezas_Ladob := HMI_NumeroPezziPresentiCavallete[Mission^.PPlace].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ,
+									Recoger := FALSE ,dejar := TRUE, GestionLadoTrabajo := WorkareaState^[Mission^.PPlace].Supporto.TipoTrabajoLado_Cavallete ,
+										GestionDescargaCaballete := ADR(GestionCargaCaballete) );
+	LatoDeposito := AguloDeDeposito ;
+
+	IF FALSE THEN
+		IF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J > 90 THEN
+			LatoDeposito := 180;
+		
+		ELSIF FormaturaAFRAMERT[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].J  < 90 THEN
+			LatoDeposito := 0;
+		END_IF
 	END_IF
+	
+	
 ELSIF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN
 	LatoDeposito := 180;
 ELSIF WorkareaState^[Mission^.PPlace].Supporto.Tipologia <> e_Tipo_Pallet.CAVALLETTO AND WorkareaState^[Mission^.PPlace].Supporto.Tipologia <> e_Tipo_Pallet.BUNDLE THEN //Se NON ho in prelievo il supporto di tipo cavalletto
@@ -2310,12 +2349,27 @@ IF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THE
 		Errore.Code := ErrWA_SupportoInPrelivoNonPrevisto;
 	END_IF
 ELSIF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.CAVALLETTO THEN //Se ho in DEPOSITO il supporto di tipo CAVALLETTO
-	IF LatoDeposito <> 90 THEN
-		QuotaLastraYRealTimeDeposito 		:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Y;
-		QuotaLastraZRealTimeDeposito 		:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Z;
+	IF LatoDeposito = 0 THEN 
+		QuotaLastraYRealTimeDeposito 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto].CooCavallete.LadoA.CoordenadaFinale_Y;
+		QuotaLastraZRealTimeDeposito			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto].CooCavallete.LadoA.CoordenadaFinale_Z;
+	ELSIF LatoDeposito = 180   THEN 
+		QuotaLastraYRealTimeDeposito 			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto].CooCavallete.LadoB.CoordenadaFinale_Y;
+		QuotaLastraZRealTimeDeposito			:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto].CooCavallete.LadoB.CoordenadaFinale_Z;
 	ELSE
-		Errore.Code := ErrWA_SupportoInPrelivoNonPrevisto;
+		Errore.Code := ErrWA_SupportoInPrelivoNonPrevisto;	
 	END_IF
+
+	IF FALSE THEN 
+		IF LatoDeposito <> 90 THEN
+			QuotaLastraYRealTimeDeposito 		:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Y;
+			QuotaLastraZRealTimeDeposito 		:= FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata].PElement[WorkAreaState^[Mission^.PPlace].P].Z;
+		ELSE
+			Errore.Code := ErrWA_SupportoInPrelivoNonPrevisto;
+		END_IF
+	END_IF
+	
+	
+	
 ELSE
 	QuotaLastraZRealTimeDeposito := Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Z;
 	QuotaLastraYRealTimeDeposito := ABS(Forming^[WorkAreaState^[Mission^.PPlace].F].PElement[WorkAreaState^[Mission^.PPlace].P].Y);
@@ -2700,6 +2754,14 @@ END_IF**)
 
 
 WorkAreaState^[Mission^.PPick].P := WorkAreaState^[Mission^.PPick].P - 1;
+IF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO THEN 
+	IF PosicionJOrigen = 0 THEN 
+		WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_A_Cavaleto -1 ;
+	ELSIF PosicionJOrigen = 180 THEN 	
+		WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto := WorkAreaState^[Mission^.PPick].P_Cava.HMI_NumeroPezziPresentiPostazione_B_Cavaleto -1 ;
+	END_IF
+END_IF
+
 WorkAreaManager^.State 	:= WAMANAGER_CICLO_DEPOSITO_LASTRA_WA_RUN;
 RestoreCWA^ := TRUE;
 PreviousPWA^ := pwa;
@@ -2870,6 +2932,9 @@ END_IF	]]></ST>
       <LineId Id="116" Count="2" />
       <LineId Id="122" Count="0" />
       <LineId Id="32" Count="4" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="135" Count="4" />
+      <LineId Id="134" Count="0" />
       <LineId Id="39" Count="0" />
       <LineId Id="69" Count="32" />
       <LineId Id="123" Count="1" />
@@ -2942,17 +3007,17 @@ END_IF	]]></ST>
       <LineId Id="828" Count="0" />
       <LineId Id="1549" Count="0" />
       <LineId Id="1564" Count="0" />
-      <LineId Id="1559" Count="0" />
-      <LineId Id="1699" Count="0" />
-      <LineId Id="1701" Count="0" />
       <LineId Id="1725" Count="0" />
+      <LineId Id="1852" Count="2" />
+      <LineId Id="1922" Count="0" />
+      <LineId Id="1855" Count="1" />
       <LineId Id="1786" Count="0" />
-      <LineId Id="1560" Count="1" />
-      <LineId Id="1700" Count="0" />
+      <LineId Id="1560" Count="0" />
+      <LineId Id="1851" Count="0" />
       <LineId Id="1702" Count="0" />
-      <LineId Id="1787" Count="0" />
       <LineId Id="1562" Count="1" />
       <LineId Id="1565" Count="0" />
+      <LineId Id="1857" Count="0" />
       <LineId Id="1577" Count="1" />
       <LineId Id="1580" Count="0" />
       <LineId Id="1583" Count="1" />
@@ -2980,9 +3045,18 @@ END_IF	]]></ST>
       <LineId Id="849" Count="0" />
       <LineId Id="1369" Count="0" />
       <LineId Id="1263" Count="0" />
-      <LineId Id="1464" Count="0" />
-      <LineId Id="1466" Count="0" />
-      <LineId Id="1612" Count="4" />
+      <LineId Id="1860" Count="0" />
+      <LineId Id="1862" Count="0" />
+      <LineId Id="1859" Count="0" />
+      <LineId Id="1613" Count="1" />
+      <LineId Id="1865" Count="0" />
+      <LineId Id="1871" Count="1" />
+      <LineId Id="1866" Count="0" />
+      <LineId Id="1868" Count="0" />
+      <LineId Id="1870" Count="0" />
+      <LineId Id="1869" Count="0" />
+      <LineId Id="1867" Count="0" />
+      <LineId Id="1615" Count="0" />
       <LineId Id="851" Count="0" />
       <LineId Id="1371" Count="0" />
       <LineId Id="852" Count="0" />
@@ -2990,7 +3064,15 @@ END_IF	]]></ST>
       <LineId Id="1467" Count="0" />
       <LineId Id="853" Count="0" />
       <LineId Id="1636" Count="0" />
-      <LineId Id="1639" Count="14" />
+      <LineId Id="1639" Count="2" />
+      <LineId Id="1877" Count="4" />
+      <LineId Id="1883" Count="0" />
+      <LineId Id="1873" Count="1" />
+      <LineId Id="1645" Count="1" />
+      <LineId Id="1887" Count="3" />
+      <LineId Id="1893" Count="1" />
+      <LineId Id="1884" Count="1" />
+      <LineId Id="1650" Count="3" />
       <LineId Id="1637" Count="0" />
       <LineId Id="1654" Count="0" />
       <LineId Id="1656" Count="0" />
@@ -3079,10 +3161,17 @@ END_IF	]]></ST>
       <LineId Id="1392" Count="0" />
       <LineId Id="1375" Count="0" />
       <LineId Id="917" Count="8" />
+      <LineId Id="1899" Count="2" />
+      <LineId Id="1896" Count="0" />
+      <LineId Id="1923" Count="0" />
+      <LineId Id="1897" Count="1" />
+      <LineId Id="1895" Count="0" />
       <LineId Id="1703" Count="0" />
       <LineId Id="926" Count="1" />
       <LineId Id="1704" Count="0" />
-      <LineId Id="928" Count="4" />
+      <LineId Id="928" Count="1" />
+      <LineId Id="1902" Count="2" />
+      <LineId Id="930" Count="2" />
       <LineId Id="1501" Count="2" />
       <LineId Id="1499" Count="0" />
       <LineId Id="934" Count="1" />
@@ -3129,9 +3218,20 @@ END_IF	]]></ST>
       <LineId Id="1537" Count="0" />
       <LineId Id="1539" Count="0" />
       <LineId Id="1519" Count="0" />
-      <LineId Id="1677" Count="3" />
+      <LineId Id="1677" Count="0" />
+      <LineId Id="1906" Count="0" />
+      <LineId Id="1912" Count="0" />
+      <LineId Id="1907" Count="0" />
+      <LineId Id="1913" Count="0" />
+      <LineId Id="1915" Count="2" />
+      <LineId Id="1914" Count="0" />
+      <LineId Id="1908" Count="0" />
+      <LineId Id="1905" Count="0" />
+      <LineId Id="1909" Count="0" />
+      <LineId Id="1678" Count="2" />
       <LineId Id="1686" Count="0" />
       <LineId Id="1683" Count="0" />
+      <LineId Id="1918" Count="3" />
       <LineId Id="1676" Count="0" />
       <LineId Id="1684" Count="1" />
       <LineId Id="1674" Count="0" />
@@ -3192,6 +3292,12 @@ END_IF	]]></ST>
       <LineId Id="2" Count="4" />
       <LineId Id="11" Count="9" />
       <LineId Id="272" Count="2" />
+      <LineId Id="291" Count="0" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="288" Count="2" />
+      <LineId Id="284" Count="0" />
+      <LineId Id="287" Count="0" />
+      <LineId Id="286" Count="0" />
       <LineId Id="278" Count="2" />
       <LineId Id="275" Count="0" />
       <LineId Id="1" Count="0" />
