@@ -3465,6 +3465,21 @@ FOR LoopLista := 1 TO 3 DO
 						 END_IF
 					END_IF		  
 					IF Cmd_AttivaLista[2] = TRUE  THEN
+						FOR uu := Iforstart TO Iforend DO
+							 	IF	HMI_WorkAreaDataPicking[uu].Typology = CAVALLETTO THEN 
+									CASE HMI_WorkAreaDataPicking[uu].TipoTrabajoLado_Cavallete OF 
+	 									0:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +
+												 HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+										1:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto ;									 ;
+											 
+										2:	
+		   									HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+												 
+									END_CASE
+								END_IF 	 
+							END_FOR		  
 						IF 	(HMI_WorkAreaDataPicking[1].Destinazione =0 AND 
 							HMI_WorkAreaDataPicking[2].Destinazione =0 AND
 							HMI_WorkAreaDataPicking[3].Destinazione =0 AND 
@@ -3481,6 +3496,21 @@ FOR LoopLista := 1 TO 3 DO
 						 END_IF
 					END_IF		
 					IF Cmd_AttivaLista[3] = TRUE  THEN
+					  FOR uu := Iforstart TO Iforend DO
+							 	IF	HMI_WorkAreaDataPicking[uu].Typology = CAVALLETTO THEN 
+									CASE HMI_WorkAreaDataPicking[uu].TipoTrabajoLado_Cavallete OF 
+	 									0:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +
+												 HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+										1:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto ;									 ;
+											 
+										2:	
+		   									HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+												 
+									END_CASE
+								END_IF 	 
+							END_FOR		  
 						IF 	(HMI_WorkAreaDataPicking[5].Destinazione =0 AND 
 							HMI_WorkAreaDataPicking[6].Destinazione =0 AND
 							HMI_WorkAreaDataPicking[7].Destinazione =0 AND 
@@ -4561,7 +4591,7 @@ FOR LoopLista := 1 TO 3 DO
 		2: Iforstart := 1; Iforend := 4;
 		3: Iforstart := 5; Iforend := MAXAREAPRESENT;
 	END_CASE	 
-	IF MachinePalletizer_TF.IN.Mode.Man AND
+IF MachinePalletizer_TF.IN.Mode.Man AND
 		(MachinePalletizer_TF.CmdExe.Code = CmdNOP OR MachinePalletizer_TF.CmdExe.Code = CmdMAN) THEN
 			 
 				  
@@ -4603,6 +4633,9 @@ FOR LoopLista := 1 TO 3 DO
 					MEMSET(destAddr := ADR(TFFormacionCavalleteCalculada),fillByte := 0 , n := SIZEOF(TFFormacionCavalleteCalculada));
 					MEMSET(destAddr := ADR(TFCalcoloFormaturaWA),fillByte := 0 , n := SIZEOF(TFCalcoloFormaturaWA));
 					MEMSET(destAddr := ADR(HMI_Forming_FormaturaAttivataWa),fillByte := 0 , n := SIZEOF(HMI_Forming_FormaturaAttivataWa));
+					
+					FormacionesCalculadas := FALSE ;
+					FormacionPikingCalculada := FALSE ;
 				(*	FOR i:= Iforstart TO Iforend DO	
 						TFCalcoloFormaturaWA[i].PulisciMemoria := TRUE ;
 		  			END_FOR *)
@@ -4706,6 +4739,21 @@ FOR LoopLista := 1 TO 3 DO
 						 END_IF
 					END_IF		  
 					IF Cmd_AttivaLista[2] = TRUE  THEN
+							FOR uu := Iforstart TO Iforend DO
+							 	IF	HMI_WorkAreaDataPicking[uu].Typology = CAVALLETTO THEN 
+									CASE HMI_WorkAreaDataPicking[uu].TipoTrabajoLado_Cavallete OF 
+	 									0:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +
+												 HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+										1:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto ;									 ;
+											 
+										2:	
+		   									HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+												 
+									END_CASE
+								END_IF 	 
+							END_FOR
 						IF 	(HMI_WorkAreaDataPicking[1].Destinazione =0 AND 
 							HMI_WorkAreaDataPicking[2].Destinazione =0 AND
 							HMI_WorkAreaDataPicking[3].Destinazione =0 AND 
@@ -4722,6 +4770,21 @@ FOR LoopLista := 1 TO 3 DO
 						 END_IF
 					END_IF		
 					IF Cmd_AttivaLista[3] = TRUE  THEN
+							FOR uu := Iforstart TO Iforend DO
+							 	IF	HMI_WorkAreaDataPicking[uu].Typology = CAVALLETTO THEN 
+									CASE HMI_WorkAreaDataPicking[uu].TipoTrabajoLado_Cavallete OF 
+	 									0:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto +
+												 HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+										1:
+											HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_A_Cavaleto ;									 ;
+											 
+										2:	
+		   									HMI_NumeroPezziPresentiPostazione[uu] := HMI_NumeroPezziPresentiCavallete[uu].HMI_NumeroPezziPresentiPostazione_B_Cavaleto ;
+												 
+									END_CASE
+								END_IF 	 
+							END_FOR
 						IF 	(HMI_WorkAreaDataPicking[5].Destinazione =0 AND 
 							HMI_WorkAreaDataPicking[6].Destinazione =0 AND
 							HMI_WorkAreaDataPicking[7].Destinazione =0 AND 
@@ -5254,12 +5317,12 @@ FOR LoopLista := 1 TO 3 DO
 {endregion }
 			 
 {Region "Formaciones Nuevas" }
-IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND Hhbilita_quitar THEN
+IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND NOT FormacionesCalculadas AND NOT FormacionPikingCalculada THEN
 	idxForm:= IdxLista;		 
 	CalFor := NumPostazioneDeposito;
 {Region " calculo la formacion para los calculos "}
 		  
-	IF CalFor = NumPostazioneDeposito THEN // calcula la formacion para la estacion de piking
+	IF CalFor = NumPostazioneDeposito AND NOT FormacionPikingCalculada THEN // calcula la formacion para la estacion de piking
 		MEMSET(destAddr := ADR(TFCalcoloFormaturaWA[CalFor]),fillByte := 0 , n := SIZEOF(TFCalcoloFormaturaWA[CalFor]));
 		TFCalcoloFormaturaWA[CalFor].PulisciMemoria 			:= TRUE ; 
 		TFCalcoloFormaturaWA[CalFor]();			   
@@ -5279,7 +5342,7 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 					HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio 		:= 1;                      
 					HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta		:= 15;              
 					HMI_Formatura.HMI_Forming_Supporto.ZDim_Ext1        := HMI_Formatura.HMI_Forming_Supporto.ZDim + HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta;		  
-				BUNDLE_VERT:
+					BUNDLE_VERT:
 					HMI_Formatura.HMI_Forming_Supporto.YDim				:= WorkAreaState[CalFor].Supporto.YDim * 2;
 					HMI_Formatura.HMI_Forming_Supporto.DimVertice 		:= WorkAreaState[CalFor].Supporto.DimVertice *2;	
 					HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio := 1;                      
@@ -5329,7 +5392,7 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 		END_IF 
 {endregion}
 			   
-	IF  TFCalcoloFormaturaWA[CalFor].PulisciMemoria AND (TFCalcoloFormaturaWA[CalFor].PulisciMemoriaDone OR TRUE) THEN 
+	IF  TFCalcoloFormaturaWA[CalFor].PulisciMemoria AND (TFCalcoloFormaturaWA[CalFor].PulisciMemoriaDone OR TRUE)AND NOT FormacionPikingCalculada THEN 
 		HMI_Forming_FormaturaAttivata[CalFor] 	:= FALSE;	
 		HMI_Forming_ErroreCalcoli := 0;	
 		TFCalcoloFormaturaWA[CalFor].PulisciMemoria := FALSE ;
@@ -5380,7 +5443,7 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
   
 	 END_IF
 			   
-	IF (TFCalcoloFormaturaWA[CalFor].CalcolaFormaturaDone OR TFCalcoloFormaturaWA[CalFor].Errore > 0) THEN
+	IF (TFCalcoloFormaturaWA[CalFor].CalcolaFormaturaDone OR TFCalcoloFormaturaWA[CalFor].Errore > 0)AND NOT FormacionPikingCalculada THEN
 		
 		TFCalcoloFormaturaDaLista.CalcolaFormatura := FALSE;
 		Formacion_De_listaOk[calfor] := TRUE ;
@@ -5408,7 +5471,7 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 					HMI_Forming_IndiceFormaturaAttivata 		:= idxForm;
 					HMI_Forming_FormaturaAttivata[CalFor] 		:= TRUE;
 					HMI_ConfermaAttivazioneFormatura[CalFor] 	:= TRUE;
-					
+					FormacionPikingCalculada					:= TRUE ;
 					//Valorizzo la struttura del WAPL per ogni elemento da elaborare
 					FOR jj := 1 TO MAXELEMENTLIST DO
 						IF jj < ElementiElaborati[IdxLista] THEN
@@ -5451,11 +5514,11 @@ END_IF
 							  
 										
 												  
-IF HMI_Forming_FormaturaAttivataWa[NumPostazioneDeposito]  THEN
+IF HMI_Forming_FormaturaAttivataWa[NumPostazioneDeposito] AND NOT FormacionesCalculadas 	   THEN
 		idxForm:= IdxLista;		  
 		FOR CalFor := Iforstart TO Iforend DO
 				
-				IF CalFor <> NumPostazioneDeposito AND HMI_NumeroPezziPresentiPostazione[CalFor] > 0 AND HMI_WorkAreaDataPicking[CalFor].NumElementiDaLavorare <> 0 AND NOT HMI_Forming_FormaturaAttivataWa[CalFor]  THEN // calcula la formacion para la estacion de piking
+				IF CalFor <> NumPostazioneDeposito AND HMI_NumeroPezziPresentiPostazione[CalFor] > 0 AND HMI_WorkAreaDataPicking[CalFor].NumElementiDaLavorare <> 0 AND NOT FormacionesCalculadas  THEN // calcula la formacion para la estacion de piking
 					MEMSET(destAddr := ADR(TFCalcoloFormaturaWA[CalFor]),fillByte := 0 , n := SIZEOF(TFCalcoloFormaturaWA[CalFor]));
 					TFCalcoloFormaturaWA[CalFor].PulisciMemoria 			:= TRUE ; 
 					TFCalcoloFormaturaWA[CalFor]();	
@@ -5478,7 +5541,7 @@ IF HMI_Forming_FormaturaAttivataWa[NumPostazioneDeposito]  THEN
 						TFCalcoloFormaturaWA[CalFor].Supporto.DimBaseUtile											:= WorkAreaState[CalFor].Supporto.DimBaseUtile;
 						TFCalcoloFormaturaWA[CalFor].Supporto.DimVertice 											:= WorkAreaState[CalFor].Supporto.DimVertice ;
 						TFCalcoloFormaturaWA[CalFor].Supporto.HMAX 													:= WorkAreaState[CalFor].Supporto.HMAX;
-							CASE  WorkAreaState[IdxLista].Supporto.Tipologia OF
+							CASE  WorkAreaState[calfor].Supporto.Tipologia OF
 								LEGNO_PIANO :
 												;
 								TELAIO_PIANO : 
@@ -5516,8 +5579,11 @@ IF HMI_Forming_FormaturaAttivataWa[NumPostazioneDeposito]  THEN
 						TFFormacionCavalleteCalculada := TFCalcoloFormaturaWA[CalFor] ;
 						FormaturaWa[CalFor] := TFCalcoloFormaturaWA[CalFor].FormingSlab;
 							//CalcolaFormingRT[IdxLista] := TRUE ; // modificacion probar
-							IF TFCalcoloFormaturaRT[IdxLista].Errore = 0 THEN
+							IF TFCalcoloFormaturaRT[CalFor].Errore = 0 THEN
 								HMI_Forming_FormaturaAttivataWa[CalFor] := TRUE ;
+								IF  calfor = Iforend    THEN 
+									FormacionesCalculadas := TRUE ;		  
+								END_IF		  
 							ELSE
 								HMI_Forming_ErroreCalculos[CalFor] := TRUE ; 
 							END_IF
@@ -5526,6 +5592,10 @@ IF HMI_Forming_FormaturaAttivataWa[NumPostazioneDeposito]  THEN
 				 
 	
 			END_IF
+		IF  calfor = Iforend  AND NOT FormacionesCalculadas  THEN 
+			FormacionesCalculadas := TRUE ;	
+			EXIT ;	  
+		END_IF		  			  
 	END_FOR
 END_IF 															
 																	  
@@ -5539,484 +5609,12 @@ END_IF
 
 
 
-
-
-
-		    	  
-
-
-		IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] THEN
-			idxForm:= IdxLista;		  
-				
-			FOR CalFor := Iforstart TO Iforend DO
-				IF CalFor = NumPostazioneDeposito THEN // calcula la formacion para la estacion de piking
-					CASE CrearFormacion OF
-		  				1:  
-							//Ack 
-							IF HMI_ErrAckCalcolaFormatura THEN
-								HMI_Forming_ErroreCalcoli 					:= 0;
-								HMI_ErrAckCalcolaFormatura 					:= FALSE;
-								FOR i:= 1 TO MAXFORMING DO
-									HMI_ConfermaAttivazioneFormatura[i] 	:= FALSE;
-									HMI_Forming_FormaturaAttivata[i] 		:= FALSE;
-								END_FOR	 
-							END_IF
-							
-							//Azzeramento comandi in caso di errore
-							IF HMI_Forming_ErroreCalcoli <> 0 THEN
-								FOR i:=1 TO MAXFORMING DO
-									HMI_Forming_Attivazione[i] 				:= FALSE;
-									HMI_Forming_Disattivazione[i] 			:= FALSE;
-								END_FOR
-								HMI_Forming_Calcola 						:= FALSE;
-							END_IF
-							// borra las estructuras Anteas hacer el calculo
-							TFCalcoloFormaturaWA[CalFor].PulisciMemoria := TRUE ;
-							HMI_Forming_FormaturaAttivata[idxForm] 		:= FALSE;	
-							TFCalcoloFormaturaWA[CalFor]() ;	  
-						2:
-								  
-							
-							IF 	 TFCalcoloFormaturaWA[CalFor].PulisciMemoria AND TFCalcoloFormaturaWA[CalFor].PulisciMemoriaDone THEN 
-								// borra La Formacion de la estructura		  
-								WorkAreaProductionList[CalFor].Forming := FormingEmpty;
-									 
-								CASE WorkAreaState[NumPostazioneDeposito].Supporto.Tipologia OF //**Mod
-									BUNDLE_VERT:
-										TFCalcoloFormaturaWA[CalFor].TipoOrdinamento := 4;//Ordinamento di deposito òato 180°
-									A_FRAME_VERT:
-										TFCalcoloFormaturaWA[CalFor].TipoOrdinamento := 1;//Ordinamento di deposito, prima un lato poi l'altro	
-										TFCalcoloFormaturaWA[CalFor].HabiCalTodasCordenadas := TRUE ;
-									ELSE
-										TFCalcoloFormaturaWA[CalFor].TipoOrdinamento := 2;//Ordinamento di deposito consecutivo	 
-								END_CASE
-								(*
-									//Valorizzo altezza esterna supporto
-									//IF HMI_Forming_Supporto.ZDim_Ext1 = 0 THEN
-										HMI_Forming_Supporto.ZDim_Ext1 := HMI_Forming_Supporto.ZDim + HMI_Forming_Supporto.AltezzaDenteRitenuta;
-									//END_IF
-									//Valorizzo HMAX x tipologia pallet
-									IF HMI_Forming_Supporto.Tipologia = PALLET_STANDARD THEN
-										HMI_Forming_Supporto.HMAX := HMI_Forming_Supporto.ZDim;
-									END_IF 
-											  *)
-								IF (RequestPickingListFromHMI[1].LayerSequence = 0 OR NOT HMI_AbilitaDepositoFalda)
-									AND HMI_Forming_NumeroElementiDaDepositare >0 
-								THEN
-									//Assegno l'ordine tutto a 1 perchè ho solo lastre	
-									FOR i:= 1 TO MAXFORMINGSLAB DO
-										//IF i <= HMI_Forming_NumeroElementiDaDepositare THEN
-										IF i <= HMI_Forming_NumeroElementiDaDepositare + HMI_NumeroPezziPresentiPostazione[NumPostazioneDeposito] THEN
-										//IF i <= 20THEN
-											TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i]:= TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i]:= WorkAreaProductionList[CalFor].PElementList[1].PElement.Typology ;
-										ELSE
-											 TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
-										END_IF
-									END_FOR
-								ELSE
-									//FOR i := 1 TO HMI_Forming_NumeroElementiDaDepositare DO//BY (Request_WorkOrder.LayerSequence+1) DO		  
-									FOR i := 1 TO HMI_Forming_NumeroElementiDaDepositare DO//BY (Request_WorkOrder.LayerSequence+1) DO
-										IF i MOD 2 = 1 THEN// i <= HMI_Forming_NumeroElementiDaDepositare THEN 
-											 TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i]:= WorkAreaProductionList[CalFor].PElementList[i].PElement.Typology ;//Settiamo tipo lastre!!
-										ELSE
-											 TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i] := FALDA;//Settiamo tipoi falda!
-										END_IF
-										 	TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i+1] := TERMINATORE;//Settiamo il resto come terminatore
-									END_FOR
-								END_IF		
-								
-							
-								 TFCalcoloFormaturaWA[CalFor].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA]		:= HMI_Forming_LastraDaDepositare; 
-								 TFCalcoloFormaturaWA[CalFor].Materiale[e_Tipo_Elemento_Da_Lavorare.FALDA]		:= FaldaDaDepositare;
-								 TFCalcoloFormaturaWA[CalFor].Materiale[e_Tipo_Elemento_Da_Lavorare.QUADROTTA]	:= HMI_Forming_LastraDaDepositare;
-								 TFCalcoloFormaturaWA[CalFor].Supporto											:= WorkAreaProductionList[CalFor].Support;	//Assegno la tipologia di supporto	  
-								
-								TFCalcoloFormaturaWA[CalFor].CalcolaFormatura := TRUE; 		//Lancio esecuzione dei calcoli
-								MEMSET(ADR(WorkAreaProductionList[CalFor].Forming),0,SIZEOF(WorkAreaProductionList[CalFor].Forming));	//Pulisco la memoria di destinazione
-								HMI_Forming_Attivazione[CalFor] := FALSE;
-								TFCalcoloFormaturaWA[CalFor].PulisciMemoria := FALSE;  
-								TFCalcoloFormaturaWA[CalFor]() ;
-							END_IF 
-							
-						3:	
-							IF TFCalcoloFormaturaDaLista.CalcolaFormaturaDone OR TFCalcoloFormaturaDaLista.Errore > 0 THEN
-								
-								TFCalcoloFormaturaWA[CalFor].CalcolaFormatura := FALSE;
-								Formacion_De_listaOk[idxForm] := TRUE ;
-								IF TFCalcoloFormaturaWA[CalFor].Errore = 0 THEN
-									IDFormatura 									:= IDFormatura+1;
-									GUIDFormatura 									:= STRING_TO_UINT(concat(UINT_TO_STRING(NUMERO_MACCHINA),UINT_TO_STRING(IDFormatura)));
-									HMI_Forming_GUID 								:= GUIDFormatura;
-							
-									WorkAreaProductionList[CalFor].Forming 			:= TFCalcoloFormaturaDaLista.FormingSlab;
-									WorkAreaProductionList[CalFor].Forming.Enable 	:= 1;
-									WorkAreaProductionList[CalFor].Forming.Code 	:= HMI_Forming_CodiciAbilitatiFormatura[idxForm].Code;
-									WorkAreaProductionList[CalFor].Forming.GUID		:= HMI_Forming_GUID;
-											  
-									Forming[idxForm] 								:= FormingEmpty;	//Pulisco la memoria di destinazione
-									Forming[idxForm] 								:= TFCalcoloFormaturaDaLista.FormingSlab;
-									Forming[idxForm].Pallet							:= HMI_Forming_Supporto;
-									Forming[idxForm].Enable 						:= 1;
-									Forming[idxForm].Code 							:= HMI_Forming_CodiciAbilitatiFormatura[idxForm].Code;
-									Forming[idxForm].GUID							:= HMI_Forming_GUID;
-											  
-									HMI_Forming_IndiceFormaturaAttivata := idxForm;
-									HMI_Forming_FormaturaAttivata[idxForm] 	:= TRUE;
-									HMI_ConfermaAttivazioneFormatura[idxForm] := TRUE;
-									//Valorizzo la struttura del WAPL per ogni elemento da elaborare
-											FOR jj := 1 TO MAXELEMENTLIST DO
-												IF jj < ElementiElaborati[IdxLista] THEN
-													
-													WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_DA_ELABORARE;
-												
-													IF Picking.HMI_PareggiaturaLastraAbilitata THEN
-														WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DA_ESEGUIRE;
-													ELSE
-														WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DISABILITATA;
-													END_IF
-												ELSE
-													WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_NOT_DEFINED;
-												END_IF
-											END_FOR
-							ELSE
-								HMI_Forming_ErroreCalcoli := TFCalcoloFormaturaDaLista.Errore;
-							END_IF
-							HMI_Forming_Attivazione[idxForm] := FALSE;
-						END_IF				
-								  
-					END_CASE	  
-					ELSE // Todas las formaciones  De coger
-						;		  
-							
-				END_IF
-			END_FOR
-			END_IF	 
-			
-			//una volta calcolata la lista per stabilire le postazioni di prelievo e quella di deposito, calcolo la formatura della postazione di deposito
-			IF Picking.Cmd_CalcolaLista[IdxLista] THEN
-				
-				
-				
-				
-				
-
-				
-//##########################################################################################		  
-//------------------------------------------------------------------------------------------				
-///////////	Attivazione	Formature  autosettata dopo caricamento dei dati dell'ordine  /////
-//------------------------------------------------------------------------------------------	
-					 
-				//FOR i:= 1 TO MAXFORMING DO
-					idxForm:= IdxLista;//forzo a 1 la formatura da attivare
-					IF HMI_Forming_Attivazione[idxForm] AND idxForm <=3 AND NOT Formacion_De_listaOk[idxForm] THEN
-						Forming[idxForm] := FormingEmpty;
-						(*IF NOT CalcolaFormaturaTrig AND TFCalcoloFormaturaDaLista.PulisciMemoriaDone THEN *)//#Modificado
-							 IF TFCalcoloFormaturaDaLista.CalcolaFormaturaDone THEN
-								CalcolaFormaturaTrig := TRUE;	  
-							END_IF	
-						IF NOT CalcolaFormaturaTrig  AND NOT Formacion_De_listaOk[idxForm] THEN 
-							HMI_Forming_FormaturaAttivata[idxForm] 	:= FALSE;
-							TFCalcoloFormaturaDaLista.PulisciMemoria 	:= TRUE;
-							IF TFCalcoloFormaturaDaLista.PulisciMemoriaDone THEN	
-								HMI_Forming_ErroreCalcoli := 0;
-								CalcolaFormaturaTrig := TRUE;
-						
-								//FOR i := HMI_Forming_NumeroElementiDaDepositare+1 TO MAXFORMINGSLAB DO
-								FOR i := (HMI_Forming_NumeroElementiDaDepositare + HMI_NumeroPezziPresentiPostazione[NumPostazioneDeposito] )   +1 TO MAXFORMINGSLAB DO
-									TFCalcoloFormaturaDaLista.TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
-								END_FOR
-									
-								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA]		:= HMI_Forming_LastraDaDepositare; 
-								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.FALDA]		:= FaldaDaDepositare;
-								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.QUADROTTA]	:= HMI_Forming_LastraDaDepositare;
-								TFCalcoloFormaturaDaLista.Supporto											:= HMI_Forming_Supporto;	//Assegno la tipologia di supporto
-								
-								//CASE HMI_WorkAreaDataPicking[j].Typology OF //**Mod	 
-								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF //**Mod
-									BUNDLE_VERT:
-										TFCalcoloFormaturaDaLista.TipoOrdinamento := 4;//Ordinamento di deposito òato 180°
-									A_FRAME_VERT:
-										TFCalcoloFormaturaDaLista.TipoOrdinamento := 1;//Ordinamento di deposito, prima un lato poi l'altro	
-									ELSE
-										TFCalcoloFormaturaDaLista.TipoOrdinamento := 2;//Ordinamento di deposito consecutivo	 
-								END_CASE
-									 
-								TFCalcoloFormaturaDaLista.CalcolaFormatura := TRUE; 		//Lancio esecuzione dei calcoli
-								MEMSET(ADR(HMI_Forming_FormaturaCalcolata),0,SIZEOF(HMI_Forming_FormaturaCalcolata));	//Pulisco la memoria di destinazione
-								HMI_Forming_Attivazione[i] := FALSE;
-								TFCalcoloFormaturaDaLista.PulisciMemoria := FALSE;
-							END_IF
-						ELSIF (TFCalcoloFormaturaDaLista.CalcolaFormaturaDone OR TFCalcoloFormaturaDaLista.Errore > 0) AND CalcolaFormaturaTrig AND NOT Formacion_De_listaOk[idxForm] THEN
-							CalcolaFormaturaTrig := FALSE;
-							TFCalcoloFormaturaDaLista.CalcolaFormatura := FALSE;
-							Formacion_De_listaOk[idxForm] := TRUE ;
-							IF TFCalcoloFormaturaDaLista.Errore = 0 THEN
-								IDFormatura 								:= IDFormatura+1;
-								GUIDFormatura 								:= STRING_TO_UINT(concat(UINT_TO_STRING(NUMERO_MACCHINA),UINT_TO_STRING(IDFormatura)));
-								HMI_Forming_GUID 							:= GUIDFormatura;
-						
-								HMI_Forming_FormaturaCalcolata 				:= TFCalcoloFormaturaDaLista.FormingSlab;
-								Forming[idxForm] 							:= FormingEmpty;	//Pulisco la memoria di destinazione
-								Forming[idxForm] 							:= TFCalcoloFormaturaDaLista.FormingSlab;
-								Forming[idxForm].Enable 					:= 1;
-								Forming[idxForm].Code 						:= HMI_Forming_CodiciAbilitatiFormatura[idxForm].Code;
-								Forming[idxForm].GUID						:= HMI_Forming_GUID;
-								Forming[idxForm].Pallet						:= HMI_Forming_Supporto;
-								HMI_Forming_IndiceFormaturaAttivata := idxForm;
-								HMI_Forming_FormaturaAttivata[idxForm] 	:= TRUE;
-								HMI_ConfermaAttivazioneFormatura[idxForm] := TRUE;
-								//Valorizzo la struttura del WAPL per ogni elemento da elaborare
-								FOR jj := 1 TO MAXELEMENTLIST DO
-									IF jj < ElementiElaborati[IdxLista] THEN
-										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].PElement 		:= TFCalcoloFormaturaDaLista.FormingSlab.PElement[jj];	
-										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_DA_ELABORARE;
-									
-										IF Picking.HMI_PareggiaturaLastraAbilitata THEN
-											WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DA_ESEGUIRE;
-										ELSE
-											WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DISABILITATA;
-										END_IF
-									ELSE
-										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_NOT_DEFINED;
-									END_IF
-								END_FOR
-							ELSE
-								HMI_Forming_ErroreCalcoli := TFCalcoloFormaturaDaLista.Errore;
-							END_IF
-							HMI_Forming_Attivazione[idxForm] := FALSE;
-						END_IF
-					ELSIF HMI_Forming_Attivazione[idxForm]  AND NOT Formacion_De_listaOk[idxForm] THEN
-						memset(destAddr:=ADR(TFCalcoloFormaturaDaLista.Errore),fillByte:=(UINT_TO_USINT(ErrNumeroMassimoFormatureAmmesse)),n:=SIZEOF(TFCalcoloFormaturaDaLista.Errore));
-					END_IF
-				
-					//Disattivazione formatura
-					IF HMI_Forming_Disattivazione[idxForm] THEN
-						HMI_Forming_Disattivazione[idxForm] := FALSE;
-						Forming[idxForm] := FormingEmpty;	//Pulisco la formatura selezionata e di consegenza la disattivo
-					END_IF
-						
-				//END_FOR
-				
-//####################################################################						 
-
-						  
-				(* Metto in stato di esecuzione il nuovo W.O. se tutto si è attivato *)
-				IF HMI_Forming_FormaturaAttivata[IdxLista] THEN
-
-					ActualPickingListFromHMI[IdxLista].State := e_StatoWorkOrder.DA_ESEGUIRE;
-					//Azzero le liste per le postazioni dove non avviene la pallettizzazione
-					FOR i:= Iforstart TO Iforend DO		 
-						WorkAreaProductionList[i].Stato := e_Stato_ListaDiProduzione.LISTA_PROD_ASSENTE;
-					END_FOR
-					//WorkAreaProductionList[NumPostazioneDeposito].Support := Forming[idxForm].Pallet;
-					WorkAreaProductionList[NumPostazioneDeposito].Stato 					:= LISTA_PROD_DA_ESEGUIRE;
-					WorkAreaProductionList[NumPostazioneDeposito].NumeroListaAssociata 		:= IdxLista;
-					WorkAreaState[NumPostazioneDeposito].F 									:= idxForm;
-					Picking.Cmd_CalcolaLista[IdxLista] 										:= FALSE;
-					HMI_Forming_FormaturaAttivata[IdxLista] 								:= FALSE;
-					//CalcolaFormingRT[IdxLista] 												:= TRUE;
-				END_IF
-				//TFCalcoloFormaturaDaLista();
-			END_IF	
+END_IF	
 		
-			TFCalcoloFormaturaDaLista();
-		END_IF	
-		
-		//verifico che la lista sia in esecuzione o terminata
-		IF NOT ListaInEsecuzione[IdxLista] THEN
-			FOR i:= Iforstart TO Iforend DO	
-				IF WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_IN_ESECUZIONE THEN
-					ListaInEsecuzione[IdxLista] := TRUE;
-					EXIT;	
-				END_IF
-			END_FOR
-		ELSE
-			FOR i:= Iforstart TO Iforend DO	
-				IF WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_ESEGUITA THEN
-					ListaInEsecuzione[IdxLista] := FALSE;
-					EXIT;	
-				END_IF
-			END_FOR
-		END_IF
-		
-		//
-		FOR i:= Iforstart TO Iforend DO	
-			IF NumeroPezziPresentiPostazioneStart[i] = 0 AND WorkAreaState[i].P > 1 THEN
-				NumeroPezziPresentiPostazioneStart[i] := TO_UINT(WorkAreaState[i].P);
-			END_IF
-		
-			IF NOT HMI_WorkAreaDataPicking[i].Destinazione THEN
-				IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare > 0 THEN
-					//IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare >= TO_UINT(WorkAreaState[i].P)-1 THEN
-					//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - TO_UINT(WorkAreaState[i].P);
-					//ELSE
-					//	HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-					//END_IF
-					IF HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - (TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]) > 0 THEN
-						HMI_NumeroLastreRimanentiOrdineAttuale[i] := MIN(HMI_WorkAreaDataPicking[i].NumElementiDaLavorare,HMI_WorkAreaDataPicking[i].NumElementiDaLavorare - 
-																	(NumeroPezziPresentiPostazioneStart[i] - TO_UINT(WorkAreaState[i].P)));
-					ELSE
-						HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-					END_IF
-				ELSE
-					HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-				END_IF
-			ELSE
-				IF NumeroPezziPresentiPostazioneStart[i] <= (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
-					HMI_NumeroLastreRimanentiOrdineAttuale[i] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i]+1;
-				ELSE
-					HMI_NumeroLastreRimanentiOrdineAttuale[i] := 0;
-				END_IF
-			END_IF
-			IF (WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_IN_ESECUZIONE OR WorkAreaProductionList[i].Stato = e_Stato_ListaDiProduzione.LISTA_PROD_ESEGUITA) AND WorkAreaState[i].P > 1 THEN
-					//P:	(* Pack Pointer - Puntatore tabella ELEMENTO (0..n-1=, -1 dato non valido),Numero ELEMENTO successivo da depositare *)
-					HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P-1);
-				IF NumeroPezziPresentiPostazioneStart[i] < (TO_UINT(WorkAreaState[i].P)) AND NumeroPezziPresentiPostazioneStart[i]>0 THEN
-					HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P) - NumeroPezziPresentiPostazioneStart[i];
-				ELSE
-					HMI_NumeroLastreDepOrdineAttuale[IdxLista] := TO_UINT(WorkAreaState[i].P) - 1;
-				END_IF
-			END_IF	
-		END_FOR
-		
-		//trasferisco i valori alla variabile in lettura x HMI
-		MEMCPY(destAddr:=ADR(HMI_WorkAreaProductionList),srcAddr:=ADR(WorkAreaProductionList),n:=SIZEOF(HMI_WorkAreaProductionList));
-		//IF CalcolaFormingRT[IdxLista] AND NOT CalcolaFormingRT2[IdxLista] THEN //original	
-			 
-				  
-					   
-		//##################################añadido	############################################################ 
-		IF 	NOT CalcolaFormingRT[IdxLista] AND NOT CalcolaFormingRT2[IdxLista] AND Temp_UINT[9] = IdxLista THEN
-			
-				CalcolaFormaturaTrig2 		:= FALSE ;
-				CalcolaFormingRT[IdxLista] 	:= TRUE ;
-	 
-		END_IF
-  		//#######################################################################################################
-					   
-							
-		IF CalcolaFormingRT[IdxLista] AND NOT CalcolaFormingRT2[IdxLista] AND ActualPickingListFromHMI[IdxLista].State = 1   THEN //###############################  If  Principal calculos formaciones bendel y cabaleta
-				 		//Para quitar
-		Control1 := control1 +1 ;
-			IF TFCalcoloFormaturaRT[IdxLista].CalcolaFormaturaDone THEN
-				CalcolaFormaturaTrig2 := TRUE;	  
-			END_IF
-			IF NOT CalcolaFormaturaTrig2 AND NOT Formacion_bandelCalOk[idxForm]  THEN//11111111111111111
-			///////////////////////////
-				//CalcolaFormaturaTrig2 := TRUE;
-				TFCalcoloFormaturaRT[IdxLista].PulisciMemoria 	:= TRUE;
-				IF TFCalcoloFormaturaRT[IdxLista].PulisciMemoriaDone THEN		
-					FOR i:= 1 TO MAXFORMINGSLAB DO
-						IF i <= 40 THEN
-						//IF i <= HMI_Forming_NumeroElementiDaDepositare THEN
-							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := LASTRA;//Settiamo tutte lastre!!
-						ELSE
-							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
-						END_IF
-					END_FOR
-					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].XDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.XDim; 
-					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].YDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.YDim; 
-					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].ZDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.ZDim; 
-					TFCalcoloFormaturaRT[IdxLista].Supporto.Code											:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.Code;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.XDim											:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.XDim;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.YDim											:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.YDim*2;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim				:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.ZDim;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.TipoPianoAppoggio 	:= 1;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta:= 15;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim_Ext1        	:= TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim + TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.DimBaseUtile		:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.DimBaseUtile;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.DimVertice 			:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.DimVertice*2;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.HMAX 				:= RequestPickingListFromHMI[IdxLista].SupportVertBundle.HMAX;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.Tipologia 			:= BUNDLE;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.LatoDeposito 		:= 180;
-					TFCalcoloFormaturaRT[IdxLista].TipoOrdinamento				:= 4;	//Ordinamento di deposito, prima un lato poi l'altro
-					TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura 			:= TRUE;//Lancio esecuzione dei calcoli
-					MEMSET(ADR(FormaturaBundleRT[IdxLista]),0,SIZEOF(FormaturaBundleRT[IdxLista]));	//Pulisco la memoria di destinazione
-					TFCalcoloFormaturaRT[IdxLista].PulisciMemoria := FALSE;
-				END_IF
-			ELSIF (TFCalcoloFormaturaRT[IdxLista].CalcolaFormaturaDone OR TFCalcoloFormaturaRT[IdxLista].Errore > 0) AND CalcolaFormaturaTrig2 THEN
-				CalcolaFormaturaTrig2 := FALSE;
-				TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura := FALSE;
-				TFFormacionBandelCalculada := TFCalcoloFormaturaRT[IdxLista]; 
-				FormaturaBundleRT[IdxLista] := TFCalcoloFormaturaRT[IdxLista].FormingSlab;
-				IF TFCalcoloFormaturaRT[IdxLista].Errore = 0 THEN
-					CalcolaFormaturaTrig2 			:= FALSE;
-					CalcolaFormingRT[IdxLista] 		:= FALSE;
-					CalcolaFormingRT2[IdxLista]		:= TRUE;
-					Formacion_bandelCalOk[idxForm] 			:= TRUE ;
-				ELSE
-					CalcolaFormingRT[IdxLista] 		:= TRUE;
-					CalcolaFormaturaTrig2 			:= FALSE;
-				END_IF
-			END_IF
-		//##############################Inicio##############################################		 
-		//#########################Calculo cavaleta##########################################
-		ELSIF CalcolaFormingRT2[IdxLista] AND NOT CalcolaFormingRT[IdxLista] AND ActualPickingListFromHMI[IdxLista].State = 1  THEN 
-			IF NOT CalcolaFormaturaTrig2 AND NOT Formacion_FrameCalOk[idxForm] THEN
-			///////////////////////////
-				TFCalcoloFormaturaRT[IdxLista].PulisciMemoria 	:= TRUE;	  
-				
-					
-				//TFCalcoloFormaturaRT[IdxLista].PulisciMemoria 	:= TRUE;
-				IF TFCalcoloFormaturaRT[IdxLista].PulisciMemoriaDone THEN
-					CalcolaFormaturaTrig2 := TRUE;		
-					FOR i:= 1 TO MAXFORMINGSLAB DO
-						//IF i <= 10  THEN
-						IF i <= 40 THEN
-						//IF i <= HMI_Forming_NumeroElementiDaDepositare  THEN
-							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := LASTRA;//Settiamo tutte lastre!!
-						ELSE
-							TFCalcoloFormaturaRT[IdxLista].TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
-						END_IF
-					END_FOR
-					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].XDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.XDim; 
-					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].YDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.YDim; 
-					TFCalcoloFormaturaRT[IdxLista].Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA].ZDim		:= RequestPickingListFromHMI[IdxLista].SlabDimension.ZDim; 
-					TFCalcoloFormaturaRT[IdxLista].HabiCalTodasCordenadas := true ;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.Code											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.Code;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.XDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.XDim;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.YDim											:= RequestPickingListFromHMI[IdxLista].SupportVertCav.YDim(**2*);
-					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim				:= RequestPickingListFromHMI[IdxLista].SupportVertCav.ZDim;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.TipoPianoAppoggio 	:= 1;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta:= 13;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim_Ext1        	:= TFCalcoloFormaturaRT[IdxLista].Supporto.ZDim + TFCalcoloFormaturaRT[IdxLista].Supporto.AltezzaDenteRitenuta;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.DimBaseUtile		:= RequestPickingListFromHMI[IdxLista].SupportVertCav.DimBaseUtile;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.DimVertice 			:= RequestPickingListFromHMI[IdxLista].SupportVertCav.DimVertice(**2*);
-					TFCalcoloFormaturaRT[IdxLista].Supporto.HMAX 				:= RequestPickingListFromHMI[IdxLista].SupportVertCav.HMAX;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.Tipologia 			:= CAVALLETTO;
-					TFCalcoloFormaturaRT[IdxLista].Supporto.LatoDeposito 		:= 0;
-					TFCalcoloFormaturaRT[IdxLista].TipoOrdinamento				:= 1;	//Ordinamento di deposito, prima un lato poi l'altro
-					TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura 			:= TRUE;//Lancio esecuzione dei calcoli
-					MEMSET(ADR(FormaturaAFRAMERT[IdxLista]),0,SIZEOF(FormaturaAFRAMERT[IdxLista]));	//Pulisco la memoria di destinazione
-					TFCalcoloFormaturaRT[IdxLista].PulisciMemoria := FALSE;
-				END_IF
-			ELSIF (TFCalcoloFormaturaRT[IdxLista].CalcolaFormaturaDone OR TFCalcoloFormaturaRT[IdxLista].Errore > 0) AND CalcolaFormaturaTrig2 THEN
-				CalcolaFormaturaTrig2 		:= FALSE;
-				TFCalcoloFormaturaRT[IdxLista].CalcolaFormatura := FALSE;
-				TFFormacionCavalleteCalculada := TFCalcoloFormaturaRT[IdxLista] ;
-				FormaturaAFRAMERT[IdxLista] := TFCalcoloFormaturaRT[IdxLista].FormingSlab;
-				
-				//CalcolaFormingRT[IdxLista] := TRUE ; // modificacion probar
-				IF TFCalcoloFormaturaRT[IdxLista].Errore = 0 THEN
-					CalcolaFormaturaTrig2 		:= FALSE;
-					CalcolaFormingRT[IdxLista] 	:= TRUE;
-					CalcolaFormingRT2[IdxLista]	:= FALSE;
-					Formacion_FrameCalOk[idxForm] 		:= TRUE ;
-				ELSE
-					//CalcolaFormingRT[IdxLista] := TRUE; // original	  
-					CalcolaFormingRT2[IdxLista] := TRUE;
-				//##############################Fin ##############################################		 
-				//#########################Calculo cavaleta##########################################
-				END_IF
-			END_IF
-		END_IF //###############################  If  Principal calculos formaciones bendel y cabaleta
-	
-	TFCalcoloFormaturaRT[IdxLista]();
 END_FOR	 
 	 
 
 	HMI_WorkAreaDataPicking_1_8 := ActualPickingListFromHMI[1].State >= 1;//Ordine postazioni 1..8 in lavoro
-		 
 	HMI_WorkAreaDataPicking_1_4 := (ActualPickingListFromHMI[2].State >= 1);//Ordine postazioni 1..4 in lavoro
 	HMI_WorkAreaDataPicking_5_8 := (ActualPickingListFromHMI[3].State >= 1);//Ordine postazioni 5..8 in lavoro
 
@@ -7582,101 +7180,6 @@ TFCalcoloFormaturaRT();
 ]]></ST>
       </Implementation>
     </Action>
-    <Action Name="Para_Quitar" Id="{fe21363a-3ce2-4395-a54d-c0a68ebc5b1d}">
-      <Implementation>
-        <ST><![CDATA[
-
-
-				//FOR i:= 1 TO MAXFORMING DO
-					idxForm:= IdxLista;//forzo a 1 la formatura da attivare
-					IF HMI_Forming_Attivazione[idxForm] AND idxForm <=3 AND NOT Formacion_De_listaOk[idxForm] THEN
-						Forming[idxForm] := FormingEmpty;
-						(*IF NOT CalcolaFormaturaTrig AND TFCalcoloFormaturaDaLista.PulisciMemoriaDone THEN *)//#Modificado
-							 IF TFCalcoloFormaturaDaLista.CalcolaFormaturaDone THEN
-								CalcolaFormaturaTrig := TRUE;	  
-							END_IF	
-						IF NOT CalcolaFormaturaTrig  AND NOT Formacion_De_listaOk[idxForm] THEN 
-							HMI_Forming_FormaturaAttivata[idxForm] 	:= FALSE;
-							TFCalcoloFormaturaDaLista.PulisciMemoria 	:= TRUE;
-							IF TFCalcoloFormaturaDaLista.PulisciMemoriaDone THEN	
-								HMI_Forming_ErroreCalcoli := 0;
-								CalcolaFormaturaTrig := TRUE;
-						
-								//FOR i := HMI_Forming_NumeroElementiDaDepositare+1 TO MAXFORMINGSLAB DO
-								FOR i := (HMI_Forming_NumeroElementiDaDepositare + HMI_NumeroPezziPresentiPostazione[NumPostazioneDeposito] ) +1 TO MAXFORMINGSLAB DO
-									TFCalcoloFormaturaDaLista.TipoElementoDep[i] := TERMINATORE;//Settiamo il resto come terminatore
-								END_FOR
-									
-								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.LASTRA]		:= HMI_Forming_LastraDaDepositare; 
-								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.FALDA]		:= FaldaDaDepositare;
-								TFCalcoloFormaturaDaLista.Materiale[e_Tipo_Elemento_Da_Lavorare.QUADROTTA]	:= HMI_Forming_LastraDaDepositare;
-								TFCalcoloFormaturaDaLista.Supporto											:= HMI_Forming_Supporto;	//Assegno la tipologia di supporto
-								
-								//CASE HMI_WorkAreaDataPicking[j].Typology OF //**Mod	 
-								CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF //**Mod
-									BUNDLE_VERT:
-										TFCalcoloFormaturaDaLista.TipoOrdinamento := 4;//Ordinamento di deposito òato 180°
-									A_FRAME_VERT:
-										TFCalcoloFormaturaDaLista.TipoOrdinamento := 1;//Ordinamento di deposito, prima un lato poi l'altro	
-									ELSE
-										TFCalcoloFormaturaDaLista.TipoOrdinamento := 2;//Ordinamento di deposito consecutivo	 
-								END_CASE
-									 
-								TFCalcoloFormaturaDaLista.CalcolaFormatura := TRUE; 		//Lancio esecuzione dei calcoli
-								MEMSET(ADR(HMI_Forming_FormaturaCalcolata),0,SIZEOF(HMI_Forming_FormaturaCalcolata));	//Pulisco la memoria di destinazione
-								HMI_Forming_Attivazione[i] := FALSE;
-								TFCalcoloFormaturaDaLista.PulisciMemoria := FALSE;
-							END_IF
-						ELSIF (TFCalcoloFormaturaDaLista.CalcolaFormaturaDone OR TFCalcoloFormaturaDaLista.Errore > 0) AND CalcolaFormaturaTrig AND NOT Formacion_De_listaOk[idxForm] THEN
-							CalcolaFormaturaTrig := FALSE;
-							TFCalcoloFormaturaDaLista.CalcolaFormatura := FALSE;
-							Formacion_De_listaOk[idxForm] := TRUE ;
-							IF TFCalcoloFormaturaDaLista.Errore = 0 THEN
-								IDFormatura 								:= IDFormatura+1;
-								GUIDFormatura 								:= STRING_TO_UINT(concat(UINT_TO_STRING(NUMERO_MACCHINA),UINT_TO_STRING(IDFormatura)));
-								HMI_Forming_GUID 							:= GUIDFormatura;
-						
-								HMI_Forming_FormaturaCalcolata 				:= TFCalcoloFormaturaDaLista.FormingSlab;
-								Forming[idxForm] 							:= FormingEmpty;	//Pulisco la memoria di destinazione
-								Forming[idxForm] 							:= TFCalcoloFormaturaDaLista.FormingSlab;
-								Forming[idxForm].Enable 					:= 1;
-								Forming[idxForm].Code 						:= HMI_Forming_CodiciAbilitatiFormatura[idxForm].Code;
-								Forming[idxForm].GUID						:= HMI_Forming_GUID;
-								Forming[idxForm].Pallet						:= HMI_Forming_Supporto;
-								HMI_Forming_IndiceFormaturaAttivata := idxForm;
-								HMI_Forming_FormaturaAttivata[idxForm] 	:= TRUE;
-								HMI_ConfermaAttivazioneFormatura[idxForm] := TRUE;
-								//Valorizzo la struttura del WAPL per ogni elemento da elaborare
-								FOR jj := 1 TO MAXELEMENTLIST DO
-									IF jj < ElementiElaborati[IdxLista] THEN
-										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].PElement 		:= TFCalcoloFormaturaDaLista.FormingSlab.PElement[jj];	
-										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_DA_ELABORARE;
-									
-										IF Picking.HMI_PareggiaturaLastraAbilitata THEN
-											WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DA_ESEGUIRE;
-										ELSE
-											WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Pareggiatura := PAREGGIATURA_DISABILITATA;
-										END_IF
-									ELSE
-										WorkAreaProductionList[NumPostazioneDeposito].PElementList[jj].Stato			:= ELEMENTO_NOT_DEFINED;
-									END_IF
-								END_FOR
-							ELSE
-								HMI_Forming_ErroreCalcoli := TFCalcoloFormaturaDaLista.Errore;
-							END_IF
-							HMI_Forming_Attivazione[idxForm] := FALSE;
-						END_IF
-					ELSIF HMI_Forming_Attivazione[idxForm]  AND NOT Formacion_De_listaOk[idxForm] THEN
-						memset(destAddr:=ADR(TFCalcoloFormaturaDaLista.Errore),fillByte:=(UINT_TO_USINT(ErrNumeroMassimoFormatureAmmesse)),n:=SIZEOF(TFCalcoloFormaturaDaLista.Errore));
-					END_IF
-				
-					//Disattivazione formatura
-					IF HMI_Forming_Disattivazione[idxForm] THEN
-						HMI_Forming_Disattivazione[idxForm] := FALSE;
-						Forming[idxForm] := FormingEmpty;	//Pulisco la formatura selezionata e di consegenza la disattivo
-					END_IF]]></ST>
-      </Implementation>
-    </Action>
     <Action Name="TEST_Variabili" Id="{d1477142-a8d1-4d92-b199-364b2f7edc0e}">
       <Implementation>
         <ST><![CDATA[
@@ -8696,7 +8199,13 @@ END_IF
       <LineId Id="3556" Count="0" />
       <LineId Id="4821" Count="13" />
       <LineId Id="4817" Count="3" />
-      <LineId Id="3557" Count="54" />
+      <LineId Id="3557" Count="23" />
+      <LineId Id="4846" Count="13" />
+      <LineId Id="4845" Count="0" />
+      <LineId Id="3581" Count="15" />
+      <LineId Id="4861" Count="13" />
+      <LineId Id="4860" Count="0" />
+      <LineId Id="3597" Count="14" />
       <LineId Id="3553" Count="2" />
       <LineId Id="3612" Count="0" />
       <LineId Id="1049" Count="0" />
@@ -9115,11 +8624,20 @@ END_IF
     <LineIds Name="TFMachinePalletizerMain._11_CalcolaListaProduzioneNew">
       <LineId Id="5131" Count="58" />
       <LineId Id="6480" Count="0" />
+      <LineId Id="6485" Count="0" />
+      <LineId Id="6484" Count="0" />
+      <LineId Id="6490" Count="0" />
       <LineId Id="5190" Count="0" />
       <LineId Id="6234" Count="0" />
       <LineId Id="5191" Count="60" />
       <LineId Id="6444" Count="13" />
-      <LineId Id="5266" Count="78" />
+      <LineId Id="5266" Count="25" />
+      <LineId Id="6492" Count="13" />
+      <LineId Id="6491" Count="0" />
+      <LineId Id="5292" Count="15" />
+      <LineId Id="6507" Count="13" />
+      <LineId Id="6506" Count="0" />
+      <LineId Id="5308" Count="36" />
       <LineId Id="6458" Count="0" />
       <LineId Id="5346" Count="492" />
       <LineId Id="5105" Count="0" />
@@ -9205,261 +8723,29 @@ END_IF
       <LineId Id="6463" Count="0" />
       <LineId Id="6182" Count="21" />
       <LineId Id="6208" Count="7" />
-      <LineId Id="6217" Count="3" />
+      <LineId Id="6217" Count="1" />
+      <LineId Id="6481" Count="0" />
+      <LineId Id="6483" Count="0" />
+      <LineId Id="6482" Count="0" />
+      <LineId Id="6219" Count="1" />
       <LineId Id="6478" Count="0" />
       <LineId Id="6225" Count="3" />
-      <LineId Id="6145" Count="1" />
+      <LineId Id="6145" Count="0" />
+      <LineId Id="6487" Count="2" />
+      <LineId Id="6486" Count="0" />
+      <LineId Id="6146" Count="0" />
       <LineId Id="6479" Count="0" />
       <LineId Id="6005" Count="0" />
       <LineId Id="5854" Count="0" />
       <LineId Id="5852" Count="0" />
-      <LineId Id="5841" Count="10" />
+      <LineId Id="5841" Count="7" />
       <LineId Id="5839" Count="0" />
-      <LineId Id="3679" Count="2" />
-      <LineId Id="4974" Count="1" />
-      <LineId Id="3682" Count="0" />
-      <LineId Id="4848" Count="0" />
-      <LineId Id="4858" Count="1" />
-      <LineId Id="4957" Count="3" />
-      <LineId Id="5101" Count="2" />
-      <LineId Id="5100" Count="0" />
-      <LineId Id="4964" Count="0" />
-      <LineId Id="4966" Count="7" />
-      <LineId Id="4956" Count="0" />
-      <LineId Id="4862" Count="1" />
-      <LineId Id="4890" Count="0" />
-      <LineId Id="4864" Count="0" />
-      <LineId Id="4860" Count="0" />
-      <LineId Id="4937" Count="1" />
-      <LineId Id="4865" Count="0" />
-      <LineId Id="4977" Count="0" />
-      <LineId Id="4869" Count="5" />
-      <LineId Id="4879" Count="0" />
-      <LineId Id="4889" Count="0" />
-      <LineId Id="4876" Count="1" />
-      <LineId Id="4868" Count="0" />
-      <LineId Id="4979" Count="8" />
-      <LineId Id="4867" Count="0" />
-      <LineId Id="5013" Count="22" />
-      <LineId Id="5012" Count="0" />
-      <LineId Id="4999" Count="0" />
-      <LineId Id="5036" Count="0" />
-      <LineId Id="5038" Count="2" />
-      <LineId Id="5037" Count="0" />
-      <LineId Id="4989" Count="0" />
-      <LineId Id="5042" Count="2" />
-      <LineId Id="5041" Count="0" />
-      <LineId Id="5045" Count="0" />
-      <LineId Id="4866" Count="0" />
-      <LineId Id="4976" Count="0" />
-      <LineId Id="4861" Count="0" />
-      <LineId Id="5047" Count="0" />
-      <LineId Id="5051" Count="8" />
-      <LineId Id="5094" Count="1" />
-      <LineId Id="5093" Count="0" />
-      <LineId Id="5096" Count="0" />
-      <LineId Id="5060" Count="1" />
-      <LineId Id="5064" Count="0" />
-      <LineId Id="5091" Count="1" />
-      <LineId Id="5088" Count="2" />
-      <LineId Id="5067" Count="20" />
-      <LineId Id="5049" Count="0" />
-      <LineId Id="4988" Count="0" />
-      <LineId Id="4878" Count="0" />
-      <LineId Id="4851" Count="0" />
-      <LineId Id="4854" Count="1" />
-      <LineId Id="4852" Count="0" />
-      <LineId Id="4844" Count="0" />
-      <LineId Id="3853" Count="0" />
-      <LineId Id="43" Count="0" />
-      <LineId Id="6" Count="0" />
-      <LineId Id="138" Count="0" />
-      <LineId Id="3110" Count="0" />
-      <LineId Id="782" Count="1" />
-      <LineId Id="800" Count="0" />
-      <LineId Id="4978" Count="0" />
-      <LineId Id="3623" Count="0" />
-      <LineId Id="810" Count="0" />
-      <LineId Id="3619" Count="3" />
-      <LineId Id="3618" Count="0" />
-      <LineId Id="812" Count="2" />
-      <LineId Id="836" Count="1" />
-      <LineId Id="4751" Count="1" />
-      <LineId Id="4748" Count="0" />
-      <LineId Id="3653" Count="0" />
-      <LineId Id="4743" Count="0" />
-      <LineId Id="839" Count="2" />
-      <LineId Id="3626" Count="0" />
-      <LineId Id="861" Count="1" />
-      <LineId Id="4766" Count="0" />
-      <LineId Id="863" Count="6" />
-      <LineId Id="1373" Count="0" />
-      <LineId Id="3701" Count="0" />
-      <LineId Id="3174" Count="0" />
-      <LineId Id="3181" Count="0" />
-      <LineId Id="3184" Count="0" />
-      <LineId Id="3188" Count="0" />
-      <LineId Id="3190" Count="0" />
-      <LineId Id="3185" Count="1" />
-      <LineId Id="3178" Count="0" />
-      <LineId Id="3191" Count="0" />
-      <LineId Id="871" Count="1" />
-      <LineId Id="874" Count="3" />
-      <LineId Id="3860" Count="0" />
-      <LineId Id="878" Count="0" />
-      <LineId Id="3630" Count="0" />
-      <LineId Id="879" Count="13" />
-      <LineId Id="3871" Count="0" />
-      <LineId Id="893" Count="1" />
-      <LineId Id="1270" Count="0" />
-      <LineId Id="895" Count="1" />
-      <LineId Id="1223" Count="0" />
-      <LineId Id="897" Count="4" />
-      <LineId Id="1271" Count="0" />
-      <LineId Id="1275" Count="0" />
-      <LineId Id="1273" Count="0" />
-      <LineId Id="902" Count="3" />
-      <LineId Id="907" Count="13" />
-      <LineId Id="3624" Count="0" />
-      <LineId Id="3631" Count="0" />
-      <LineId Id="3625" Count="0" />
-      <LineId Id="921" Count="1" />
-      <LineId Id="3632" Count="0" />
-      <LineId Id="923" Count="0" />
-      <LineId Id="1103" Count="0" />
-      <LineId Id="3336" Count="0" />
-      <LineId Id="1109" Count="0" />
-      <LineId Id="1099" Count="0" />
-      <LineId Id="1110" Count="0" />
-      <LineId Id="1060" Count="0" />
-      <LineId Id="2671" Count="0" />
-      <LineId Id="3383" Count="0" />
-      <LineId Id="1039" Count="0" />
-      <LineId Id="924" Count="0" />
-      <LineId Id="1548" Count="0" />
-      <LineId Id="925" Count="0" />
-      <LineId Id="3702" Count="0" />
-      <LineId Id="392" Count="0" />
-      <LineId Id="3649" Count="0" />
-      <LineId Id="1038" Count="0" />
-      <LineId Id="318" Count="0" />
       <LineId Id="1097" Count="0" />
-      <LineId Id="1083" Count="0" />
-      <LineId Id="1061" Count="0" />
-      <LineId Id="1077" Count="1" />
-      <LineId Id="1080" Count="2" />
-      <LineId Id="1062" Count="0" />
-      <LineId Id="1084" Count="0" />
-      <LineId Id="1091" Count="1" />
-      <LineId Id="1094" Count="2" />
-      <LineId Id="1085" Count="1" />
-      <LineId Id="1293" Count="0" />
-      <LineId Id="1291" Count="0" />
-      <LineId Id="1281" Count="0" />
-      <LineId Id="1609" Count="2" />
-      <LineId Id="1606" Count="0" />
-      <LineId Id="1332" Count="0" />
-      <LineId Id="1328" Count="0" />
-      <LineId Id="1592" Count="0" />
-      <LineId Id="1329" Count="0" />
-      <LineId Id="1593" Count="2" />
-      <LineId Id="1623" Count="1" />
-      <LineId Id="1628" Count="0" />
-      <LineId Id="1625" Count="1" />
-      <LineId Id="1622" Count="0" />
-      <LineId Id="1330" Count="1" />
-      <LineId Id="1327" Count="0" />
-      <LineId Id="1337" Count="0" />
-      <LineId Id="1612" Count="0" />
-      <LineId Id="1338" Count="0" />
-      <LineId Id="1613" Count="2" />
-      <LineId Id="1336" Count="0" />
-      <LineId Id="1287" Count="1" />
-      <LineId Id="3535" Count="0" />
-      <LineId Id="1617" Count="3" />
-      <LineId Id="1616" Count="0" />
-      <LineId Id="1282" Count="0" />
-      <LineId Id="1292" Count="0" />
-      <LineId Id="999" Count="0" />
-      <LineId Id="309" Count="0" />
-      <LineId Id="311" Count="1" />
-      <LineId Id="3842" Count="2" />
-      <LineId Id="3829" Count="0" />
-      <LineId Id="3834" Count="0" />
-      <LineId Id="3837" Count="0" />
-      <LineId Id="3841" Count="0" />
-      <LineId Id="3840" Count="0" />
-      <LineId Id="3839" Count="0" />
-      <LineId Id="3838" Count="0" />
-      <LineId Id="3836" Count="0" />
-      <LineId Id="3831" Count="1" />
-      <LineId Id="1475" Count="0" />
-      <LineId Id="3651" Count="1" />
-      <LineId Id="4738" Count="2" />
-      <LineId Id="1493" Count="0" />
-      <LineId Id="1522" Count="0" />
-      <LineId Id="3862" Count="0" />
-      <LineId Id="1523" Count="1" />
-      <LineId Id="1559" Count="0" />
-      <LineId Id="3808" Count="0" />
-      <LineId Id="1560" Count="5" />
-      <LineId Id="3742" Count="1" />
-      <LineId Id="3718" Count="0" />
-      <LineId Id="3720" Count="0" />
-      <LineId Id="3730" Count="11" />
-      <LineId Id="3719" Count="0" />
-      <LineId Id="3827" Count="0" />
-      <LineId Id="1539" Count="2" />
-      <LineId Id="3863" Count="0" />
-      <LineId Id="1542" Count="0" />
-      <LineId Id="4771" Count="0" />
-      <LineId Id="1551" Count="0" />
-      <LineId Id="1629" Count="0" />
-      <LineId Id="1544" Count="0" />
-      <LineId Id="1549" Count="0" />
-      <LineId Id="3192" Count="0" />
-      <LineId Id="4736" Count="0" />
-      <LineId Id="1631" Count="1" />
-      <LineId Id="3851" Count="0" />
-      <LineId Id="1545" Count="1" />
-      <LineId Id="3846" Count="1" />
-      <LineId Id="3194" Count="2" />
-      <LineId Id="3714" Count="1" />
-      <LineId Id="3712" Count="0" />
-      <LineId Id="3197" Count="1" />
-      <LineId Id="3872" Count="0" />
-      <LineId Id="3199" Count="0" />
-      <LineId Id="4767" Count="0" />
-      <LineId Id="3809" Count="0" />
-      <LineId Id="3200" Count="5" />
-      <LineId Id="3768" Count="1" />
-      <LineId Id="3767" Count="0" />
-      <LineId Id="3761" Count="0" />
-      <LineId Id="3795" Count="12" />
-      <LineId Id="3762" Count="0" />
-      <LineId Id="3766" Count="0" />
-      <LineId Id="3225" Count="2" />
-      <LineId Id="3861" Count="0" />
-      <LineId Id="3228" Count="0" />
-      <LineId Id="4770" Count="0" />
-      <LineId Id="3229" Count="0" />
-      <LineId Id="4769" Count="0" />
-      <LineId Id="3828" Count="0" />
-      <LineId Id="3231" Count="3" />
-      <LineId Id="4735" Count="0" />
-      <LineId Id="3235" Count="0" />
-      <LineId Id="3845" Count="0" />
-      <LineId Id="3236" Count="0" />
-      <LineId Id="3849" Count="1" />
-      <LineId Id="3717" Count="0" />
-      <LineId Id="3238" Count="0" />
-      <LineId Id="3193" Count="0" />
-      <LineId Id="3645" Count="0" />
-      <LineId Id="1547" Count="0" />
-      <LineId Id="3240" Count="0" />
+      <LineId Id="1086" Count="0" />
       <LineId Id="3388" Count="0" />
       <LineId Id="3633" Count="0" />
-      <LineId Id="3639" Count="3" />
+      <LineId Id="3639" Count="1" />
+      <LineId Id="3642" Count="0" />
       <LineId Id="3638" Count="0" />
       <LineId Id="3392" Count="2" />
       <LineId Id="1476" Count="0" />
@@ -10122,10 +9408,6 @@ END_IF
       <LineId Id="313" Count="2" />
       <LineId Id="308" Count="0" />
       <LineId Id="12" Count="0" />
-    </LineIds>
-    <LineIds Name="TFMachinePalletizerMain.Para_Quitar">
-      <LineId Id="2" Count="89" />
-      <LineId Id="1" Count="0" />
     </LineIds>
     <LineIds Name="TFMachinePalletizerMain.TEST_Variabili">
       <LineId Id="2" Count="0" />
