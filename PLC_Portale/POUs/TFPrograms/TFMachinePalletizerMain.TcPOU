@@ -78,8 +78,7 @@ VAR
 	HH: INT;
 	Hhbilita_quitar: BOOL;
 	ja: UINT;
-	Numero_Piezas_estacionPikin: UINT;
-	Numero_piezas_CaballeteEstacionPiking : Es_PiezasCaballete;
+	
 END_VAR
 
 

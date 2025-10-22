@@ -38,7 +38,7 @@ VAR_GLOBAL PERSISTENT
 		
 	HMI_WorkAreaDataPicking 		: ARRAY [1..MAXAREA] OF ST_WorkAreaDataPicking;//Dati da HMI per definire il picking
 	HMI_WorkLadoTrabajo_Cavallete	: INT ;// 0-trabaja aambos lados 1-Lado 0 Grados 2-Lado 180 Grados
-	HMi_DimensionesPiezasWorkAreaDeposito	: ARRAY  [1..50] OF TFDimensionElement; 
+	HMi_DimensionesPiezasWorkAreaDeposito	: ARRAY  [1..MAXELEMENTLIST] OF ES_CoordenadasPiezaLadoA_ladoB; 
 	
 	HMI_ErroreCalcoloLista : UINT := 0;//Errori utilizzati per il calcolo della lista
 	
@@ -54,6 +54,9 @@ VAR_GLOBAL PERSISTENT
 	HMI_WorkAreaDataPicking_1_8 	: BOOL; //Ordine postazioni 1..8 in lavoro
 	HMI_WorkAreaDataPicking_1_4 	: BOOL; //Ordine postazioni 1..4 in lavoro
 	HMI_WorkAreaDataPicking_5_8 	: BOOL; //Ordine postazioni 1..4 in lavoro	
+	
+	Numero_Piezas_estacionPikin					: UINT;
+	Numero_piezas_CaballeteEstacionPiking 		: Es_PiezasCaballete;
 END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>
