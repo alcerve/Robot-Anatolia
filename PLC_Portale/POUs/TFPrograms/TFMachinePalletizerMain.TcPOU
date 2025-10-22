@@ -77,6 +77,9 @@ VAR
 	pruevaFor: BOOL;
 	HH: INT;
 	Hhbilita_quitar: BOOL;
+	ja: UINT;
+	Numero_Piezas_estacionPikin: UINT;
+	Numero_piezas_CaballeteEstacionPiking : Es_PiezasCaballete;
 END_VAR
 
 
@@ -4901,6 +4904,8 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 				FOR i:= Iforstart TO Iforend DO//---------- For 1 HMI_WorkAreaDataPicking[i].Destinazione 
 					IF HMI_WorkAreaDataPicking[i].Destinazione THEN  //-------> Palet destino
 						NumPostazioneDeposito := i;
+						Numero_Piezas_estacionPikin := HMI_NumeroPezziPresentiPostazione[NumPostazioneDeposito] +1 ;
+						Numero_piezas_CaballeteEstacionPiking := HMI_NumeroPezziPresentiCavallete[NumPostazioneDeposito] ;
 						HMI_WorkAreaDataPicking[NumPostazioneDeposito].NumElementiDaLavorare 	:= RequestPickingListFromHMI[IdxLista].SlabNumber;
 						(*CASE HMI_WorkAreaDataPicking[i].Typology OF     // case Pricipal1*)		 
 						CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF     // case Pricipal1	
@@ -4929,15 +4934,19 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								FOR j:= Iforstart TO Iforend DO
 									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
 										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
+											
 											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
 											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
-												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
-												//########################################################################################################
 												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
 											END_FOR
+											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################		  
+											END_FOR
+												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
 											CASE HMI_WorkAreaDataPicking[j].Typology OF 
 												(* Se ho una cassa pianale in legno *)
 												LEGNO_PIANO:
@@ -5012,6 +5021,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								EXIT; 
 							(* Se ho un telaio in piano *)	 
 							TELAIO_PIANO:	
+								
 								WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= ActualPickingListFromHMI[IdxLista].SupportPianoFerro.Code;
 								WorkAreaState[NumPostazioneDeposito].Supporto.AltezzaDenteRitenuta 		:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.DimBaseUtile;
 								WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportPianoFerro.DimVertice;
@@ -5028,14 +5038,18 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								FOR j:= Iforstart TO Iforend DO
 									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
 										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
+											
 											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
 											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
-												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
-												//########################################################################################################
 												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
+											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################		  
+											END_FOR
+												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
 											END_FOR
 											CASE HMI_WorkAreaDataPicking[j].Typology OF 
 												(* Se ho una cassa pianale in legno *)
@@ -5111,6 +5125,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 							BUNDLE_VERT:
 								
 								//Se ho deposito verticale su bundle
+								
 								WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.Code;
 								WorkAreaState[NumPostazioneDeposito].Supporto.DimBaseUtile		 		:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.DimBaseUtile;
 								WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertBundle.DimVertice;
@@ -5128,15 +5143,19 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								FOR j:= Iforstart TO Iforend DO
 									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
 										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
+												 
 											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
 											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
-												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
-												//########################################################################################################
 												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
 											END_FOR
+											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################		  
+											END_FOR
+												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
 											CASE HMI_WorkAreaDataPicking[j].Typology OF 
 												(* Se ho una cassa pianale in legno *)
 												LEGNO_PIANO:
@@ -5208,6 +5227,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								EXIT; 
 							(* Se ho un A_Frame *)	
 							A_FRAME_VERT:
+								
 								WorkAreaState[NumPostazioneDeposito].Supporto.Code 						:= ActualPickingListFromHMI[IdxLista].SupportVertCav.Code;
 								WorkAreaState[NumPostazioneDeposito].Supporto.DimBaseUtile		 		:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.DimBaseUtile;
 								WorkAreaState[NumPostazioneDeposito].Supporto.DimVertice 				:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.DimVertice;
@@ -5226,15 +5246,18 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								FOR j:= Iforstart TO Iforend DO
 									IF NOT HMI_WorkAreaDataPicking[j].Destinazione THEN
 										IF HMI_WorkAreaDataPicking[j].NumElementiDaLavorare >= 1 THEN
-											ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
+										ElementiDaDepositare[IdxLista] := ElementiElaborati[IdxLista] + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare;
 											FOR k := ElementiElaborati[IdxLista] TO ElementiDaDepositare[IdxLista]-1 DO	
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_PRELIEVO := j;
 												WorkAreaProductionList[NumPostazioneDeposito].PElementList[k].WA_DEPOSITO := i;	
-												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
-												HMi_DimensionesPiezasWorkAreaDeposito[K] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
-												//########################################################################################################
 												ElementiElaborati[IdxLista] := ElementiElaborati[IdxLista]+1; 
 											END_FOR
+											FOR ja := Numero_Piezas_estacionPikin  TO Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] DO
+												// Se van Añadiendo los Diferentes Espesores de la receta del piking ######################################
+												HMi_DimensionesPiezasWorkAreaDeposito[ja] := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
+												//########################################################################################################		  
+											END_FOR
+												Numero_Piezas_estacionPikin := 	Numero_Piezas_estacionPikin + ElementiDaDepositare[IdxLista] ;  
 											CASE HMI_WorkAreaDataPicking[j].Typology OF 
 												(* Se ho una cassa pianale in legno *)
 												LEGNO_PIANO:
@@ -8639,7 +8662,41 @@ END_IF
       <LineId Id="6506" Count="0" />
       <LineId Id="5308" Count="36" />
       <LineId Id="6458" Count="0" />
-      <LineId Id="5346" Count="492" />
+      <LineId Id="5346" Count="77" />
+      <LineId Id="6561" Count="1" />
+      <LineId Id="5424" Count="27" />
+      <LineId Id="6526" Count="0" />
+      <LineId Id="5452" Count="3" />
+      <LineId Id="5458" Count="0" />
+      <LineId Id="5460" Count="0" />
+      <LineId Id="6521" Count="0" />
+      <LineId Id="6524" Count="1" />
+      <LineId Id="6522" Count="1" />
+      <LineId Id="6533" Count="0" />
+      <LineId Id="5461" Count="73" />
+      <LineId Id="6560" Count="0" />
+      <LineId Id="5535" Count="15" />
+      <LineId Id="6527" Count="0" />
+      <LineId Id="5551" Count="3" />
+      <LineId Id="5557" Count="0" />
+      <LineId Id="6535" Count="4" />
+      <LineId Id="6534" Count="0" />
+      <LineId Id="5559" Count="74" />
+      <LineId Id="6559" Count="0" />
+      <LineId Id="5634" Count="15" />
+      <LineId Id="6529" Count="1" />
+      <LineId Id="5651" Count="3" />
+      <LineId Id="6544" Count="1" />
+      <LineId Id="6553" Count="4" />
+      <LineId Id="6540" Count="0" />
+      <LineId Id="5660" Count="70" />
+      <LineId Id="6558" Count="0" />
+      <LineId Id="5731" Count="21" />
+      <LineId Id="5755" Count="0" />
+      <LineId Id="5757" Count="0" />
+      <LineId Id="6548" Count="4" />
+      <LineId Id="6547" Count="0" />
+      <LineId Id="5758" Count="80" />
       <LineId Id="5105" Count="0" />
       <LineId Id="5855" Count="1" />
       <LineId Id="6257" Count="0" />
