@@ -8,6 +8,7 @@ STRUCT
 	TypologyCode	: INT						:= -1;	(* Descrittore tipo elemento *)
 	(*Dimensione Lastra*) // Añadido Alberto 14-10-2025
 	SlabDimension 	: TFDimensionElement; (* Dimensione Lastra *)
+	DimensionPiezasLadoALadoB	:  ES_dimensionPiezaLadoA_ladoB; 
 	(* Dimensioni *)
 	XDim		: REAL							:= 0.0;	(* (mm) Dimensione X *)
 	YDim		: REAL							:= 0.0;	(* (mm) Dimensione Y *)
