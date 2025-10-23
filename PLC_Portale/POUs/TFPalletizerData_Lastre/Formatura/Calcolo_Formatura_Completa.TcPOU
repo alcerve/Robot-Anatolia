@@ -9,7 +9,7 @@ VAR_INPUT
 	//Materiale : ARRAY [0..MAXTYPE_SLABLAYER] OF Type_SlabLayer;	// Tipo di materiale, Lastra, Falda e dimensioni
 	Materiale 			: ARRAY [0..MAXTYPE_SLABLAYER] OF TFMachinePalletizer_PlaceElement;	// Tipo di materiale, Lastra, Falda e dimensioni
 	TipoElementoDep 	: ARRAY [1..MAXFORMINGSLAB] OF e_Tipo_Elemento_Da_Lavorare;	// Tipologia del n-esimo elemento di Materiale da depositare (Lstra-falda-terminatore)
-	
+	DimensionesPiezasLadoALadoB	: ARRAY  [1..MAXELEMENTLIST] OF ES_dimensionPiezaLadoA_ladoB;
 	TipoRisultato 		: UINT := 3;// Punto utilizzato per coordinate finali di deposito lastra/falda, 1 interno, 2 centro, 3 esterno(default)
 	TipoOrdinamento 	: UINT := 1;//Tipologia di ordinamento in deposito 1= alternato (lastra DX-Lastra SX), 2 = consecutivo(prima un lato, poi l'altro lato), 3 = solo lato 0°, 4 = solo lato 180°
 	NumeroElementiDaDepositare : UINT;

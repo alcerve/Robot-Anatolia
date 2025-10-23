@@ -114,7 +114,7 @@
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_CoordenadasCaballeteLadoB.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\ES_CoordenadasPiezaLadoA_ladoB.TcDUT">
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\ES_dimensionPiezaLadoA_ladoB.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_NumeroPiezasCaballete.TcDUT">

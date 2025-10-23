@@ -2215,7 +2215,7 @@ ELSIF LatoPrelievo = 0 THEN
 			Mission^.ZPick				:= Mission^.ZPick + (20) ; // pieza pequeña
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		ELSE
-			Mission^.YPick 				:= Mission^.YPick  + 25; // + 50 (*+ 50 *);
+			Mission^.YPick 				:= Mission^.YPick  + 40; // + 50 (*+ 50 *);
 			Mission^.ZPick				:= Mission^.ZPick + 12 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;	
 	END_IF
