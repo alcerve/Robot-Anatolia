@@ -436,6 +436,8 @@ VAR_GLOBAL PERSISTENT
 	GestionDescargaCaballete							: Es_LadosCaballete;
 	GestionCargaCaballete								: Es_LadosCaballete;
 	
+	HabilitacionFormacionNueva							: BOOL;
+	
 	FormacionesCalculadas								: BOOL;
 	FormacionPikingCalculada							: BOOL ;
 END_VAR

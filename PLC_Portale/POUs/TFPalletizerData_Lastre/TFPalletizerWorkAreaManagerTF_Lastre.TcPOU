@@ -1968,6 +1968,11 @@ END_IF
 UltimaPostazioneInPrelievo := Mission^.PPick;
 ppickOld := Mission^.PPick;
 
+IF HabilitacionFormacionNueva THEN
+	;
+END_IF
+
+
 //Z prelievo a seconda della tipologia 
 IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //SE PRELIEVO SU BUNDLE O CASSA
 	IF LatoPrelievo = 180 THEN
@@ -3039,6 +3044,9 @@ END_IF	]]></ST>
       <LineId Id="1245" Count="3" />
       <LineId Id="1235" Count="0" />
       <LineId Id="843" Count="3" />
+      <LineId Id="1924" Count="1" />
+      <LineId Id="1927" Count="1" />
+      <LineId Id="1926" Count="0" />
       <LineId Id="1339" Count="0" />
       <LineId Id="848" Count="0" />
       <LineId Id="1635" Count="0" />

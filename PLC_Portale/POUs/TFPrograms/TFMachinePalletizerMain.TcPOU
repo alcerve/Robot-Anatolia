@@ -74,7 +74,7 @@ VAR
 	// Recorre los casos para crear la formacion
 	CrearFormacion: UINT;
 	uu: UINT;
-	pruevaFor: BOOL;
+	
 	HH: INT;
 	Hhbilita_quitar: BOOL;
 	ja: UINT;
@@ -101,7 +101,7 @@ _07_ScriviStatus();
 //_08_DataLogger_ACT();
 //_09_CalcolaFormatura();
 _10_PackModifier();
-IF NOT pruevaFor THEN 
+IF NOT HabilitacionFormacionNueva THEN 
 	_11_CalcolaListaProduzione();
 ELSE
 	_11_CalcolaListaProduzioneNew();	
@@ -1665,7 +1665,7 @@ GateAccessError := MachinePalletizerGatesAccess.GateAccessConsolle.AccessERRORCo
 _09_CalcolaFormatura();
 //Calcola della lista di produzione TOTALE
 
-IF NOT pruevaFor THEN 
+IF NOT HabilitacionFormacionNueva THEN 
 	_11_CalcolaListaProduzione();
 ELSE
 	_11_CalcolaListaProduzioneNew();	
@@ -7455,18 +7455,7 @@ END_IF
       </Implementation>
     </Action>
     <LineIds Name="TFMachinePalletizerMain">
-      <LineId Id="1556" Count="0" />
-      <LineId Id="1544" Count="1" />
-      <LineId Id="1558" Count="2" />
-      <LineId Id="1547" Count="0" />
-      <LineId Id="1552" Count="0" />
-      <LineId Id="1554" Count="0" />
-      <LineId Id="1561" Count="0" />
-      <LineId Id="1766" Count="0" />
-      <LineId Id="1689" Count="0" />
-      <LineId Id="1768" Count="2" />
-      <LineId Id="1619" Count="2" />
-      <LineId Id="1618" Count="0" />
+      <LineId Id="1947" Count="18" />
       <LineId Id="1110" Count="0" />
     </LineIds>
     <LineIds Name="TFMachinePalletizerMain._01_Init">
