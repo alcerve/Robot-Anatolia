@@ -16,7 +16,10 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[CASE Nu_PiezaGlobal OF
+      <ST><![CDATA[
+
+//Dia 23-10-2025
+CASE Nu_PiezaGlobal OF
 	1:
 		Nu_pieza_LadoA :=  Nu_PiezaGlobal ;
 		Grados^ := 0;
@@ -35,6 +38,7 @@ END_VAR
 END_CASE]]></ST>
     </Implementation>
     <LineIds Name="Fun_PiezaLadoCaballete">
+      <LineId Id="79" Count="2" />
       <LineId Id="38" Count="2" />
       <LineId Id="65" Count="0" />
       <LineId Id="41" Count="5" />
