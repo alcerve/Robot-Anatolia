@@ -246,6 +246,8 @@ VAR_GLOBAL
 	PosicionJActual							: LREAL;
 	RobotWorkAreaCavallete 					: BOOL ;
 	RobotCentroPosX							: BOOL ;
+	CotaCentroPosRobot						:LREAL ;
+	
 	PosicionJDestino						: LREAL;
 	PosicionJOrigen							: LREAL;
 	EjeYPosFueraIngombro					: BOOL;
