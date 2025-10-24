@@ -1650,7 +1650,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			QuotaCentroPostazionePiking + 						(* Quota Y Postazione *)																									
 																			WorkAreaState^[Mission^.PPlace].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;
+																			+ Max (OffsetSicurezza.Y.Avuoto ,Dimensioni_Pinza.Spessore)           )  ;
 									NuIngombroYCalculado180G_Depuracion := 6;
 									ELSE
 										IF Mission^.PPick = PosRobot AND( Mission^.JPick <> Mission^.JPlace OR ModuleAX_J^.Ax^.Status.ActPosition < 85) THEN
@@ -1701,7 +1701,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			MAX(QuotaFuoriIngombro_Y_Calcolata,
 																			QuotaCentroPostazione  + 					(* Quota Y Postazione *)	
 																			Soporte
-																			+ OffsetSicurezza.Y.Avuoto )  ;
+																			+ OffsetSicurezza.Y.Avuoto + Dimensioni_Pinza.Spessore)  ;
 										NuIngombroYCalculado180G_Depuracion := 10;		   			   
 		   								// Añadido 	2 -9-2025_________________________________________________
 										ELSIF (( WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO  AND NuPosGuiroPiking = PosRobot) OR ( PosRobot <> 0 AND WorkAreaState^[PosRobot].Supporto.Tipologia <> CAVALLETTO))  AND PosicionJActual = 90     THEN 
@@ -1833,7 +1833,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	MAX (IngombroDestinazioneY_Pos  ,			(* Ingombro negativo pinza *)
-																	OffsetSicurezza.Y.Avuoto) +INGOMBRO_RISCONTRO_BUNDLE);           (* Offset sicurezza *)
+																	OffsetSicurezza.Y.Avuoto, Dimensioni_Pinza.Spessore) +INGOMBRO_RISCONTRO_BUNDLE);           (* Offset sicurezza *)
 						NuIngombroYCalculado180G_Depuracion := 19; 
 						END_IF	
 					ELSE//se non c'è nulla o c'è una cassa-pianale
