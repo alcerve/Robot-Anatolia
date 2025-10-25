@@ -82,6 +82,7 @@
     <Folder Include="POUs\TFPalletizerData\NON_USATE" />
     <Folder Include="POUs\TFPalletizerData_Lastre" />
     <Folder Include="POUs\TFPalletizerData_Lastre\Formatura" />
+    <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar" />
     <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\Utility" />
     <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\Utility\CSV read_write in text mode" />
     <Folder Include="POUs\TFGateAccess" />
@@ -118,6 +119,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_NumeroPiezasCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\ES_SpesoreLastra_A_B.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_Ingombro_PorPosicion.TcDUT">
@@ -1445,13 +1449,16 @@
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_CompletaNew.TcPOU">
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_24_10_2025.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Backup16_10_25.TcPOU">
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar\Calcolo_Formatura_CompletaNew.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Back.TcPOU">
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar\Calcolo_Formatura_Completa_Back.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar\Calcolo_Formatura_Completa_Backup16_10_25.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Utility\CSV read_write in text mode\P_TextModeRead.TcPOU">

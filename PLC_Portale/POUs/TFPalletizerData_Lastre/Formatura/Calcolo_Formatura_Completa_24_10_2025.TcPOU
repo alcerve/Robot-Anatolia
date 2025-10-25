@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
-  <POU Name="Calcolo_Formatura_Completa" Id="{a627df17-1f04-41c4-9b14-3bbfeeb098aa}" SpecialFunc="None">
-    <Declaration><![CDATA[FUNCTION_BLOCK Calcolo_Formatura_Completa
+  <POU Name="Calcolo_Formatura_Completa_24_10_2025" Id="{c84c3a9c-b2be-447d-a4c7-59f07fd0cc87}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Calcolo_Formatura_Completa_24_10_2025
 VAR_INPUT
 	
 	Supporto : TFMachinePalletizer_Pallet;
@@ -59,17 +59,11 @@ VAR
 	
 	Spessore_Lastra_Inclinata : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;				// Occupazione in larghezza della singola lastra (CAVALLINA-INCLINATO)
 	Spessore_Lastra_Inclinata_Cumulato : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Occupazione in larghezza delle nlastre lastre cumulate (CAVALLINA)
-	Spessore_Lastra_Inclinata_Cumulato_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
-	Spessore_Lastra_Inclinata_lado_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
-	
 	Spessore_Lastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;							// Occupazione in altezza della singola lastra (CASSA-ORIZZONTALE)
 	Spessore_Lastra_Cumulato : ARRAY [1..MAXFORMINGSLAB] OF LREAL;					// Occupazione in altezza delle nlastre lastre cumulate (CASSA-ORIZZONTALE)
 	
 	YCoordinataAppoggioLastra :  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Y del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
 	ZCoordinataAppoggioLastra :  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Z del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
-	
-	YCoordinataAppoggioLastra_A_B :  ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
-	ZCoordinataAppoggioLastra_A_B :  ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
 	
 	B 	: LREAL;	// Base della cavallina (include i due lati)  (CAVALLINA-INCLINATO)
 	B2	: LREAL;	// Base della cavallina (include i due lati)  (CAVALLINA-INCLINATO)
@@ -87,17 +81,6 @@ VAR
 	Yd3 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Y dovuto al lato inclinato base appoggio  (CAVALLINA-INCLINATO)
 	Zd3 : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Spostamento Z dovuto al lato inclinato base appoggio  (CAVALLINA-INCLINATO)
 	CI : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Proiezione mancante della lastra dovuta al piano inclinato (CI) - Valorizzata solo se Beta >0  (CAVALLINA-INCLINATO)
-	
-	Yd1_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;	// Spostamento Centro lastra da inizio lastra in Y  (CAVALLINA-INCLINATO)
-	Zd1_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;	// Spostamento Centro lastra da inizio lastra in Z  (CAVALLINA-INCLINATO)
-	Yd2_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;	// Spostamento Esterno lastra da inizio lastra in Y  (CAVALLINA-INCLINATO)
-	Zd2_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;	// Spostamento Esterno lastra da inizio lastra in Z  (CAVALLINA-INCLINATOCAVALLINA)
-	Yd3_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;	// Spostamento Y dovuto al lato inclinato base appoggio  (CAVALLINA-INCLINATO)
-	Zd3_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;	// Spostamento Z dovuto al lato inclinato base appoggio  (CAVALLINA-INCLINATO)
-	CI_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;	// Proiezione mancante della lastra dovuta al piano inclinato (CI) - Valorizzata solo se Beta >0  (CAVALLINA-INCLINATO)
-	
-	
-	
 	rad90 : LREAL;		// 90° in radianti
 	
 	(* Angoli piani appoggio lastre, laterale (alfa) e base (beta) cavallina *)
@@ -108,10 +91,6 @@ VAR
 	
 	QuotaYinizioLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;	// Quota Y inizio prima lastra  (CAVALLINA-INCLINATO)
 	QuotaZinizioLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;	// Quota Z inizio prima lastra  (CAVALLINA-INCLINATO)
-	
-	QuotaYinizioLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;	// Quota Y inizio prima lastra  (CAVALLINA-INCLINATO)
-	QuotaZinizioLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;	// Quota Z inizio prima lastra  (CAVALLINA-INCLINATO)
-	
 	numeroLastre_int : UINT;									// Numero lastre per lato cavallina considerando la dimensione L_Utile1 (int)  (CAVALLINA-CASSA)
 	
 	(* Variabili di supporto *)
@@ -129,27 +108,16 @@ VAR
 	XEsternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
 	YEsternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
 	ZEsternoLastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
-	
-	(* Variabili di uscita della posizione del punto interno, centrale ed esterno della lastra *)
-	XInternoLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
-	YInternoLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
-	ZInternoLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
-	XCentroLastra_A_B  : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
-	YCentroLastra_A_B  : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
-	ZCentroLastra_A_B  : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
-	XEsternoLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
-	YEsternoLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
-	ZEsternoLastra_A_B : ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
 
 	P_TextModeWrite : P_TextModeWrite;
 	MemoriaInizializzata 		:    BOOL;
-	NuPiezasLadoDx 				: INT ;
-	NuPiezasLadoSx 				: INT ;
-	CalForCavallete				: UINT;
-	F_ini						: UINT;
-	F_Fin						: UINT;
+	NuPiezasLadoDx : INT ;
+	NuPiezasLadoSx : INT ;
+	CalForCavallete: UINT;
+	F_ini: UINT;
+	F_Fin: UINT;
 	
-	CntLados					: UINT;
+	CntLados: UINT;
 END_VAR
 
 VAR CONSTANT
@@ -1035,7 +1003,7 @@ END_IF
 
 ]]></ST>
     </Implementation>
-    <LineIds Name="Calcolo_Formatura_Completa">
+    <LineIds Name="Calcolo_Formatura_Completa_24_10_2025">
       <LineId Id="7119" Count="657" />
       <LineId Id="7995" Count="0" />
       <LineId Id="7777" Count="217" />

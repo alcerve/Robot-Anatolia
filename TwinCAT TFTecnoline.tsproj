@@ -1087,6 +1087,46 @@ External Setpoint Generation:
 			<BaseType GUID="{18071995-0000-0000-0000-000000000041}">AMSNETID</BaseType>
 		</DataType>
 		<DataType>
+			<Name GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}" PersistentType="true">STATO_ELEMENTO_GENERAL</Name>
+			<BitSize>16</BitSize>
+			<BaseType GUID="{18071995-0000-0000-0000-000000000006}">INT</BaseType>
+			<EnumInfo>
+				<Text><![CDATA[NOP]]></Text>
+				<Enum>0</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[CAMBIO_PRODUZIONE_RICEVUTO]]></Text>
+				<Enum>10</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[ATTESA_CAMBIO_ESEGUITO_MACCHINA_LOCALE]]></Text>
+				<Enum>15</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[CAMBIO_PRODUZIONE_MACCHINA_OK]]></Text>
+				<Enum>20</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[ATTESA_CAMBIO_PRODUZIONE_DA_LINEA]]></Text>
+				<Enum>25</Enum>
+			</EnumInfo>
+			<EnumInfo>
+				<Text><![CDATA[CAMBIO_PRODUZIONE_LINEA_OK]]></Text>
+				<Enum>30</Enum>
+			</EnumInfo>
+			<Properties>
+				<Property>
+					<Name>plcAttribute_textlistenumeration</Name>
+				</Property>
+				<Property>
+					<Name>plcAttribute_qualified_only</Name>
+				</Property>
+				<Property>
+					<Name>plcAttribute_strict</Name>
+				</Property>
+			</Properties>
+		</DataType>
+		<DataType>
 			<Name GUID="{D375DDDA-CEF0-4071-A06A-CE925D22E9A7}" PersistentType="true">DATI_RICETTA_CONDIVISA</Name>
 			<BitSize>1184</BitSize>
 			<SubItem>
@@ -1189,46 +1229,6 @@ External Setpoint Generation:
 				<BitSize>240</BitSize>
 				<BitOffs>944</BitOffs>
 			</SubItem>
-		</DataType>
-		<DataType>
-			<Name GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}" PersistentType="true">STATO_ELEMENTO_GENERAL</Name>
-			<BitSize>16</BitSize>
-			<BaseType GUID="{18071995-0000-0000-0000-000000000006}">INT</BaseType>
-			<EnumInfo>
-				<Text><![CDATA[NOP]]></Text>
-				<Enum>0</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[CAMBIO_PRODUZIONE_RICEVUTO]]></Text>
-				<Enum>10</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[ATTESA_CAMBIO_ESEGUITO_MACCHINA_LOCALE]]></Text>
-				<Enum>15</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[CAMBIO_PRODUZIONE_MACCHINA_OK]]></Text>
-				<Enum>20</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[ATTESA_CAMBIO_PRODUZIONE_DA_LINEA]]></Text>
-				<Enum>25</Enum>
-			</EnumInfo>
-			<EnumInfo>
-				<Text><![CDATA[CAMBIO_PRODUZIONE_LINEA_OK]]></Text>
-				<Enum>30</Enum>
-			</EnumInfo>
-			<Properties>
-				<Property>
-					<Name>plcAttribute_textlistenumeration</Name>
-				</Property>
-				<Property>
-					<Name>plcAttribute_qualified_only</Name>
-				</Property>
-				<Property>
-					<Name>plcAttribute_strict</Name>
-				</Property>
-			</Properties>
 		</DataType>
 		<DataType>
 			<Name GUID="{BFD9276C-9053-4F86-9DF2-C4526EE3C497}" PersistentType="true">COMUNICAZIONE_GENERAL</Name>
@@ -1867,7 +1867,7 @@ External Setpoint Generation:
 		</Motion>
 		<Plc>
 			<Project GUID="{F5E1106F-7BEA-4E24-8B06-B4FF587F31D3}" Name="PLC_Portale" PrjFilePath="PLC_Portale\PLC_Portale.plcproj" TmcFilePath="PLC_Portale\PLC_Portale.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" CopyTmcToTarget="true" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="PLC_Portale\PLC_Portale.tmc" TmcHash="{966B559E-B181-A303-DD98-6E6C90324E35}">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="PLC_Portale\PLC_Portale.tmc" TmcHash="{B1C51FC2-CF21-AAAE-C219-D38E66CA854A}">
 					<Name>PLC_Portale Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="1">
@@ -2200,6 +2200,14 @@ O_AttivaTastatoriPinza		: BOOL; // X1.7 pin 2 - Aspirazione Cartone Interno Lato
 							<Type GUID="{18071995-0000-0000-0000-000000000042}">AMSADDR</Type>
 						</Var>
 						<Var>
+							<Name>.I_K515_XO3</Name>
+							<Type GUID="{527C5C5C-1CF8-1963-ACDC-85B7B3E5B586}">ARRAY [0..3] OF BYTE</Type>
+						</Var>
+						<Var>
+							<Name>.I_PortQualCiabattaK515_X01</Name>
+							<Type>WORD</Type>
+						</Var>
+						<Var>
 							<Name>.I_TimeStampCiabattaPinzaK515</Name>
 							<Type>ULINT</Type>
 						</Var>
@@ -2220,10 +2228,6 @@ O_AttivaTastatoriPinza		: BOOL; // X1.7 pin 2 - Aspirazione Cartone Interno Lato
 							<Type>ULINT</Type>
 						</Var>
 						<Var>
-							<Name>.I_K515_XO3</Name>
-							<Type GUID="{527C5C5C-1CF8-1963-ACDC-85B7B3E5B586}">ARRAY [0..3] OF BYTE</Type>
-						</Var>
-						<Var>
 							<Name>.I_K515_XO4</Name>
 							<Type GUID="{527C5C5C-1CF8-1963-ACDC-85B7B3E5B586}">ARRAY [0..3] OF BYTE</Type>
 						</Var>
@@ -2241,10 +2245,6 @@ O_AttivaTastatoriPinza		: BOOL; // X1.7 pin 2 - Aspirazione Cartone Interno Lato
 I_K516 AT %I* : ARRAY[0..31] OF BYTE;
 Q_K516 AT %Q* : ARRAY[0..31] OF BYTE;]]></Comment>
 							<Type GUID="{A6CC6AFE-FE37-C02D-2C0C-FB1479660FEB}">ARRAY [0..31] OF BYTE</Type>
-						</Var>
-						<Var>
-							<Name>.I_PortQualCiabattaK515_X01</Name>
-							<Type>WORD</Type>
 						</Var>
 						<Var>
 							<Name>.I_PortQualCiabattaK515_X02</Name>
@@ -2559,13 +2559,13 @@ I_PresenzaVeicolo[8]	: BOOL; // 4=
 							<Type GUID="{3BD42FCA-85FC-C899-2F71-A9346CD54EAB}" Namespace="Tc2_System">T_AmsNetIdArr</Type>
 						</Var>
 						<Var>
+							<Name>.StatoElementoPrecedente</Name>
+							<Type GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}">STATO_ELEMENTO_GENERAL</Type>
+						</Var>
+						<Var>
 							<Name>.DatiCambioProduzione_IN</Name>
 							<Comment><![CDATA[ Dati in scambio - EAP]]></Comment>
 							<Type GUID="{A5AA0D45-34F1-4694-914C-E08F40675103}">DATI_CAMBIO_PRODUZIONE_GENERAL</Type>
-						</Var>
-						<Var>
-							<Name>.StatoElementoPrecedente</Name>
-							<Type GUID="{B7521CBB-DB17-4CB9-A034-95599FDCF49F}">STATO_ELEMENTO_GENERAL</Type>
 						</Var>
 					</Vars>
 					<Vars VarGrpType="2" AreaNo="1">
