@@ -15,10 +15,10 @@ VAR_INPUT
 	NumeroElementiDaDepositare : UINT;
 	
 	
-	PulisciMemoria 				: BOOL;
-	CalcolaFormatura 			: BOOL;
-	In_PulisciMemoriaDone			:    BOOL;
-	HabiCalTodasCordenadas: BOOL;
+	PulisciMemoria 								: BOOL;
+	CalcolaFormatura 							: BOOL;
+	CalculoEstacionPickinPiezasDiferentes		: BOOL;
+	HabiCalTodasCordenadas						: BOOL;
 END_VAR
 
 VAR_OUTPUT
@@ -41,12 +41,12 @@ VAR_OUTPUT
 	CoorFinaleLado_Pri0_Des180 : ARRAY [1..MAXFORMINGSLAB] OF Es_CoordenadasCaballeteLadoA_ladoB ;		// Coordinata X punto finale n-esima lastra/falda depositata
 	
 	
-	CoordenadasCaballete :  ARRAY [1..MAXFORMINGSLAB] OF Es_CoordenadasCaballeteLadoA_ladoB ;
+	CoordenadasCaballete 				: ARRAY [1..MAXFORMINGSLAB] OF Es_CoordenadasCaballeteLadoA_ladoB ;
 	
-	FormingSlab 			: TFMachinePalletizer_FormingForSlab;
-	PulisciMemoriaDone		: BOOL;
-	CalcolaFormaturaDone 	: BOOL;
-	Errore 					: UINT;
+	FormingSlab 						: TFMachinePalletizer_FormingForSlab;
+	PulisciMemoriaDone					: BOOL;
+	CalcolaFormaturaDone 				: BOOL;
+	Errore 								: UINT;
 END_VAR
 
 VAR_IN_OUT
