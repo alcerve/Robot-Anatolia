@@ -246,6 +246,8 @@ VAR_GLOBAL
 	PosicionJActual							: LREAL;
 	RobotWorkAreaCavallete 					: BOOL ;
 	RobotCentroPosX							: BOOL ;
+	CotaCentroPosRobot						:LREAL ;
+	
 	PosicionJDestino						: LREAL;
 	PosicionJOrigen							: LREAL;
 	EjeYPosFueraIngombro					: BOOL;
@@ -435,6 +437,8 @@ VAR_GLOBAL PERSISTENT
 	CuotaOffSetZRecogidaCaballete						: LREAL ;
 	GestionDescargaCaballete							: Es_LadosCaballete;
 	GestionCargaCaballete								: Es_LadosCaballete;
+	
+	HabilitacionFormacionNueva							: BOOL;
 	
 	FormacionesCalculadas								: BOOL;
 	FormacionPikingCalculada							: BOOL ;

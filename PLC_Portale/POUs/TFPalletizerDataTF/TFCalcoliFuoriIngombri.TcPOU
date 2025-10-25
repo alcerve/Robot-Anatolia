@@ -1650,7 +1650,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			QuotaCentroPostazionePiking + 						(* Quota Y Postazione *)																									
 																			WorkAreaState^[Mission^.PPlace].Supporto.YDim/2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto )  ;
+																			+ Max (OffsetSicurezza.Y.Avuoto ,Dimensioni_Pinza.Spessore)           )  ;
 									NuIngombroYCalculado180G_Depuracion := 6;
 									ELSE
 										IF Mission^.PPick = PosRobot AND( Mission^.JPick <> Mission^.JPlace OR ModuleAX_J^.Ax^.Status.ActPosition < 85) THEN
@@ -1701,7 +1701,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			MAX(QuotaFuoriIngombro_Y_Calcolata,
 																			QuotaCentroPostazione  + 					(* Quota Y Postazione *)	
 																			Soporte
-																			+ OffsetSicurezza.Y.Avuoto )  ;
+																			+ OffsetSicurezza.Y.Avuoto + Dimensioni_Pinza.Spessore)  ;
 										NuIngombroYCalculado180G_Depuracion := 10;		   			   
 		   								// Añadido 	2 -9-2025_________________________________________________
 										ELSIF (( WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO  AND NuPosGuiroPiking = PosRobot) OR ( PosRobot <> 0 AND WorkAreaState^[PosRobot].Supporto.Tipologia <> CAVALLETTO))  AND PosicionJActual = 90     THEN 
@@ -1710,7 +1710,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			MAX(QuotaFuoriIngombro_Y_Calcolata,
 																			QuotaCentroPostazione  + 						(* Quota Y Postazione *)	
 																			//	WorkAreaState^[Mission^.PPick].Supporto.YDim/2				
-																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
+																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 + Dimensioni_Pinza.Spessore(*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			
 																			IngombroDestinazioneY_Pos - *) 
 																			+ OffsetSicurezza.Y.Avuoto + INGOMBRO_RISCONTRO_FRAME)  ;	
@@ -1747,7 +1747,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																	WorkAreaState^[iwa].Supporto.YDim /2  (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
-																	+ OffsetSicurezza.Y.Avuoto )+ INGOMBRO_RISCONTRO_FRAME   ;
+																	+MAX(Dimensioni_Pinza.Spessore ,OffsetSicurezza.Y.Avuoto ))+ INGOMBRO_RISCONTRO_FRAME   ;
 										NuIngombroYCalculado180G_Depuracion := 14;
 											ELSIF WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO    THEN  	
 											QuotaFuoriIngombro_Y_Calcolata := 
@@ -1789,7 +1789,7 @@ CASE VERSO_PALLETTIZZATORE OF
 							QuotaFuoriIngombro_Y_Calcolata := MAX(QuotaFuoriIngombro_Y_Calcolata,
 																QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																WorkAreaState^[iwa].Supporto.YDim/2 +	(* Dimensione/2 del Pallet/Cassa/Cavallina *)
-																IngombroDestinazioneY_Neg (*+
+																IngombroDestinazioneY_Neg + INGOMBRO_RISCONTRO_FRAME(*+
 																OffsetSicurezza.Y.Avuoto*));
 							NuIngombroYCalculado180G_Depuracion := 16;
 							IF QuotaFuoriIngombro_Y_Calcolata - IngombroDestinazioneY_Neg <= WorkArea^[iwa].Y + INGOMBRO_RISCONTRO_BUNDLE THEN//se sono dentro all'ingombro dei supporti del bundle genero un errore
@@ -1833,7 +1833,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 					(* Quota Y Postazione *)																									
 																	MAX(WorkAreaState^[iwa].Supporto.YDim,INGOMBRO_RISCONTRO_BUNDLE) + (* massimo tra Dimensione del bundle e dimensione riscontro *)
 																	MAX (IngombroDestinazioneY_Pos  ,			(* Ingombro negativo pinza *)
-																	OffsetSicurezza.Y.Avuoto) +INGOMBRO_RISCONTRO_BUNDLE);           (* Offset sicurezza *)
+																	OffsetSicurezza.Y.Avuoto, Dimensioni_Pinza.Spessore) +INGOMBRO_RISCONTRO_BUNDLE);           (* Offset sicurezza *)
 						NuIngombroYCalculado180G_Depuracion := 19; 
 						END_IF	
 					ELSE//se non c'è nulla o c'è una cassa-pianale
