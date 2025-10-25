@@ -153,8 +153,8 @@ IF MachinePalletizerInitVariables THEN
 
 	ORDINE_DISPOSIZIONE_POSTAZIONI		:= CRESCENTE;
 	
-	OFFSET_POSTAZIONE_LEGNO 	:= 1335;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
-	OFFSET_POSTAZIONE_TELAIO 	:= 3157 ;//3060 +150 ;//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_LEGNO 	:= 1330;// 1200 + 150 anatolia EEUU Offset filo fisso per legni rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
+	OFFSET_POSTAZIONE_TELAIO 	:= 3415 ; //Hay que poner 3125 hay una diferencia 290 sobre la medida real que es 3415//Offset filo fisso per TELAI rispetto al filo del bundle che è la quota di riferimento della WORKAREA lungo Y
 	
 	INGOMBRO_RISCONTRO_BUNDLE := 100;
 	
@@ -174,7 +174,7 @@ IF MachinePalletizerInitVariables THEN
 	(* Spazio di lavoro *)
 	(***********************************************************************************************************************************************************************************)
 	WorkSpace.X := 33345;
-	WorkSpace.Y := 3120;
+	WorkSpace.Y := 3300; // 3120
 	WorkSpace.Z := 1730;
 	(***********************************************************************************************************************************************************************************)
 	(* Quote Punto di Prelievo 1 *)
@@ -465,7 +465,7 @@ IF MachinePalletizerInitDone THEN
 	AxisPar_Y.JOGAcc := AxisNominalPar_Y.MaximumAcceleration;
 	AxisPar_Y.JOGDec := AxisNominalPar_Y.MaximumDeceleration;
 	AxisPar_Y.Jerk := AxisNominalPar_Y.DefaultJerk;
-	AxisPar_Y.MaxPosition := 3120;
+	AxisPar_Y.MaxPosition := 3300;
 	AxisPar_Y.HomeDefine := 535.0;
 	AxisPar_Y.HomePosition := 535.0;
 	AxisPar_Y.MinPosition := 534;
@@ -1089,7 +1089,7 @@ Fun_SensoresTasteggio(
 	Sensor_Tasteo_2:= I_TastatorePinza_2 , 
 	Sensor_Tasteo_3:= I_TastatorePinza_3 , 
 	Sensor_Tasteo_4:= I_TastatorePinza_4 , 
-	Nu_sensores_Dar_Out:= 3 , 
+	Nu_sensores_Dar_Out:= 4 , 
 	Sensores_Tasteggio_Ok=> Ok_sensores_Tastator , 
 	Nu_Sesores_Activos=> Nu_Sensores_Leyendo);
 
@@ -4938,7 +4938,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								WorkAreaState[NumPostazioneDeposito].Supporto.YDim 						:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.YDim;
 								//WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= ActualPickingListFromHMI[IdxLista].SupportPianoLegno.ZDim;
 								WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= RequestPickingListFromHMIWorkArea[i].SupportPianoLegno.ZDim;
-								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO +WorkAreaState[i].Supporto.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + WorkAreaState[NumPostazioneDeposito].Supporto.XDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
 								
 								WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto;
 								
@@ -5003,10 +5003,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
 													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 20; 
 													WorkAreaState[j].Supporto.LatoDeposito 			:= 180;    
-													//Lo que HABIA	
-													//WorkAreaOffset[j].Y 							:= HMI_OffsetDepositoLastra.Y180 ;
-													//Mod 25/&/2025	  
-													WorkAreaOffset[NumPostazioneDeposito].Y 		:= RequestPickingListFromHMIWorkArea[j].SupportVertBundle.YDim - RequestPickingListFromHMIWorkArea[j].SupportVertBundle.DimBaseUtile -40 ;			
+													WorkAreaOffset[j].Y 							:= 0 ;			
 												(* Se ho un A_Frame *)	  
 												A_FRAME_VERT:  						
 													//WorkAreaState[j].P := ElementiDaDepositare;
@@ -5021,9 +5018,10 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim;
 													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
 													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
-													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15;     	
-													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
-											   		CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ; 	
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + WorkAreaState[j].Supporto.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+											   		CoordenadaPasillo0_Y 							:= WorkArea[j].Y + WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_FRAME - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
 											END_CASE	
 											WorkAreaProductionList[j].Support := WorkAreaState[j].Supporto; 
@@ -5110,10 +5108,8 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 20; 
 													WorkAreaState[j].Supporto.LatoDeposito 			:= 180;   	
 													  
-													WorkAreaOffset[j].Y 		:= 0 ;	
-													//Mod 25/&/2025	  
-													//WorkAreaOffset[j].Y 		:= ActualPickingListFromHMI[IdxLista].SupportVertBundle.YDim-ActualPickingListFromHMI[IdxLista].SupportVertBundle.DimBaseUtile -40;				
-												(* Se ho un A_Frame *)	  
+													WorkAreaOffset[j].Y 							:= 0 ;	
+												  
 												A_FRAME_VERT:  						
 													//WorkAreaState[j].P := ElementiDaDepositare;
 													WorkAreaState[j].Supporto.Code 					:= ActualPickingListFromHMI[IdxLista].SupportVertCav.Code;
@@ -5128,8 +5124,9 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
 													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
 													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 	
-													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
-											   		CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ; 
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + WorkAreaState[j].Supporto.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+											   		CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_FRAME - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
 											END_CASE	
 											WorkAreaProductionList[j].Support := WorkAreaState[j].Supporto; 
@@ -5233,8 +5230,9 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
 													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
 													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 	
-													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[IdxLista].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
-													CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ; 
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + WorkAreaState[j].Supporto.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+													CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_FRAME - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;		  
 											END_CASE
 											//WorkAreaProductionList[j].Support := HMI_Formatura.HMI_Forming_Supporto;		  
@@ -5257,8 +5255,9 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								WorkAreaState[NumPostazioneDeposito].Supporto.ZDim 						:= RequestPickingListFromHMIWorkArea[NumPostazioneDeposito].SupportVertCav.ZDim;
 								WorkAreaState[NumPostazioneDeposito].Supporto.TipoPianoAppoggio 		:= 1;                      
 								WorkAreaState[NumPostazioneDeposito].Supporto.AltezzaDenteRitenuta		:= 15; 
+								WorkAreaState[NumPostazioneDeposito].Supporto.TipoTrabajoLado_Cavallete 					:= HMI_WorkAreaDataPicking[NumPostazioneDeposito].TipoTrabajoLado_Cavallete ; 
 								//WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO (*- ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2*);
-								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + ActualPickingListFromHMI[NumPostazioneDeposito].SupportVertCav.YDim/2;	
+								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + WorkAreaState[NumPostazioneDeposito].Supporto.YDim/2;	
 								
 								WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto; 
 								
@@ -5367,9 +5366,10 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 													WorkAreaState[j].Supporto.ZDim 					:= RequestPickingListFromHMIWorkArea[j].SupportVertCav.ZDim;
 													WorkAreaState[j].Supporto.ZDim_Ext1        		:= WorkAreaState[j].Supporto.ZDim + 20;	
 													WorkAreaState[j].Supporto.TipoPianoAppoggio 	:= 1;                      
-													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 		
-													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + RequestPickingListFromHMIWorkArea[j].SupportVertCav.YDim/2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
-												   	CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[j].Supporto.YDim /2 ;
+													WorkAreaState[j].Supporto.AltezzaDenteRitenuta	:= 15; 	
+													WorkAreaState[j].Supporto.TipoTrabajoLado_Cavallete := HMI_WorkAreaDataPicking[j].TipoTrabajoLado_Cavallete ; 	
+													WorkAreaOffset[j].Y 							:= OFFSET_POSTAZIONE_LEGNO + WorkAreaState[j].Supporto.YDim /2;//ATTENZIONE!!! per poter lavorare in centro con i supporti pari, questa misura è la distanza tra il riscontro bundle verticale e il centro postazione PARI
+												   	CoordenadaPasillo0_Y 							:= WorkArea[j].Y +  WorkAreaOffset[j].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_FRAME - WorkAreaState[j].Supporto.YDim /2 ;
 													CoordenadaPasillo180_Y 							:= WorkArea[j].Y + WorkAreaState[j].Supporto.YDim /2 + WorkAreaOffset[j].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
 												
 											END_CASE
@@ -8721,7 +8721,11 @@ END_IF
       <LineId Id="5460" Count="0" />
       <LineId Id="6653" Count="6" />
       <LineId Id="6533" Count="0" />
-      <LineId Id="5461" Count="73" />
+      <LineId Id="5461" Count="42" />
+      <LineId Id="5506" Count="0" />
+      <LineId Id="5508" Count="14" />
+      <LineId Id="6677" Count="0" />
+      <LineId Id="5523" Count="11" />
       <LineId Id="6560" Count="0" />
       <LineId Id="5535" Count="15" />
       <LineId Id="6527" Count="0" />
@@ -8733,7 +8737,10 @@ END_IF
       <LineId Id="6639" Count="0" />
       <LineId Id="6646" Count="0" />
       <LineId Id="6568" Count="0" />
-      <LineId Id="5560" Count="73" />
+      <LineId Id="5560" Count="42" />
+      <LineId Id="5605" Count="14" />
+      <LineId Id="6678" Count="0" />
+      <LineId Id="5620" Count="13" />
       <LineId Id="6559" Count="0" />
       <LineId Id="5634" Count="15" />
       <LineId Id="6529" Count="1" />
@@ -8741,9 +8748,13 @@ END_IF
       <LineId Id="6544" Count="1" />
       <LineId Id="6660" Count="6" />
       <LineId Id="6540" Count="0" />
-      <LineId Id="5660" Count="70" />
+      <LineId Id="5660" Count="57" />
+      <LineId Id="6679" Count="0" />
+      <LineId Id="5718" Count="12" />
       <LineId Id="6558" Count="0" />
-      <LineId Id="5731" Count="21" />
+      <LineId Id="5731" Count="9" />
+      <LineId Id="6681" Count="0" />
+      <LineId Id="5741" Count="11" />
       <LineId Id="5755" Count="0" />
       <LineId Id="5757" Count="0" />
       <LineId Id="6587" Count="2" />
@@ -8770,7 +8781,9 @@ END_IF
       <LineId Id="6597" Count="1" />
       <LineId Id="6576" Count="1" />
       <LineId Id="6547" Count="0" />
-      <LineId Id="5758" Count="80" />
+      <LineId Id="5758" Count="59" />
+      <LineId Id="6680" Count="0" />
+      <LineId Id="5818" Count="20" />
       <LineId Id="5105" Count="0" />
       <LineId Id="5855" Count="1" />
       <LineId Id="6257" Count="0" />

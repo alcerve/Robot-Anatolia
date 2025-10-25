@@ -178,8 +178,8 @@ Programma_Y[102].Velocita			:= Y_Par.Vel_Ridotta;
 Programma_Y[102].Accelerazione		:= Y_Par.Acc_Carico;
 Programma_Y[102].Decelerazione		:= Y_Par.Dec_Carico;
 Programma_Y[102].Jerk				:= Y_Par.Jerk_Carico;
-//Programma_Y[102].DisabilitaTasteggio	:= FALSE;
-Programma_Y[102].DisabilitaTasteggio	:= TRUE;
+Programma_Y[102].DisabilitaTasteggio	:= FALSE;
+//Programma_Y[102].DisabilitaTasteggio	:= TRUE;
 
 (* Programma 103 Asse Y : Traslazione in lenta per distacco della lastra *)
 Programma_Y[103].ID 				:= 103;

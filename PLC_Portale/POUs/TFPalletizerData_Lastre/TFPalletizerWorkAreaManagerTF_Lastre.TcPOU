@@ -2153,7 +2153,7 @@ IF LatoPrelievo = 180 THEN
 	
 	IF HMI_OffsetDepositoLastra.J180 = 0 OR  HMI_OffsetDepositoLastra.J180 < 0 THEN 
 		Mission^.JPick := 180 - 2;
-	ELSIF HMI_OffsetDepositoLastra.J180 <= 4 AND   HMI_OffsetDepositoLastra.J180 > 0 THEN 
+	ELSIF HMI_OffsetDepositoLastra.J180 <= 5 AND   HMI_OffsetDepositoLastra.J180 > 0 THEN 
 		Mission^.JPick := 180 - HMI_OffsetDepositoLastra.J180;
 	ELSE 
 		Mission^.JPick := 180 - 2;	
@@ -2196,8 +2196,8 @@ IF LatoPrelievo = 180 THEN
 				Mission^.ZPick				:= Mission^.ZPick + (25 +20) ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			ELSE
-				Mission^.YPick 				:= Mission^.YPick - 60 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
-				Mission^.ZPick				:= Mission^.ZPick + 28 ;
+				Mission^.YPick 				:= Mission^.YPick -10(* - 60 *); //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+				Mission^.ZPick				:= Mission^.ZPick + 20 ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			
 		END_IF
@@ -2207,7 +2207,7 @@ IF LatoPrelievo = 180 THEN
 
 ELSIF LatoPrelievo = 0 THEN
 	//Mission^.JPick := 3;
-	IF HMI_OffsetDepositoLastra.J0 > 4 THEN 
+	IF HMI_OffsetDepositoLastra.J0 > 5 THEN 
 		Mission^.JPick := 4;
 	ELSIF HMI_OffsetDepositoLastra.J0 <> 0 THEN 
 		Mission^.JPick := HMI_OffsetDepositoLastra.J0;	
@@ -2222,7 +2222,7 @@ ELSIF LatoPrelievo = 0 THEN
 			Mission^.ZPick				:= Mission^.ZPick + (20) ; // pieza pequeña
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		ELSE
-			Mission^.YPick 				:= Mission^.YPick  + 40; // + 50 (*+ 50 *);
+			Mission^.YPick 				:= Mission^.YPick  + 78; // + 50 (*+ 50 *);
 			Mission^.ZPick				:= Mission^.ZPick + 12 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;	
 	END_IF
