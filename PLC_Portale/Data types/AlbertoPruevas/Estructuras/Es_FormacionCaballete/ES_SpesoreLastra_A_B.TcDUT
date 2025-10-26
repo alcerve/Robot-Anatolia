@@ -4,7 +4,7 @@
     <Declaration><![CDATA[TYPE ES_SpesoreLastra_A_B :
 STRUCT
 	Lado_A_0Grados 						: LREAL ;
-	Lado_A_180Grados 					: LREAL ;
+	Lado_B_180Grados 					: LREAL ;
 END_STRUCT
 END_TYPE
 ]]></Declaration>

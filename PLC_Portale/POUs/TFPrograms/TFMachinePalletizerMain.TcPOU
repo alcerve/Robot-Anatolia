@@ -5279,6 +5279,7 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 													FOR ja := Numero_piezas_CaballeteEstacionPiking.HMI_NumeroPezziPresentiPostazione_A_Cavaleto  TO Numero_piezas_CaballeteEstacionPiking.HMI_NumeroPezziPresentiPostazione_A_Cavaleto  + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare-1 DO
 														  Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= ja , Nu_pieza_LadoA=> P_ladoA , Nu_pieza_LadoB=> P_ladoB , Grados := ADR(LadoRegistar));
 														IF  LadoRegistar  = 0 THEN 
+															
 															HMi_DimensionesPiezasWorkAreaDeposito[P_ladoA].DimPieza_LadoA := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
 														ELSIF LadoRegistar  = 180 THEN 	
 															HMi_DimensionesPiezasWorkAreaDeposito[P_ladoB].DimPieza_LadoB := RequestPickingListFromHMIWorkArea[j].SlabDimension ;		  
@@ -5484,7 +5485,11 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 		ELSE
 			//FOR i := 1 TO HMI_Forming_NumeroElementiDaDepositare DO//BY (Request_WorkOrder.LayerSequence+1) DO		  
 			FOR i := 1 TO HMI_Forming_NumeroElementiDaDepositare DO//BY (Request_WorkOrder.LayerSequence+1) DO
+				// Pasaje Estructura dimensiones posicion piking
+				TFCalcoloFormaturaWA[CalFor].Materiale[i].DimensionPiezasLadoALadoB := 
+													HMi_DimensionesPiezasWorkAreaDeposito[i];
 				IF i MOD 2 = 1 THEN// i <= HMI_Forming_NumeroElementiDaDepositare THEN 
+					
 					TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i] := LASTRA;//Settiamo tipo lastre!!
 				ELSE
 					TFCalcoloFormaturaWA[CalFor].TipoElementoDep[i] := FALDA;//Settiamo tipoi falda!
@@ -5499,6 +5504,7 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 		
 		TFCalcoloFormaturaWA[CalFor].DimensionesPiezasLadoALadoB     := HMi_DimensionesPiezasWorkAreaDeposito ;
 		
+	
 		//CASE HMI_WorkAreaDataPicking[j].Typology OF //**Mod
 	 
 		CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF //**Mod
@@ -8764,6 +8770,7 @@ END_IF
       <LineId Id="6601" Count="0" />
       <LineId Id="6627" Count="0" />
       <LineId Id="6607" Count="0" />
+      <LineId Id="6691" Count="0" />
       <LineId Id="6628" Count="0" />
       <LineId Id="6625" Count="0" />
       <LineId Id="6629" Count="0" />
@@ -8831,11 +8838,17 @@ END_IF
       <LineId Id="6333" Count="0" />
       <LineId Id="6419" Count="0" />
       <LineId Id="6335" Count="1" />
-      <LineId Id="6338" Count="19" />
+      <LineId Id="6338" Count="12" />
+      <LineId Id="6686" Count="0" />
+      <LineId Id="6689" Count="1" />
+      <LineId Id="6351" Count="0" />
+      <LineId Id="6684" Count="0" />
+      <LineId Id="6352" Count="5" />
       <LineId Id="6334" Count="0" />
       <LineId Id="6361" Count="2" />
       <LineId Id="6359" Count="0" />
       <LineId Id="6671" Count="1" />
+      <LineId Id="6682" Count="0" />
       <LineId Id="6670" Count="0" />
       <LineId Id="6669" Count="0" />
       <LineId Id="6668" Count="0" />

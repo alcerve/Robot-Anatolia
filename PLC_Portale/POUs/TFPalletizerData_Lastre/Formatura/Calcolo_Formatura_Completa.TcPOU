@@ -57,13 +57,17 @@ VAR
 	TipoDeposito : e_TipologiaDeposito;				// ORIZZONTALE O INCLINATO
 	OrdineDepositoSxDx : ARRAY [1..MAXFORMINGSLAB] OF e_Tipo_Elemento_Da_Lavorare;	// Ordine deposito materiale per i due lati, sx e dx (considero di avere il medesimo ordine di deposito dai due lati) (CAVALLINA-INCLINATO)
 	
-	Spessore_Lastra_Inclinata : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;				// Occupazione in larghezza della singola lastra (CAVALLINA-INCLINATO)
-	Spessore_Lastra_Inclinata_Cumulato : ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Occupazione in larghezza delle nlastre lastre cumulate (CAVALLINA)
-	Spessore_Lastra_Inclinata_Cumulato_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
-	Spessore_Lastra_Inclinata_lado_A_B : ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
+	Spessore_Lastra_Inclinata 					: ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;				// Occupazione in larghezza della singola lastra (CAVALLINA-INCLINATO)
+	Spessore_Lastra_Inclinata_Cumulato 			: ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;	// Occupazione in larghezza delle nlastre lastre cumulate (CAVALLINA)
+	
+	Spessore_Lastra_Inclinata_lado_A_B 			: ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
+	Spessore_Lastra_Inclinata_Cumulato_A_B 		: ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
+	
 	
 	Spessore_Lastra : ARRAY [1..MAXFORMINGSLAB] OF LREAL;							// Occupazione in altezza della singola lastra (CASSA-ORIZZONTALE)
 	Spessore_Lastra_Cumulato : ARRAY [1..MAXFORMINGSLAB] OF LREAL;					// Occupazione in altezza delle nlastre lastre cumulate (CASSA-ORIZZONTALE)
+	
+	
 	
 	YCoordinataAppoggioLastra :  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Y del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
 	ZCoordinataAppoggioLastra :  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Z del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
@@ -150,6 +154,9 @@ VAR
 	F_Fin						: UINT;
 	
 	CntLados					: UINT;
+	LadoRegistarFor: UINT;
+	NuPieza_A: UINT;
+	NuPieza_B: UINT;
 END_VAR
 
 VAR CONSTANT
@@ -258,7 +265,12 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 			
 			memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));
 			FOR counter2 := 1 TO MAXFORMINGSLAB BY 1 DO
-				Spessore_Lastra[counter2] := Materiale[TipoElementoDep[counter2]].ZDim;
+				IF CalculoEstacionPickinPiezasDiferentes THEN
+					Spessore_Lastra[counter2] := DimensionesPiezasLadoALadoB[counter2].Dim_Horizontal.ZDim;
+				ELSE 
+					Spessore_Lastra[counter2] := Materiale[TipoElementoDep[counter2]].ZDim;
+				END_IF
+				
 			END_FOR
 			
 			// Calcola lo spessore complessivo fino al passo n delle lastre/falde depositate sul singolo lato della cavallina 
@@ -338,10 +350,15 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 					FormingSlab.PElement[counter1].Typology := e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED;
 
 				END_CASE
-				
-				FormingSlab.PElement[counter1].XDim := Materiale[TipoElementoDep[counter1]].XDim;		// Dimensione X Lastra		
-				FormingSlab.PElement[counter1].YDim := Materiale[TipoElementoDep[counter1]].YDim;		// Dimensione Y Lastra
-				FormingSlab.PElement[counter1].ZDim := Materiale[TipoElementoDep[counter1]].ZDim;		// Dimensione Z Lastra
+				IF CalculoEstacionPickinPiezasDiferentes THEN 
+					FormingSlab.PElement[counter1].XDim := DimensionesPiezasLadoALadoB[counter1].Dim_Horizontal.XDim;		// Dimensione X Lastra		
+					FormingSlab.PElement[counter1].YDim := DimensionesPiezasLadoALadoB[counter1].Dim_Horizontal.YDim;		// Dimensione Y Lastra
+					FormingSlab.PElement[counter1].ZDim := DimensionesPiezasLadoALadoB[counter1].Dim_Horizontal.ZDim;		// Dimensione Z Lastra
+				ELSE
+					FormingSlab.PElement[counter1].XDim := Materiale[TipoElementoDep[counter1]].XDim;		// Dimensione X Lastra		
+					FormingSlab.PElement[counter1].YDim := Materiale[TipoElementoDep[counter1]].YDim;		// Dimensione Y Lastra
+					FormingSlab.PElement[counter1].ZDim := Materiale[TipoElementoDep[counter1]].ZDim;		// Dimensione Z Lastra
+				END_IF
 				FormingSlab.PElement[counter1].X := XFinale[counter1];
 				FormingSlab.PElement[counter1].Y := YFinale[counter1];
 				FormingSlab.PElement[counter1].Z := ZFinale[counter1];
@@ -462,13 +479,35 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 			// Calcolo lo spessore di ogni singola lastra/falda depositata sul lato della cavallina
 			Spessore_Lastra_Inclinata[1] := 0;
 			FOR counter2:=2 TO MAXFORMINGSLAB/2 BY 1 DO
-				Spessore_Lastra_Inclinata[counter2] := Materiale[TipoElementoDep[counter2-1]].ZDim / COS(AngoloAlfa_rad);
+				IF CalculoEstacionPickinPiezasDiferentes THEN 
+					Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= counter2 , Grados:= ADR(LadoRegistarFor) , 
+														Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+				CASE LadoRegistarFor OF
+					0 :
+						Spessore_Lastra_Inclinata_lado_A_B[NuPieza_A].Lado_A_0Grados := 
+								DimensionesPiezasLadoALadoB[NuPieza_A].DimPieza_LadoA.ZDim / COS(AngoloAlfa_rad);	
+				  180 :
+				  		Spessore_Lastra_Inclinata_lado_A_B[NuPieza_B].Lado_B_180Grados := 
+								DimensionesPiezasLadoALadoB[NuPieza_B].DimPieza_LadoB.ZDim / COS(AngoloAlfa_rad);
+				END_CASE
+					
+				ELSE
+					Spessore_Lastra_Inclinata[counter2] := Materiale[TipoElementoDep[counter2-1]].ZDim / COS(AngoloAlfa_rad);
+				END_IF
 			END_FOR;
 			
 			// Calcola lo spessore complessivo fino al passo n delle lastre/falde depositate sul singolo lato della cavallina 
 			//memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
 			
 			IF (Spessore_Lastra_Inclinata_Cumulato[2] = 0) THEN
+				FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+					FOR counter1 := 1 TO counter2 BY 1 DO
+						Spessore_Lastra_Inclinata_Cumulato[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2]+Spessore_Lastra_Inclinata[counter1];
+					END_FOR
+				END_FOR
+			END_IF
+			
+			IF (Spessore_Lastra_Inclinata_Cumulato_A_B[2] = 0) THEN
 				FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
 					FOR counter1 := 1 TO counter2 BY 1 DO
 						Spessore_Lastra_Inclinata_Cumulato[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2]+Spessore_Lastra_Inclinata[counter1];
@@ -1036,7 +1075,34 @@ END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="Calcolo_Formatura_Completa">
-      <LineId Id="7119" Count="657" />
+      <LineId Id="7119" Count="101" />
+      <LineId Id="8154" Count="0" />
+      <LineId Id="8157" Count="1" />
+      <LineId Id="7221" Count="0" />
+      <LineId Id="8155" Count="1" />
+      <LineId Id="7222" Count="79" />
+      <LineId Id="8162" Count="1" />
+      <LineId Id="8161" Count="0" />
+      <LineId Id="8160" Count="0" />
+      <LineId Id="7302" Count="2" />
+      <LineId Id="8159" Count="0" />
+      <LineId Id="7305" Count="119" />
+      <LineId Id="8164" Count="0" />
+      <LineId Id="8171" Count="0" />
+      <LineId Id="8175" Count="2" />
+      <LineId Id="8180" Count="1" />
+      <LineId Id="8179" Count="0" />
+      <LineId Id="8182" Count="1" />
+      <LineId Id="8178" Count="0" />
+      <LineId Id="8167" Count="0" />
+      <LineId Id="7425" Count="0" />
+      <LineId Id="8166" Count="0" />
+      <LineId Id="8165" Count="0" />
+      <LineId Id="7426" Count="11" />
+      <LineId Id="8184" Count="0" />
+      <LineId Id="8186" Count="5" />
+      <LineId Id="8185" Count="0" />
+      <LineId Id="7438" Count="338" />
       <LineId Id="7995" Count="0" />
       <LineId Id="7777" Count="217" />
       <LineId Id="4072" Count="0" />
