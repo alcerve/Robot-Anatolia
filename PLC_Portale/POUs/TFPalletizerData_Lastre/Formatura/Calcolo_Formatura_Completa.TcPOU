@@ -154,11 +154,13 @@ VAR
 	F_Fin						: UINT;
 	
 	CntLados					: UINT;
-	LadoRegistarFor: UINT;
-	NuPieza_A: UINT;
-	NuPieza_B: UINT;
-	LadoA: UINT;
-	LadoB: UINT;
+	LadoRegistarFor				: UINT;
+	NuPieza_A					: UINT;
+	NuPieza_B					: UINT;
+	LadoA						: UINT;
+	LadoB						: UINT;
+	
+	Fb_CalculoFormaciones 		: Fb_CalculoCoordenadasFinalesFormacion ;
 END_VAR
 
 VAR CONSTANT
@@ -177,8 +179,8 @@ IF PulisciMemoria AND NOT PulisciMemoriaDone THEN		// Pulizia delle variabili lo
 	memset(ADR(FormingSlab), 0 , SIZEOF(FormingSlab));
 	memset(ADR(Errore), 0 , SIZEOF(Errore));
 	memset(ADR(OrdineDepositoSxDx), 0 , SIZEOF(OrdineDepositoSxDx));
-	memset(ADR(Spessore_Lastra_Inclinata), 0 , SIZEOF(Spessore_Lastra_Inclinata));memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
 	
+	memset(ADR(Spessore_Lastra_Inclinata), 0 , SIZEOF(Spessore_Lastra_Inclinata));memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
 	memset(ADR(Spessore_Lastra_Inclinata_lado_A_B), 0 , SIZEOF(Spessore_Lastra_Inclinata_lado_A_B));memset(ADR(Spessore_Lastra_Inclinata_Cumulato_A_B), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato_A_B));
 	
 	memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));memset(ADR(Spessore_Lastra_Cumulato), 0 , SIZEOF(Spessore_Lastra_Cumulato));
@@ -189,7 +191,10 @@ IF PulisciMemoria AND NOT PulisciMemoriaDone THEN		// Pulizia delle variabili lo
 	memset(ADR(Yd3), 0 , SIZEOF(Yd3));memset(ADR(Zd3), 0 , SIZEOF(Zd3));
 	memset(ADR(CI), 0 , SIZEOF(CI));
 	memset(ADR(AngoloAlfa_rad), 0 , SIZEOF(AngoloAlfa_rad));memset(ADR(AngoloBeta_rad), 0 , SIZEOF(AngoloBeta_rad));
+	
 	memset(ADR(QuotaYinizioLastra), 0 , SIZEOF(QuotaYinizioLastra));memset(ADR(QuotaZinizioLastra), 0 , SIZEOF(QuotaZinizioLastra));
+	memset(ADR(QuotaYinizioLastra_A_B), 0 , SIZEOF(QuotaYinizioLastra_A_B));memset(ADR(QuotaZinizioLastra_A_B), 0 , SIZEOF(QuotaZinizioLastra_A_B));
+	
 	memset(ADR(numeroLastre_int), 0 , SIZEOF(numeroLastre_int));
 	memset(ADR(XInternoLastra), 0 , SIZEOF(XInternoLastra));memset(ADR(YInternoLastra), 0 , SIZEOF(YInternoLastra));memset(ADR(ZInternoLastra), 0 , SIZEOF(ZInternoLastra));
 	memset(ADR(XCentroLastra), 0 , SIZEOF(XCentroLastra));memset(ADR(YCentroLastra), 0 , SIZEOF(YCentroLastra));memset(ADR(ZCentroLastra), 0 , SIZEOF(ZCentroLastra));
@@ -216,15 +221,32 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 	memset(ADR(YCoordinataAppoggioLastra), 0 , SIZEOF(YCoordinataAppoggioLastra));memset(ADR(ZCoordinataAppoggioLastra), 0 , SIZEOF(ZCoordinataAppoggioLastra));
 	memset(ADR(B), 0 , SIZEOF(B));memset(ADR(b1), 0 , SIZEOF(b1));memset(ADR(h1), 0 , SIZEOF(h1));
 	memset(ADR(Yd1), 0 , SIZEOF(Yd1));memset(ADR(Zd1), 0 , SIZEOF(Zd1));
+	memset(ADR(Yd1_A_B), 0 , SIZEOF(Yd1_A_B));memset(ADR(Zd1_A_B), 0 , SIZEOF(Zd1_A_B));
+	
 	memset(ADR(Yd2), 0 , SIZEOF(Yd2));memset(ADR(Zd2), 0 , SIZEOF(Zd2));
+	memset(ADR(Yd2_A_B), 0 , SIZEOF(Yd2_A_B));memset(ADR(Zd2_A_B), 0 , SIZEOF(Zd2_A_B));
+	
 	memset(ADR(Yd3), 0 , SIZEOF(Yd3));memset(ADR(Zd3), 0 , SIZEOF(Zd3));
+	memset(ADR(Yd3_A_B), 0 , SIZEOF(Yd3_A_B));memset(ADR(Zd3_A_B), 0 , SIZEOF(Zd3_A_B));
+	
 	memset(ADR(CI), 0 , SIZEOF(CI));
+	memset(ADR(CI_A_B), 0 , SIZEOF(CI_A_B));
+	
 	memset(ADR(AngoloAlfa_rad), 0 , SIZEOF(AngoloAlfa_rad));memset(ADR(AngoloBeta_rad), 0 , SIZEOF(AngoloBeta_rad));
+	
 	memset(ADR(QuotaYinizioLastra), 0 , SIZEOF(QuotaYinizioLastra));memset(ADR(QuotaZinizioLastra), 0 , SIZEOF(QuotaZinizioLastra));
+	memset(ADR(QuotaYinizioLastra_A_B), 0 , SIZEOF(QuotaYinizioLastra_A_B));memset(ADR(QuotaZinizioLastra_A_B), 0 , SIZEOF(QuotaZinizioLastra_A_B));
+	
 	memset(ADR(numeroLastre_int), 0 , SIZEOF(numeroLastre_int));
+	
 	memset(ADR(XInternoLastra), 0 , SIZEOF(XInternoLastra));memset(ADR(YInternoLastra), 0 , SIZEOF(YInternoLastra));memset(ADR(ZInternoLastra), 0 , SIZEOF(ZInternoLastra));
+	memset(ADR(XInternoLastra_A_B), 0 , SIZEOF(XInternoLastra_A_B));memset(ADR(YInternoLastra_A_B), 0 , SIZEOF(YInternoLastra_A_B));memset(ADR(ZInternoLastra_A_B), 0 , SIZEOF(ZInternoLastra_A_B));
+	
 	memset(ADR(XCentroLastra), 0 , SIZEOF(XCentroLastra));memset(ADR(YCentroLastra), 0 , SIZEOF(YCentroLastra));memset(ADR(ZCentroLastra), 0 , SIZEOF(ZCentroLastra));
+	memset(ADR(XCentroLastra_A_B), 0 , SIZEOF(XCentroLastra_A_B));memset(ADR(YCentroLastra_A_B), 0 , SIZEOF(YCentroLastra_A_B));memset(ADR(ZCentroLastra_A_B), 0 , SIZEOF(ZCentroLastra_A_B));
+	
 	memset(ADR(XEsternoLastra), 0 , SIZEOF(XEsternoLastra));memset(ADR(YEsternoLastra), 0 , SIZEOF(YEsternoLastra));memset(ADR(ZEsternoLastra), 0 , SIZEOF(ZEsternoLastra));
+	memset(ADR(XEsternoLastra), 0 , SIZEOF(XEsternoLastra_A_B));memset(ADR(YEsternoLastra_A_B), 0 , SIZEOF(YEsternoLastra_A_B));memset(ADR(ZEsternoLastra_A_B), 0 , SIZEOF(ZEsternoLastra_A_B));
 
 	// Definizione del tipo di deposito a seconda del tipo di supporto utilizzato
 	CASE Supporto.Tipologia OF
@@ -766,233 +788,42 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				F_ini := TipoOrdinamento ;
 				F_Fin := TipoOrdinamento ;
 		END_IF
+		
+		
+		
 		FOR CalForCavallete := F_ini TO F_Fin DO
 			(* Calcolo delle coordinate X,Y,Z,J del punto finale sulla base del TipoRisultato *)
-			CASE CalForCavallete OF
-				(* Ordinamento alternato Dx-SX *)	
-				1: 
-					FOR counter2:=1 TO numeroLastre_int*2 BY 1 DO
-						varEven := counter2 MOD 2;	
-						IF NOT CalculoEstacionPickinPiezasDiferentes THEN 
-							CASE varEven OF
-								0:	// Lato DX della cavallina
-									XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
-									CASE TipoRisultato OF
-										1:	
-											YFinale[counter2] := -YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] :=  ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-										2:	
-											YFinale[counter2] := -YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] :=  ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-										3:	
-											YFinale[counter2] := -YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] :=  ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-										4:	
-											YFinale[counter2] := -YCoordinataAppoggioLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] :=  ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-									END_CASE
-									JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
-								1:	// Lato SX della cavallina
-									XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
-									CASE TipoRisultato OF
-										1:	
-											YFinale[counter2] := YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-										2:	
-											YFinale[counter2] := YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-										3:	
-											YFinale[counter2] := YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-										4:	
-											YFinale[counter2] := YCoordinataAppoggioLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-									END_CASE
-									JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
-							END_CASE
+			Fb_CalculoFormaciones(
+				TipoCalForCavallete:= CalForCavallete , 
+				numeroLastre_int:= numeroLastre_int , 
+				TipoRisultato:=TipoRisultato  , 
+				AlgoloAlfa_gradi:= AlgoloAlfa_gradi , 
+				CalculoEstacionPickinPiezasDiferentes:= CalculoEstacionPickinPiezasDiferentes , 
+				Supporto:= ADR(Supporto), 
+				XFinale:=  ADR(XFinale) , 
+				CoorFinaleLado_Pri0_Des180:=  ADR(CoorFinaleLado_Pri0_Des180) , 
+				YFinale:=  ADR(YFinale) , 
+				YInternoLastra:=  ADR(YInternoLastra) , 
+				YCentroLastra:=  ADR(YCentroLastra) , 
+				YEsternoLastra:=  ADR(YEsternoLastra), 
+				YCoordinataAppoggioLastra:=  ADR(YCoordinataAppoggioLastra), 
+				ZFinale:= ADR(ZFinale) , 
+				ZInternoLastra:=  ADR(ZInternoLastra) , 
+				ZCentroLastra:=  ADR(ZCentroLastra) , 
+				ZEsternoLastra:= ADR(ZEsternoLastra) , 
+				JFinale:=  ADR(JFinale) , 
+				XInternoLastra_A_B:=  ADR(XInternoLastra_A_B) , 
+				YInternoLastra_A_B:=  ADR(YInternoLastra_A_B) , 
+				ZInternoLastra_A_B:=  ADR(ZInternoLastra_A_B) , 
+				XCentroLastra_A_B:=  ADR(XCentroLastra_A_B) , 
+				YCentroLastra_A_B:=  ADR(YCentroLastra_A_B) , 
+				ZCentroLastra_A_B:=  ADR(ZCentroLastra_A_B) , 
+				XEsternoLastra_A_B:=  ADR(XEsternoLastra_A_B) , 
+				YEsternoLastra_A_B:=  ADR(YEsternoLastra_A_B) , 
+				ZEsternoLastra_A_B:=  ADR(ZEsternoLastra_A_B) , 
+				YCoordinataAppoggioLastra_A_B:=  ADR(YCoordinataAppoggioLastra_A_B) , 
+				ZCoordinataAppoggioLastra_A_B:=  ADR(ZCoordinataAppoggioLastra_A_B) );
 							
-						END_IF
-					END_FOR
-					
-				(* Ordinamento consecutivo prima un lato poi l'altro *)
-				2:	
-					FOR  CntLados :=  1 TO 2 BY 1 DO
-						CASE CntLados OF 
-							1:
-								FOR counter2 :=1 TO numeroLastre_int BY 1 DO
-										CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_X := Supporto.XDim/2 + Supporto.OFSDE_X180;
-									CASE TipoRisultato OF	
-										1:	
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Y := YInternoLastra[counter2] + Supporto.OFSDE_Y0;
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Z := ZInternoLastra[counter2] + Supporto.OFSDE_Z0;
-										2:	
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Y := YCentroLastra[counter2] + Supporto.OFSDE_Y0;
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Z := ZCentroLastra[counter2] + Supporto.OFSDE_Z0;
-										3:	
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Y := YEsternoLastra[counter2] + Supporto.OFSDE_Y0;
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Z := ZEsternoLastra[counter2] + Supporto.OFSDE_Z0;
-										4:	
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Y := YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y0;
-											CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_Z := ZEsternoLastra[counter2] + Supporto.OFSDE_Z0;
-									END_CASE
-									CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
-								END_FOR
-								2: 
-									FOR counter2:=1 TO numeroLastre_int BY 1 DO
-										
-										CoorFinaleLado_Pri0_Des180[counter2].LadoA.CoordenadaFinale_X := Supporto.XDim/2 + Supporto.OFSDE_X180;
-										CASE TipoRisultato OF
-											1:	
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Y := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Z := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
-											2:	
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Y := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Z := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
-											3:	
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Y := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Z := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-											4:	
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Y := -YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y180;
-												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Z := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-										END_CASE
-										CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_J := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
-									END_FOR
-													
-							
-							END_CASE
-						END_FOR
-						
-							IF NOT HabiCalTodasCordenadas THEN 
-								FOR counter2:=1 TO numeroLastre_int BY 1 DO
-								IF counter2 <= numeroLastre_int/2 THEN // Lato DX della cavallina
-									varEven := counter2 MOD 2;
-									XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
-									CASE TipoRisultato OF
-										1:	
-											YFinale[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
-										2:	
-											YFinale[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
-										3:	
-											YFinale[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-										4:	
-											YFinale[counter2] := -YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y180;
-											ZFinale[counter2] :=  ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-									END_CASE
-											JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
-								ELSE// Lato SX della cavallina
-									XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
-									CASE TipoRisultato OF
-										1:	
-											YFinale[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-										2:	
-											YFinale[counter2] := YCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-										3:	
-											YFinale[counter2] := YEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-										4:	
-											YFinale[counter2] := YCoordinataAppoggioLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-											ZFinale[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-									END_CASE
-									JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
-								END_IF
-							END_FOR
-							END_IF
-							
-				(* Ordinamento consecutivo prima SOLO lato 0° *)
-				3:
-					FOR counter2:=1 TO numeroLastre_int BY 1 DO
-						XFinaleLado_0Grados[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
-						CASE TipoRisultato OF
-							1:	
-								YFinaleLado_0Grados[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinaleLado_0Grados[counter2] := ZInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-							2:	
-								YFinaleLado_0Grados[counter2] := YCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinaleLado_0Grados[counter2] := ZCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-							3:	
-								YFinaleLado_0Grados[counter2] := YEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinaleLado_0Grados[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-							4:	
-								YFinaleLado_0Grados[counter2] := YCoordinataAppoggioLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinaleLado_0Grados[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-						END_CASE
-						JFinaleLado_0Grados[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
-					END_FOR
-					IF NOT HabiCalTodasCordenadas THEN 
-						FOR counter2:=1 TO numeroLastre_int BY 1 DO
-						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
-						CASE TipoRisultato OF
-							1:	
-								YFinale[counter2] := YInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinale[counter2] := ZInternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-							2:	
-								YFinale[counter2] := YCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinale[counter2] := ZCentroLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-							3:	
-								YFinale[counter2] := YEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinale[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-							4:	
-								YFinale[counter2] := YCoordinataAppoggioLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Y0;
-								ZFinale[counter2] := ZEsternoLastra[counter2-numeroLastre_int/2] + Supporto.OFSDE_Z0;
-						END_CASE
-						JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
-					END_FOR
-					END_IF
-				(* Ordinamento consecutivo SOLO lato 180 *)
-				4:
-					FOR counter2:=1 TO numeroLastre_int BY 1 DO
-						varEven := counter2 MOD 2;
-						XFinaleLado_180Grados[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
-						CASE TipoRisultato OF
-							1:	
-								YFinaleLado_180Grados[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
-								ZFinaleLado_180Grados[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
-							2:	
-								YFinaleLado_180Grados[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
-								ZFinaleLado_180Grados[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
-							3:	
-								YFinaleLado_180Grados[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
-								//YFinale[counter2] := YCoordinataAppoggioLastra[counter2] ;
-								ZFinaleLado_180Grados[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-							4:	
-								YFinaleLado_180Grados[counter2] := -YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y180;
-								ZFinaleLado_180Grados[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-						END_CASE
-						JFinaleLado_180Grados[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
-					END_FOR
-					IF NOT HabiCalTodasCordenadas THEN 
-						FOR counter2:=1 TO numeroLastre_int BY 1 DO
-						varEven := counter2 MOD 2;
-						XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
-						CASE TipoRisultato OF
-							1:	
-								YFinale[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
-								ZFinale[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
-							2:	
-								YFinale[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
-								ZFinale[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
-							3:	
-								YFinale[counter2] := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
-								//YFinale[counter2] := YCoordinataAppoggioLastra[counter2] ;
-								ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-							4:	
-								YFinale[counter2] := -YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y180;
-								ZFinale[counter2] := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
-						END_CASE
-						JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
-					END_FOR
-					END_IF
-		
-			5:
-					;		
-					
-					
-			END_CASE						
 		END_FOR
 
 
@@ -1010,6 +841,7 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 					FormingSlab.PElement[counter1].Z 					:= ZFinale[counter1];
 					FormingSlab.PElement[counter1].ZDim 				:= Materiale[OrdineDepositoSxDx[counter1]].ZDim;		// Dimensione Z Lastra
 					FormingSlab.PElement[counter1].J 					:= JFinale[counter1];
+					
 					FormingSlab.PElement[counter1].CooCavallete 		:= CoorFinaleLado_Pri0_Des180[counter1] ;
 				ELSE
 					FormingSlab.PElement[counter1].Typology := OrdineDepositoSxDx[counter1];
@@ -1232,16 +1064,46 @@ END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="Calcolo_Formatura_Completa">
-      <LineId Id="8727" Count="576" />
+      <LineId Id="8727" Count="11" />
+      <LineId Id="9828" Count="0" />
+      <LineId Id="8739" Count="1" />
+      <LineId Id="8742" Count="8" />
+      <LineId Id="9831" Count="0" />
+      <LineId Id="8751" Count="0" />
+      <LineId Id="9833" Count="0" />
+      <LineId Id="9830" Count="0" />
+      <LineId Id="8752" Count="25" />
+      <LineId Id="9835" Count="0" />
+      <LineId Id="9834" Count="0" />
+      <LineId Id="8778" Count="0" />
+      <LineId Id="9838" Count="0" />
+      <LineId Id="9836" Count="1" />
+      <LineId Id="9839" Count="1" />
+      <LineId Id="8780" Count="0" />
+      <LineId Id="9841" Count="1" />
+      <LineId Id="8781" Count="0" />
+      <LineId Id="9843" Count="0" />
+      <LineId Id="8782" Count="0" />
+      <LineId Id="9844" Count="1" />
+      <LineId Id="8783" Count="0" />
+      <LineId Id="9846" Count="0" />
+      <LineId Id="8784" Count="0" />
+      <LineId Id="9847" Count="1" />
+      <LineId Id="8785" Count="0" />
+      <LineId Id="9849" Count="1" />
+      <LineId Id="8786" Count="0" />
+      <LineId Id="9851" Count="0" />
+      <LineId Id="8787" Count="516" />
       <LineId Id="9782" Count="6" />
       <LineId Id="9781" Count="0" />
-      <LineId Id="9304" Count="22" />
-      <LineId Id="9789" Count="0" />
-      <LineId Id="9327" Count="35" />
-      <LineId Id="9791" Count="0" />
-      <LineId Id="9790" Count="0" />
-      <LineId Id="9363" Count="38" />
-      <LineId Id="9403" Count="377" />
+      <LineId Id="9304" Count="15" />
+      <LineId Id="9792" Count="2" />
+      <LineId Id="9320" Count="1" />
+      <LineId Id="9796" Count="28" />
+      <LineId Id="9795" Count="0" />
+      <LineId Id="9544" Count="17" />
+      <LineId Id="9827" Count="0" />
+      <LineId Id="9562" Count="218" />
       <LineId Id="4072" Count="0" />
     </LineIds>
   </POU>
