@@ -160,7 +160,9 @@ VAR
 	LadoA						: UINT;
 	LadoB						: UINT;
 	
-	Fb_CalculoFormaciones 		: Fb_CalculoCoordenadasFinalesFormacion ;
+	Fb_CalculoFormaciones 					: Fb_CalculoCoordenadasFinalesFormacion ;
+	Fb_CalculoFormacionesTodo0_grados 		: Fb_Fb_CalculoTodo0CoordenadasFinales ;
+	Fb_CalculoFormacionesTodo180_grados 	: Fb_CalculoTodo180CoordenadasFinales ;
 END_VAR
 
 VAR CONSTANT
@@ -824,7 +826,11 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				ZEsternoLastra_A_B:=  ADR(ZEsternoLastra_A_B) , 
 				YCoordinataAppoggioLastra_A_B:=  ADR(YCoordinataAppoggioLastra_A_B) , 
 				ZCoordinataAppoggioLastra_A_B:=  ADR(ZCoordinataAppoggioLastra_A_B) );
-							
+		
+			
+			
+			
+								
 		END_FOR
 
 
@@ -1104,6 +1110,8 @@ END_IF
       <LineId Id="9320" Count="1" />
       <LineId Id="9796" Count="28" />
       <LineId Id="9795" Count="0" />
+      <LineId Id="10019" Count="1" />
+      <LineId Id="10079" Count="1" />
       <LineId Id="9544" Count="17" />
       <LineId Id="9827" Count="0" />
       <LineId Id="9562" Count="218" />
