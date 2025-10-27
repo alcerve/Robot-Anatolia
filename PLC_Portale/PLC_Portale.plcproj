@@ -18,6 +18,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Data types" />
+    <Folder Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones" />
     <Folder Include="Data types\AlbertoPruevas\Estructuras" />
     <Folder Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete" />
     <Folder Include="Data types\AlbertoPruevas\Funciones" />
@@ -101,7 +102,13 @@
     </Folder>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_CalculoCoordenadasFinalesFormacion.TcPOU">
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones\Fb_CalculoCoordenadasFinalesFormacion.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones\Fb_CalculoTodo180CoordenadasFinales.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones\Fb_Fb_CalculoTodo0CoordenadasFinales.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_SensoresTasteggio.TcPOU">

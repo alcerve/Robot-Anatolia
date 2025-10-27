@@ -185,6 +185,7 @@ IF PulisciMemoria AND NOT PulisciMemoriaDone THEN		// Pulizia delle variabili lo
 	
 	memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));memset(ADR(Spessore_Lastra_Cumulato), 0 , SIZEOF(Spessore_Lastra_Cumulato));
 	memset(ADR(YCoordinataAppoggioLastra), 0 , SIZEOF(YCoordinataAppoggioLastra));memset(ADR(ZCoordinataAppoggioLastra), 0 , SIZEOF(ZCoordinataAppoggioLastra));
+	
 	memset(ADR(B), 0 , SIZEOF(B));memset(ADR(b1), 0 , SIZEOF(b1));memset(ADR(h1), 0 , SIZEOF(h1));
 	memset(ADR(Yd1), 0 , SIZEOF(Yd1));memset(ADR(Zd1), 0 , SIZEOF(Zd1));
 	memset(ADR(Yd2), 0 , SIZEOF(Yd2));memset(ADR(Zd2), 0 , SIZEOF(Zd2));
@@ -1067,7 +1068,9 @@ END_IF
       <LineId Id="8727" Count="11" />
       <LineId Id="9828" Count="0" />
       <LineId Id="8739" Count="1" />
-      <LineId Id="8742" Count="8" />
+      <LineId Id="8742" Count="2" />
+      <LineId Id="9852" Count="0" />
+      <LineId Id="8745" Count="5" />
       <LineId Id="9831" Count="0" />
       <LineId Id="8751" Count="0" />
       <LineId Id="9833" Count="0" />

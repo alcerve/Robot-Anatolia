@@ -723,7 +723,7 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 						CASE TipoRisultato OF
 							1:	
 								YFinaleLado_180Grados[counter2] := -YInternoLastra[counter2] + Supporto.OFSDE_Y180;
-								ZFinaleLado_180Grados[counter2] := ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
+								ZFinaleLado_180Grados[counter2] := 	ZInternoLastra[counter2] + Supporto.OFSDE_Z180;
 							2:	
 								YFinaleLado_180Grados[counter2] := -YCentroLastra[counter2] + Supporto.OFSDE_Y180;
 								ZFinaleLado_180Grados[counter2] := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
