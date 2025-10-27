@@ -42,7 +42,7 @@ VAR_INPUT
 	YEsternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
 	ZEsternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
 END_VAR
-END_VAR
+
 VAR_OUTPUT
 END_VAR
 VAR
@@ -75,19 +75,19 @@ END_VAR
 		ELSIF CalculoEstacionPickinPiezasDiferentes	THEN
 			CASE TipoRisultato OF
 				1:	
-					YFinaleLado_180Grados^[Contador] := -YInternoLastra_A_B^[Contador] + Supporto^.OFSDE_Y180;
-					ZFinaleLado_180Grados^[Contador] := ZInternoLastra_A_B^[Contador] + Supporto^.OFSDE_Z180;	
+					YFinaleLado_180Grados^[Contador] := -YInternoLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Y180;
+					ZFinaleLado_180Grados^[Contador] := ZInternoLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Z180;	
 					
 				2:	
 					
-					YFinaleLado_180Grados^[Contador] := -YCentroLastra_A_B^[Contador] + Supporto^.OFSDE_Y180;
-					ZFinaleLado_180Grados^[Contador] := ZCentroLastra_A_B^[Contador] + Supporto^.OFSDE_Z180;
+					YFinaleLado_180Grados^[Contador] := -YCentroLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Y180;
+					ZFinaleLado_180Grados^[Contador] := ZCentroLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Z180;
 				3:	
-					YFinaleLado_180Grados^[Contador] := -YEsternoLastra_A_B^[Contador] + Supporto^.OFSDE_Y180;
-					ZFinaleLado_180Grados^[Contador] := ZEsternoLastra_A_B^[Contador] + Supporto^.OFSDE_Z180;
+					YFinaleLado_180Grados^[Contador] := -YEsternoLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Y180;
+					ZFinaleLado_180Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Z180;
 				4:	
-					YFinaleLado_180Grados^[Contador] := -YCoordinataAppoggioLastra_A_B^[Contador] + Supporto^.OFSDE_Y180;
-					ZFinaleLado_180Grados^[Contador] := ZEsternoLastra_A_B^[Contador] + Supporto^.OFSDE_Z180;
+					YFinaleLado_180Grados^[Contador] := -YCoordinataAppoggioLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Y180;
+					ZFinaleLado_180Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_B_180Grados + Supporto^.OFSDE_Z180;
 			END_CASE
 		END_IF
 	

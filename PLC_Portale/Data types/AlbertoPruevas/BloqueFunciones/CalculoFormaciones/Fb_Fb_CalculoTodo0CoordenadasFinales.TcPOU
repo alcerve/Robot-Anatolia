@@ -80,11 +80,11 @@ END_VAR
 					YFinaleLado_0Grados^[Contador] := YCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
 					ZFinaleLado_0Grados^[Contador] := ZCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
 				3:	
-					YFinaleLado_0Grados^[Contador] := YEsternoLastra_A_B^[Contador] + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador] + Supporto^.OFSDE_Z0;
+					YFinaleLado_0Grados^[Contador] := YEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
 				4:	
-					YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra_A_B^[Contador] + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador] + Supporto^.OFSDE_Z0;
+					YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
 			END_CASE
 		END_IF
 	
