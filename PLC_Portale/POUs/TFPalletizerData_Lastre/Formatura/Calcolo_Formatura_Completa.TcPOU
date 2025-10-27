@@ -827,8 +827,40 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				YCoordinataAppoggioLastra_A_B:=  ADR(YCoordinataAppoggioLastra_A_B) , 
 				ZCoordinataAppoggioLastra_A_B:=  ADR(ZCoordinataAppoggioLastra_A_B) );
 		
-			
-			
+		Fb_CalculoFormacionesTodo0_grados(
+			CalculoEstacionPickinPiezasDiferentes:= CalculoEstacionPickinPiezasDiferentes , 
+			numeroLastre_int:= numeroLastre_int , 
+			Calcular:= , 
+			TipoRisultato:=TipoRisultato , 
+			AlgoloAlfa_gradi:= AlgoloAlfa_gradi, 
+			Supporto:= ADR(Supporto) , 
+			YCoordinataAppoggioLastra:= ADR(YCoordinataAppoggioLastra) , 
+			ZCoordinataAppoggioLastra:= ADR(), 
+			YCoordinataAppoggioLastra_A_B:=ADR() , 
+			ZCoordinataAppoggioLastra_A_B:=ADR() , 
+			XFinaleLado_0Grados:= ADR() , 
+			YFinaleLado_0Grados:= ADR(), 
+			ZFinaleLado_0Grados:=ADR() , 
+			JFinaleLado_0Grados:= ADR() , 
+			XInternoLastra:=ADR() , 
+			YInternoLastra:=ADR() , 
+			ZInternoLastra:=ADR() , 
+			XCentroLastra:=ADR() , 
+			YCentroLastra:= ADR(), 
+			ZCentroLastra:= ADR(), 
+			XEsternoLastra:=ADR() , 
+			YEsternoLastra:= ADR(), 
+			ZEsternoLastra:= ADR() , 
+			XInternoLastra_A_B:= ADR(), 
+			YInternoLastra_A_B:= ADR() , 
+			ZInternoLastra_A_B:= ADR() , 
+			XCentroLastra_A_B:= ADR() , 
+			YCentroLastra_A_B:= ADR() , 
+			ZCentroLastra_A_B:= ADR() , 
+			XEsternoLastra_A_B:= ADR() , 
+			YEsternoLastra_A_B:= ADR() , 
+			ZEsternoLastra_A_B:= ADR() );	
+				
 			
 								
 		END_FOR
@@ -1110,7 +1142,9 @@ END_IF
       <LineId Id="9320" Count="1" />
       <LineId Id="9796" Count="28" />
       <LineId Id="9795" Count="0" />
-      <LineId Id="10019" Count="1" />
+      <LineId Id="10019" Count="0" />
+      <LineId Id="10311" Count="31" />
+      <LineId Id="10310" Count="0" />
       <LineId Id="10079" Count="1" />
       <LineId Id="9544" Count="17" />
       <LineId Id="9827" Count="0" />
