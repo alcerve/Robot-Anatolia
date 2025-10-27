@@ -23,6 +23,7 @@
     <Folder Include="Data types\AlbertoPruevas\Funciones" />
     <Folder Include="Data types\AlbertoPruevas\BloqueFunciones" />
     <Folder Include="Data types\AlbertoPruevas\Enumeraciones" />
+    <Folder Include="Data types\AlbertoPruevas\Funciones\FuncionesFormaciones" />
     <Folder Include="Data types\DatiVari" />
     <Folder Include="Data types\DatiVari\EAP" />
     <Folder Include="Data types\DatiVari\Workorder" />
@@ -100,6 +101,9 @@
     </Folder>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_CalculoCoordenadasFinalesFormacion.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -136,7 +140,13 @@
     <Compile Include="Data types\AlbertoPruevas\Estructuras\ProgramaEjecucion.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\FuncionesFormaciones\Fun_CalculoCoordenadasFinalesFormacion.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\Funciones\FunLadoTrabajoCaballete.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_NumeroPiezasLadoCaballete.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_PiezaLadoCaballete.TcPOU">

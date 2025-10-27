@@ -9,7 +9,7 @@ VAR_INPUT
 	//Materiale : ARRAY [0..MAXTYPE_SLABLAYER] OF Type_SlabLayer;	// Tipo di materiale, Lastra, Falda e dimensioni
 	Materiale 			: ARRAY [0..MAXTYPE_SLABLAYER] OF TFMachinePalletizer_PlaceElement;	// Tipo di materiale, Lastra, Falda e dimensioni
 	TipoElementoDep 	: ARRAY [1..MAXFORMINGSLAB] OF e_Tipo_Elemento_Da_Lavorare;	// Tipologia del n-esimo elemento di Materiale da depositare (Lstra-falda-terminatore)
-	DimensionesPiezasLadoALadoB	: ARRAY  [1..MAXELEMENTLIST] OF ES_dimensionPiezaLadoA_ladoB;
+	DimensionesPiezasDifEsPiking	: ARRAY  [1..MAXELEMENTLIST] OF ES_dimensionPiezaLadoA_ladoB;
 	TipoRisultato 		: UINT := 3;// Punto utilizzato per coordinate finali di deposito lastra/falda, 1 interno, 2 centro, 3 esterno(default)
 	TipoOrdinamento 	: UINT := 1;//Tipologia di ordinamento in deposito 1= alternato (lastra DX-Lastra SX), 2 = consecutivo(prima un lato, poi l'altro lato), 3 = solo lato 0°, 4 = solo lato 180°
 	NumeroElementiDaDepositare : UINT;
@@ -157,6 +157,8 @@ VAR
 	LadoRegistarFor: UINT;
 	NuPieza_A: UINT;
 	NuPieza_B: UINT;
+	LadoA: UINT;
+	LadoB: UINT;
 END_VAR
 
 VAR CONSTANT
@@ -176,6 +178,9 @@ IF PulisciMemoria AND NOT PulisciMemoriaDone THEN		// Pulizia delle variabili lo
 	memset(ADR(Errore), 0 , SIZEOF(Errore));
 	memset(ADR(OrdineDepositoSxDx), 0 , SIZEOF(OrdineDepositoSxDx));
 	memset(ADR(Spessore_Lastra_Inclinata), 0 , SIZEOF(Spessore_Lastra_Inclinata));memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
+	
+	memset(ADR(Spessore_Lastra_Inclinata_lado_A_B), 0 , SIZEOF(Spessore_Lastra_Inclinata_lado_A_B));memset(ADR(Spessore_Lastra_Inclinata_Cumulato_A_B), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato_A_B));
+	
 	memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));memset(ADR(Spessore_Lastra_Cumulato), 0 , SIZEOF(Spessore_Lastra_Cumulato));
 	memset(ADR(YCoordinataAppoggioLastra), 0 , SIZEOF(YCoordinataAppoggioLastra));memset(ADR(ZCoordinataAppoggioLastra), 0 , SIZEOF(ZCoordinataAppoggioLastra));
 	memset(ADR(B), 0 , SIZEOF(B));memset(ADR(b1), 0 , SIZEOF(b1));memset(ADR(h1), 0 , SIZEOF(h1));
@@ -266,7 +271,7 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 			memset(ADR(Spessore_Lastra), 0 , SIZEOF(Spessore_Lastra));
 			FOR counter2 := 1 TO MAXFORMINGSLAB BY 1 DO
 				IF CalculoEstacionPickinPiezasDiferentes THEN
-					Spessore_Lastra[counter2] := DimensionesPiezasLadoALadoB[counter2].Dim_Horizontal.ZDim;
+					Spessore_Lastra[counter2] := DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.ZDim;
 				ELSE 
 					Spessore_Lastra[counter2] := Materiale[TipoElementoDep[counter2]].ZDim;
 				END_IF
@@ -351,9 +356,9 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 
 				END_CASE
 				IF CalculoEstacionPickinPiezasDiferentes THEN 
-					FormingSlab.PElement[counter1].XDim := DimensionesPiezasLadoALadoB[counter1].Dim_Horizontal.XDim;		// Dimensione X Lastra		
-					FormingSlab.PElement[counter1].YDim := DimensionesPiezasLadoALadoB[counter1].Dim_Horizontal.YDim;		// Dimensione Y Lastra
-					FormingSlab.PElement[counter1].ZDim := DimensionesPiezasLadoALadoB[counter1].Dim_Horizontal.ZDim;		// Dimensione Z Lastra
+					FormingSlab.PElement[counter1].XDim := DimensionesPiezasDifEsPiking[counter1].Dim_Horizontal.XDim;		// Dimensione X Lastra		
+					FormingSlab.PElement[counter1].YDim := DimensionesPiezasDifEsPiking[counter1].Dim_Horizontal.YDim;		// Dimensione Y Lastra
+					FormingSlab.PElement[counter1].ZDim := DimensionesPiezasDifEsPiking[counter1].Dim_Horizontal.ZDim;		// Dimensione Z Lastra
 				ELSE
 					FormingSlab.PElement[counter1].XDim := Materiale[TipoElementoDep[counter1]].XDim;		// Dimensione X Lastra		
 					FormingSlab.PElement[counter1].YDim := Materiale[TipoElementoDep[counter1]].YDim;		// Dimensione Y Lastra
@@ -479,42 +484,55 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 			// Calcolo lo spessore di ogni singola lastra/falda depositata sul lato della cavallina
 			Spessore_Lastra_Inclinata[1] := 0;
 			FOR counter2:=2 TO MAXFORMINGSLAB/2 BY 1 DO
-				IF CalculoEstacionPickinPiezasDiferentes THEN 
+				IF CalculoEstacionPickinPiezasDiferentes AND Supporto.Tipologia = CAVALLETTO THEN 
 					Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= counter2 , Grados:= ADR(LadoRegistarFor) , 
 														Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
-				CASE LadoRegistarFor OF
-					0 :
-						Spessore_Lastra_Inclinata_lado_A_B[NuPieza_A].Lado_A_0Grados := 
-								DimensionesPiezasLadoALadoB[NuPieza_A].DimPieza_LadoA.ZDim / COS(AngoloAlfa_rad);	
-				  180 :
-				  		Spessore_Lastra_Inclinata_lado_A_B[NuPieza_B].Lado_B_180Grados := 
-								DimensionesPiezasLadoALadoB[NuPieza_B].DimPieza_LadoB.ZDim / COS(AngoloAlfa_rad);
-				END_CASE
-					
+					CASE LadoRegistarFor OF
+						0 :
+							Spessore_Lastra_Inclinata_lado_A_B[NuPieza_A].Lado_A_0Grados := 
+									DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoA.ZDim / COS(AngoloAlfa_rad);	
+					  180 :
+							Spessore_Lastra_Inclinata_lado_A_B[NuPieza_B].Lado_B_180Grados := 
+									DimensionesPiezasDifEsPiking[NuPieza_B].DimPieza_LadoB.ZDim / COS(AngoloAlfa_rad);
+					END_CASE
+				ELSIF	CalculoEstacionPickinPiezasDiferentes  AND Supporto.Tipologia <> CAVALLETTO THEN 
+					 Spessore_Lastra_Inclinata[counter2] := DimensionesPiezasDifEsPiking[counter2-1].Dim_Horizontal.ZDim / COS(AngoloAlfa_rad);
 				ELSE
+					 
 					Spessore_Lastra_Inclinata[counter2] := Materiale[TipoElementoDep[counter2-1]].ZDim / COS(AngoloAlfa_rad);
 				END_IF
 			END_FOR;
 			
 			// Calcola lo spessore complessivo fino al passo n delle lastre/falde depositate sul singolo lato della cavallina 
 			//memset(ADR(Spessore_Lastra_Inclinata_Cumulato), 0 , SIZEOF(Spessore_Lastra_Inclinata_Cumulato));
-			
-			IF (Spessore_Lastra_Inclinata_Cumulato[2] = 0) THEN
-				FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
-					FOR counter1 := 1 TO counter2 BY 1 DO
-						Spessore_Lastra_Inclinata_Cumulato[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2]+Spessore_Lastra_Inclinata[counter1];
+			IF NOT CalculoEstacionPickinPiezasDiferentes THEN 
+				IF (Spessore_Lastra_Inclinata_Cumulato[2] = 0) THEN
+					FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+						FOR counter1 := 1 TO counter2 BY 1 DO
+							Spessore_Lastra_Inclinata_Cumulato[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2]+Spessore_Lastra_Inclinata[counter1];
+						END_FOR
 					END_FOR
-				END_FOR
+				END_IF
 			END_IF
-			
-			IF (Spessore_Lastra_Inclinata_Cumulato_A_B[2] = 0) THEN
-				FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
-					FOR counter1 := 1 TO counter2 BY 1 DO
-						Spessore_Lastra_Inclinata_Cumulato[counter2] := Spessore_Lastra_Inclinata_Cumulato[counter2]+Spessore_Lastra_Inclinata[counter1];
+			IF CalculoEstacionPickinPiezasDiferentes AND Supporto.Tipologia = CAVALLETTO THEN 
+				IF (Spessore_Lastra_Inclinata_Cumulato_A_B[2].Lado_A_0Grados = 0) THEN
+					FOR counter2:=1 TO MAXFORMINGSLAB/2 BY 1 DO
+						FOR counter1 := 1 TO counter2 BY 1 DO
+							Spessore_Lastra_Inclinata_Cumulato_A_B[counter2].Lado_A_0Grados := 
+												Spessore_Lastra_Inclinata_Cumulato_A_B[counter2].Lado_A_0Grados
+														+	Spessore_Lastra_Inclinata_lado_A_B[counter1].Lado_A_0Grados;
+							Spessore_Lastra_Inclinata_Cumulato_A_B[counter2].Lado_B_180Grados := 
+												Spessore_Lastra_Inclinata_Cumulato_A_B[counter2].Lado_B_180Grados
+														+	Spessore_Lastra_Inclinata_lado_A_B[counter1].Lado_B_180Grados;
+						END_FOR
 					END_FOR
-				END_FOR
+				END_IF
+				
+			ELSIF CalculoEstacionPickinPiezasDiferentes AND Supporto.Tipologia <> CAVALLETTO THEN 
+				Spessore_Lastra_Inclinata_Cumulato[counter2] := 
+												Spessore_Lastra_Inclinata_Cumulato[counter2]
+														+	Spessore_Lastra_Inclinata[counter1];
 			END_IF
-			
 			// Numero di possibili lastre sul singolo lato
 			//FOR counter1:=1 TO MAXFORMINGSLAB/2 BY 1 DO
 				//IF (OrdineDeposito[counter1] <> e_Tipo_Elemento_Da_Lavorare.NOT_DEFINED AND OrdineDeposito[counter1] <> TERMINATORE) AND 
@@ -526,77 +544,214 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				//		Errore := ErrNumeroPezzi;	// il supervisore mi ha passato troppe lastre rispetto allo spazio utile
 				//END_IF
 			//END_FOR
-			IF (Spessore_Lastra_Inclinata_Cumulato[numeroLastre_int] >= Supporto.DimBaseUtile*2) THEN
+			Fun_NumeroPiezasLadoCaballete(NuPieasTotales:= numeroLastre_int , PiezasLadoA:=ADR(LadoA) , PiezasLadoB:=ADR(LadoB) );
+			
+			
+			IF (Spessore_Lastra_Inclinata_Cumulato[numeroLastre_int] >= Supporto.DimBaseUtile*2) AND NOT CalculoEstacionPickinPiezasDiferentes  THEN
 				Errore := ErrNumeroPezzi;	// il supervisore mi ha passato troppe lastre rispetto allo spazio utile
+				
+				
+			ELSIF (Spessore_Lastra_Inclinata_Cumulato_A_B[LadoA].Lado_A_0Grados >= Supporto.DimBaseUtile ) AND  
+															CalculoEstacionPickinPiezasDiferentes   THEN 
+				Errore := ErrNumeroPezzi;	// il supervisore mi ha passato troppe lastre rispetto allo spazio utile
+			ELSIF (Spessore_Lastra_Inclinata_Cumulato_A_B[LadoA].Lado_B_180Grados >= Supporto.DimBaseUtile ) AND  CalculoEstacionPickinPiezasDiferentes   THEN 
+				Errore := ErrNumeroPezzi;	// il supervisore mi ha passato troppe lastre rispetto allo spazio utile	
 			END_IF
 			
+			
+			
+			IF  NOT CalculoEstacionPickinPiezasDiferentes THEN
 			// Calcolo lo spostamento del punto centrale e del punto esterno della singola lastra/falda rispetto al punto interno(iniziale) della medesima lastra/falda
-			FOR counter2:=1 TO numeroLastre_int BY 1 DO
-				Yd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * COS (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Y
-				Zd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * SIN (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Z
-				Yd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * COS (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Y
-				Zd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * SIN (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Z
-			END_FOR
+				FOR counter2:=1 TO numeroLastre_int BY 1 DO
+					Yd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * COS (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Y
+					Zd1[counter2] := Materiale[TipoElementoDep[counter2]].ZDim / 2 * SIN (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Z
+					Yd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * COS (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Y
+					Zd2[counter2] := Materiale[TipoElementoDep[counter2]].ZDim  * SIN (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Z
+				END_FOR
+			END_IF
+			IF CalculoEstacionPickinPiezasDiferentes THEN
+				FOR counter2:=1 TO numeroLastre_int BY 1 DO
+					IF Supporto.Tipologia = CAVALLETTO THEN 
+						Fun_PiezaLadoCaballete(Nu_PiezaGlobal:=counter2 , Grados:= ADR(LadoRegistarFor)  ,
+										 Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+						CASE LadoRegistarFor OF
+							0: 
+								Yd1_A_B[NuPieza_A].Lado_A_0Grados := DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoA.ZDim / 2 * COS (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Y
+								Zd1_A_B[NuPieza_A].Lado_A_0Grados := DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoA.ZDim / 2 * SIN (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Z
+								Yd2_A_B[NuPieza_A].Lado_A_0Grados := DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoA.ZDim  * COS (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Y
+								Zd1_A_B[NuPieza_A].Lado_A_0Grados := DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoA.ZDim  * SIN (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Z
+								
+						 180: 
+								Yd1_A_B[NuPieza_B].Lado_B_180Grados := DimensionesPiezasDifEsPiking[NuPieza_B].DimPieza_LadoB.ZDim / 2 * COS (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Y
+								Zd1_A_B[NuPieza_B].Lado_B_180Grados := DimensionesPiezasDifEsPiking[NuPieza_B].DimPieza_LadoB.ZDim  / 2 * SIN (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Z
+								Yd2_A_B[NuPieza_B].Lado_B_180Grados := DimensionesPiezasDifEsPiking[NuPieza_B].DimPieza_LadoB.ZDim   * COS (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Y
+								Zd1_A_B[NuPieza_B].Lado_B_180Grados := DimensionesPiezasDifEsPiking[NuPieza_B].DimPieza_LadoB.ZDim  * SIN (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Z	
+						END_CASE
+					ELSIF Supporto.Tipologia <> CAVALLETTO THEN 
+						Yd1[counter2] := DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.ZDim/ 2 * COS (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Y
+						Zd1[counter2] := DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.ZDim/ 2 * SIN (AngoloAlfa_rad);		// Spostamento Centro lastra da interno lastra in Z
+						Yd2[counter2] := DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.ZDim  * COS (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Y
+						Zd1[counter2] := DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.ZDim  * SIN (AngoloAlfa_rad);			// Spostamento esterno lastra da interno lastra in Z
+					END_IF 
+				END_FOR
+			END_IF
 			
 			// Calcolo la proiezione mancante di ogni singola lastra/falda; Tramite CI posso calcolare lo spostamento Yd3,Zd3 dovuto al piano inclinato
 			// dovuto all'angolo beta. Utilizzo il teorema dei seni per calcolare ogni CI da SLIC
-			FOR counter1:=1 TO numeroLastre_int BY 1 DO
-				CI[counter1] := (Spessore_Lastra_Inclinata_Cumulato[counter1] * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
-				Yd3[counter1] := -CI[counter1] * SIN(AngoloAlfa_rad);
-				Zd3[counter1] := CI[counter1] * COS(AngoloAlfa_rad);
-			END_FOR;
+			IF NOT CalculoEstacionPickinPiezasDiferentes THEN
+				FOR counter1:=1 TO numeroLastre_int BY 1 DO
+					CI[counter1] := (Spessore_Lastra_Inclinata_Cumulato[counter1] * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
+					Yd3[counter1] := -CI[counter1] * SIN(AngoloAlfa_rad);
+					Zd3[counter1] := CI[counter1] * COS(AngoloAlfa_rad);
+				END_FOR;
+			END_IF
 			
+			IF CalculoEstacionPickinPiezasDiferentes THEN
+				FOR counter1:=1 TO numeroLastre_int BY 1 DO
+					IF Supporto.Tipologia = CAVALLETTO THEN 
+						Fun_PiezaLadoCaballete(Nu_PiezaGlobal:=counter1 , Grados:= ADR(LadoRegistarFor)  ,
+										 Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+							CASE LadoRegistarFor OF
+								0: 
+									CI_A_B[NuPieza_A].Lado_A_0Grados := (Spessore_Lastra_Inclinata_Cumulato_A_B[NuPieza_A].Lado_A_0Grados * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
+									Yd3_A_B[NuPieza_A].Lado_A_0Grados := -CI[NuPieza_A] * SIN(AngoloAlfa_rad);
+									Zd3_A_B[NuPieza_A].Lado_A_0Grados :=  CI[NuPieza_A] * COS(AngoloAlfa_rad);
+							 180: 
+									CI_A_B[NuPieza_B].Lado_B_180Grados := (Spessore_Lastra_Inclinata_Cumulato_A_B[NuPieza_B].Lado_B_180Grados * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
+									Yd3_A_B[NuPieza_B].Lado_B_180Grados := -CI[NuPieza_B] * SIN(AngoloAlfa_rad);
+									Zd3_A_B[NuPieza_B].Lado_B_180Grados :=  CI[NuPieza_B] * COS(AngoloAlfa_rad);
+							END_CASE
+					ELSIF Supporto.Tipologia <> CAVALLETTO THEN 
+						CI[counter1] := (Spessore_Lastra_Inclinata_Cumulato[counter1] * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
+						Yd3[counter1] := -CI[counter1] * SIN(AngoloAlfa_rad);
+						Zd3[counter1] := CI[counter1] * COS(AngoloAlfa_rad);
+					END_IF
+				END_FOR;
+			END_IF
 			// Quota Y e Z del punto di appoggio di ogni lastra sulla cavallina
 			// Quota Y e Z del punto interno centrale di ogni lastra; corrisponde a YInternoLastra e ZInternoLastra
-			NuPiezasLadoDx := 0 ;
-			NuPiezasLadoSx := 0 ;
-			FOR counter2:=1 TO numeroLastre_int BY 1 DO
-				XInternoLastra[counter2] := Supporto.XDim/2;
-				varEven := counter2 MOD 2;
-				IF Supporto.Tipologia = CAVALLETTO    THEN
-					CASE varEven OF
-						0:	
-								CASE TipoCalculo OF
-								0:
-									YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
-								
-								
-								1: 
-									NuPiezasLadoDx := NuPiezasLadoDx +1 ;
-									YCoordinataAppoggioLastra[counter2] := (CorYDe) + Spessore_Lastra_Inclinata_Cumulato[NuPiezasLadoDx] + Yd3[NuPiezasLadoDx];
+			IF NOT CalculoEstacionPickinPiezasDiferentes THEN
+				NuPiezasLadoDx := 0 ;
+				NuPiezasLadoSx := 0 ;
+				FOR counter2:=1 TO numeroLastre_int BY 1 DO
+					XInternoLastra[counter2] := Supporto.XDim/2;
+					varEven := counter2 MOD 2;
+					IF Supporto.Tipologia = CAVALLETTO    THEN
+						CASE varEven OF
+							0:	
+									CASE TipoCalculo OF
+									0:
+										YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+										
 									
+									1: 
+										NuPiezasLadoDx := NuPiezasLadoDx +1 ;
+										YCoordinataAppoggioLastra[counter2] := (CorYDe) + Spessore_Lastra_Inclinata_Cumulato[NuPiezasLadoDx] + Yd3[NuPiezasLadoDx];
+										
+									END_CASE
+							1:
+								CASE TipoCalculo OF
+									0:
+										YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] - Yd3[counter2];
+									
+									1:
+										NuPiezasLadoSx := NuPiezasLadoSx + 1;
+										YCoordinataAppoggioLastra[counter2] := (CorYIz) + Spessore_Lastra_Inclinata_Cumulato[NuPiezasLadoSx] - Yd3[NuPiezasLadoSx];
 								END_CASE
-						1:
-							CASE TipoCalculo OF
-								0:
-									YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] - Yd3[counter2];
-								
-								1:
-									NuPiezasLadoSx := NuPiezasLadoSx + 1;
-									YCoordinataAppoggioLastra[counter2] := (CorYIz) + Spessore_Lastra_Inclinata_Cumulato[NuPiezasLadoSx] - Yd3[NuPiezasLadoSx];
-							END_CASE
-					END_CASE
-					
-					
-					ELSE
-					YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+						END_CASE
 						
-				END_IF
-				//YCoordinataAppoggioLastra[counter2] := (*(B2) +*) Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
-				YInternoLastra[counter2] := YCoordinataAppoggioLastra[counter2] - (Materiale[TipoElementoDep[counter2]].YDim / 2) * SIN (AngoloAlfa_rad);
-				ZCoordinataAppoggioLastra[counter2] := Supporto.ZDim + Zd3[counter2];
-				ZInternoLastra[counter2] := ZCoordinataAppoggioLastra[counter2] + (Materiale[TipoElementoDep[counter2]].YDim / 2) * COS (AngoloAlfa_rad); 
-			END_FOR
+						
+						ELSE
+						YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+							
+					END_IF
+					//YCoordinataAppoggioLastra[counter2] := (*(B2) +*) Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+					YInternoLastra[counter2] := YCoordinataAppoggioLastra[counter2] - (Materiale[TipoElementoDep[counter2]].YDim / 2) * SIN (AngoloAlfa_rad);
+					ZCoordinataAppoggioLastra[counter2] := Supporto.ZDim + Zd3[counter2];
+					ZInternoLastra[counter2] := ZCoordinataAppoggioLastra[counter2] + (Materiale[TipoElementoDep[counter2]].YDim / 2) * COS (AngoloAlfa_rad); 
+				END_FOR
+			END_IF
+			IF CalculoEstacionPickinPiezasDiferentes THEN
+				FOR counter2:=1 TO numeroLastre_int BY 1 DO
+					XInternoLastra[counter2] := Supporto.XDim/2;
+					Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= counter2 , Grados:= ADR(LadoRegistarFor)  ,
+										 Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+					IF Supporto.Tipologia = CAVALLETTO    THEN
+						
+						CASE LadoRegistarFor OF
+							0: 
+								YCoordinataAppoggioLastra_A_B[NuPieza_A].Lado_A_0Grados := (B/2) + Spessore_Lastra_Inclinata_Cumulato[NuPieza_A] + Yd3[NuPieza_A];
+								YInternoLastra_A_B[NuPieza_A].Lado_A_0Grados := YCoordinataAppoggioLastra_A_B[NuPieza_A].Lado_A_0Grados - (DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoA.YDim / 2) * SIN (AngoloAlfa_rad);
+								ZCoordinataAppoggioLastra_A_B[NuPieza_A].Lado_A_0Grados := Supporto.ZDim + Zd3_A_B[NuPieza_A].Lado_A_0Grados;
+								ZInternoLastra_A_B[counter2].Lado_A_0Grados := ZCoordinataAppoggioLastra_A_B[counter2].Lado_A_0Grados + (DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.YDim / 2) * COS (AngoloAlfa_rad); 	
+							180:
+								YCoordinataAppoggioLastra_A_B[NuPieza_B].Lado_B_180Grados := (B/2) + Spessore_Lastra_Inclinata_Cumulato[NuPieza_B] + Yd3[NuPieza_B];
+								YInternoLastra_A_B[NuPieza_B].Lado_B_180Grados := YCoordinataAppoggioLastra_A_B[NuPieza_B].Lado_B_180Grados - (DimensionesPiezasDifEsPiking[NuPieza_B].DimPieza_LadoB.YDim / 2) * SIN (AngoloAlfa_rad);
+								ZCoordinataAppoggioLastra_A_B[NuPieza_B].Lado_B_180Grados := Supporto.ZDim + Zd3_A_B[NuPieza_B].Lado_B_180Grados;
+								ZInternoLastra_A_B[NuPieza_B].Lado_B_180Grados := ZCoordinataAppoggioLastra_A_B[NuPieza_B].Lado_B_180Grados + (DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoB.YDim / 2) * COS (AngoloAlfa_rad); 	
+						END_CASE
+										 
+					ELSE
+						YCoordinataAppoggioLastra[counter2] := (B/2) + Spessore_Lastra_Inclinata_Cumulato[counter2] + Yd3[counter2];
+						YInternoLastra[counter2] := YCoordinataAppoggioLastra[counter2] - (DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.YDim / 2) * SIN (AngoloAlfa_rad);
+						ZCoordinataAppoggioLastra[counter2] := Supporto.ZDim + Zd3[counter2];
+						ZInternoLastra[counter2] := ZCoordinataAppoggioLastra[counter2] + (DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.YDim / 2) * COS (AngoloAlfa_rad); 	
+					END_IF
+				END_FOR
+			END_IF
+			
+			
 	
 			(* Calcolo delle coordinate X,Y,Z di ogni singola lastra/falda, centrale o esterno *)
 			FOR counter2:=1 TO numeroLastre_int BY 1 DO
-				XCentroLastra[counter2] := Supporto.XDim/2;
-				YCentroLastra[counter2] := YInternoLastra[counter2] + Yd1[counter2];
-				ZCentroLastra[counter2] := ZInternoLastra[counter2] + Zd1[counter2];
+				IF  NOT CalculoEstacionPickinPiezasDiferentes  THEN 
+					XCentroLastra[counter2] := Supporto.XDim/2;
+					YCentroLastra[counter2] := YInternoLastra[counter2] + Yd1[counter2];
+					ZCentroLastra[counter2] := ZInternoLastra[counter2] + Zd1[counter2];
+					
+					XEsternoLastra[counter2] := Supporto.XDim/2;
+					YEsternoLastra[counter2] := YInternoLastra[counter2] + Yd2[counter2];	
+					ZEsternoLastra[counter2] := ZInternoLastra[counter2] + Zd2[counter2];
+				ELSIF CalculoEstacionPickinPiezasDiferentes AND Supporto.Tipologia = CAVALLETTO THEN 
+					Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= counter2 , Grados:= ADR(LadoRegistarFor)  ,
+										 Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+					CASE LadoRegistarFor OF
+							0: 
+								XCentroLastra_A_B[NuPieza_A].Lado_A_0Grados := Supporto.XDim/2;
+								YCentroLastra_A_B[NuPieza_A].Lado_A_0Grados := YInternoLastra_A_B[NuPieza_A].Lado_A_0Grados 
+															+ Yd1_A_B[NuPieza_A].Lado_A_0Grados;
+								ZCentroLastra_A_B[NuPieza_A].Lado_A_0Grados := ZInternoLastra_A_B[NuPieza_A].Lado_A_0Grados  
+															+	Zd1_A_B[NuPieza_A].Lado_A_0Grados;
+								
+								XEsternoLastra_A_B[NuPieza_A].Lado_A_0Grados := Supporto.XDim/2;
+								YEsternoLastra_A_B[NuPieza_A].Lado_A_0Grados := YInternoLastra_A_B[NuPieza_A].Lado_A_0Grados 
+															+ Yd2_A_B[NuPieza_A].Lado_A_0Grados;	
+								ZEsternoLastra_A_B[NuPieza_A].Lado_A_0Grados := ZInternoLastra_A_B[NuPieza_A].Lado_A_0Grados 
+															+ Zd2_A_B[NuPieza_A].Lado_A_0Grados;
+						  180:
+						  		XCentroLastra_A_B[NuPieza_B].Lado_B_180Grados := Supporto.XDim/2;
+								YCentroLastra_A_B[NuPieza_B].Lado_B_180Grados := YInternoLastra_A_B[NuPieza_B].Lado_B_180Grados 
+															+ Yd1_A_B[NuPieza_B].Lado_B_180Grados;
+								ZCentroLastra_A_B[NuPieza_B].Lado_B_180Grados := ZInternoLastra_A_B[NuPieza_B].Lado_B_180Grados 
+															+ Zd1_A_B[NuPieza_B].Lado_B_180Grados;
+								
+								XEsternoLastra_A_B[NuPieza_B].Lado_B_180Grados := Supporto.XDim/2;
+								YEsternoLastra_A_B[NuPieza_B].Lado_B_180Grados := YInternoLastra_A_B[NuPieza_B].Lado_B_180Grados 
+															+ Yd2_A_B[NuPieza_B].Lado_B_180Grados;	
+								ZEsternoLastra_A_B[NuPieza_B].Lado_B_180Grados := ZInternoLastra_A_B[NuPieza_B].Lado_B_180Grados 
+															+ Zd2_A_B[NuPieza_B].Lado_B_180Grados;
+					END_CASE
+				ELSIF CalculoEstacionPickinPiezasDiferentes AND Supporto.Tipologia <> CAVALLETTO THEN 
+					 
+					XCentroLastra[counter2] := Supporto.XDim/2;
+					YCentroLastra[counter2] := YInternoLastra[counter2] + Yd1[counter2];
+					ZCentroLastra[counter2] := ZInternoLastra[counter2] + Zd1[counter2];
+					
+					XEsternoLastra[counter2] := Supporto.XDim/2;
+					YEsternoLastra[counter2] := YInternoLastra[counter2] + Yd2[counter2];	
+					ZEsternoLastra[counter2] := ZInternoLastra[counter2] + Zd2[counter2];
+				END_IF
 				
-				XEsternoLastra[counter2] := Supporto.XDim/2;
-				YEsternoLastra[counter2] := YInternoLastra[counter2] + Yd2[counter2];	
-				ZEsternoLastra[counter2] := ZInternoLastra[counter2] + Zd2[counter2];
 			END_FOR;
 			
 			(* Pulisco le uscite e setto a TERMINATORE tutti gli elementi di FormingSlab*)
@@ -618,42 +773,45 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				1: 
 					FOR counter2:=1 TO numeroLastre_int*2 BY 1 DO
 						varEven := counter2 MOD 2;	
-						CASE varEven OF
-							0:	// Lato DX della cavallina
-								XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
-								CASE TipoRisultato OF
-									1:	
-										YFinale[counter2] := -YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-										ZFinale[counter2] := ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-									2:	
-										YFinale[counter2] := -YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-										ZFinale[counter2] := ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-									3:	
-										YFinale[counter2] := -YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-										ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-									4:	
-										YFinale[counter2] := -YCoordinataAppoggioLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
-										ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
-								END_CASE
-								JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
-							1:	// Lato SX della cavallina
-								XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
-								CASE TipoRisultato OF
-									1:	
-										YFinale[counter2] := YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-										ZFinale[counter2] := ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-									2:	
-										YFinale[counter2] := YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-										ZFinale[counter2] := ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-									3:	
-										YFinale[counter2] := YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-										ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-									4:	
-										YFinale[counter2] := YCoordinataAppoggioLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
-										ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
-								END_CASE
-								JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
-						END_CASE
+						IF NOT CalculoEstacionPickinPiezasDiferentes THEN 
+							CASE varEven OF
+								0:	// Lato DX della cavallina
+									XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X180;
+									CASE TipoRisultato OF
+										1:	
+											YFinale[counter2] := -YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
+											ZFinale[counter2] :=  ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
+										2:	
+											YFinale[counter2] := -YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
+											ZFinale[counter2] :=  ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
+										3:	
+											YFinale[counter2] := -YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
+											ZFinale[counter2] :=  ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
+										4:	
+											YFinale[counter2] := -YCoordinataAppoggioLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y180;
+											ZFinale[counter2] :=  ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z180;
+									END_CASE
+									JFinale[counter2] := 180 - AlgoloAlfa_gradi + Supporto.OFSDE_J180; 
+								1:	// Lato SX della cavallina
+									XFinale[counter2] := Supporto.XDim/2 + Supporto.OFSDE_X0;
+									CASE TipoRisultato OF
+										1:	
+											YFinale[counter2] := YInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
+											ZFinale[counter2] := ZInternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
+										2:	
+											YFinale[counter2] := YCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
+											ZFinale[counter2] := ZCentroLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
+										3:	
+											YFinale[counter2] := YEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
+											ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
+										4:	
+											YFinale[counter2] := YCoordinataAppoggioLastra[(counter2+varEven)/2] + Supporto.OFSDE_Y0;
+											ZFinale[counter2] := ZEsternoLastra[(counter2+varEven)/2] + Supporto.OFSDE_Z0;
+									END_CASE
+									JFinale[counter2] := AlgoloAlfa_gradi + Supporto.OFSDE_J0;
+							END_CASE
+							
+						END_IF
 					END_FOR
 					
 				(* Ordinamento consecutivo prima un lato poi l'altro *)
@@ -692,7 +850,6 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Z := ZCentroLastra[counter2] + Supporto.OFSDE_Z180;
 											3:	
 												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Y := -YEsternoLastra[counter2] + Supporto.OFSDE_Y180;
-												//YFinale[counter2] := YCoordinataAppoggioLastra[counter2] ;
 												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Z := ZEsternoLastra[counter2] + Supporto.OFSDE_Z180;
 											4:	
 												CoorFinaleLado_Pri0_Des180[counter2].LadoB.CoordenadaFinale_Y := -YCoordinataAppoggioLastra[counter2] + Supporto.OFSDE_Y180;
@@ -1075,36 +1232,16 @@ END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="Calcolo_Formatura_Completa">
-      <LineId Id="7119" Count="101" />
-      <LineId Id="8154" Count="0" />
-      <LineId Id="8157" Count="1" />
-      <LineId Id="7221" Count="0" />
-      <LineId Id="8155" Count="1" />
-      <LineId Id="7222" Count="79" />
-      <LineId Id="8162" Count="1" />
-      <LineId Id="8161" Count="0" />
-      <LineId Id="8160" Count="0" />
-      <LineId Id="7302" Count="2" />
-      <LineId Id="8159" Count="0" />
-      <LineId Id="7305" Count="119" />
-      <LineId Id="8164" Count="0" />
-      <LineId Id="8171" Count="0" />
-      <LineId Id="8175" Count="2" />
-      <LineId Id="8180" Count="1" />
-      <LineId Id="8179" Count="0" />
-      <LineId Id="8182" Count="1" />
-      <LineId Id="8178" Count="0" />
-      <LineId Id="8167" Count="0" />
-      <LineId Id="7425" Count="0" />
-      <LineId Id="8166" Count="0" />
-      <LineId Id="8165" Count="0" />
-      <LineId Id="7426" Count="11" />
-      <LineId Id="8184" Count="0" />
-      <LineId Id="8186" Count="5" />
-      <LineId Id="8185" Count="0" />
-      <LineId Id="7438" Count="338" />
-      <LineId Id="7995" Count="0" />
-      <LineId Id="7777" Count="217" />
+      <LineId Id="8727" Count="576" />
+      <LineId Id="9782" Count="6" />
+      <LineId Id="9781" Count="0" />
+      <LineId Id="9304" Count="22" />
+      <LineId Id="9789" Count="0" />
+      <LineId Id="9327" Count="35" />
+      <LineId Id="9791" Count="0" />
+      <LineId Id="9790" Count="0" />
+      <LineId Id="9363" Count="38" />
+      <LineId Id="9403" Count="377" />
       <LineId Id="4072" Count="0" />
     </LineIds>
   </POU>

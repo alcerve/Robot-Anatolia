@@ -1,0 +1,414 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="Fb_CalculoCoordenadasFinalesFormacion" Id="{a2b34fcb-80d8-4f40-83a2-c1979dfcf9f9}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Fb_CalculoCoordenadasFinalesFormacion
+VAR_INPUT
+	TipoCalForCavallete 					: UINT ;
+	numeroLastre_int 						: UINT ;
+	TipoRisultato							: UINT ;
+	AlgoloAlfa_gradi						: LREAL ;
+	CalculoEstacionPickinPiezasDiferentes 	: BOOL ;
+	Supporto 								: POINTER TO TFMachinePalletizer_Pallet;
+	XFinale 								: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	
+	CoorFinaleLado_Pri0_Des180 : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF Es_CoordenadasCaballeteLadoA_ladoB ;
+	
+	YFinale 					: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	YInternoLastra 				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	YCentroLastra				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	YEsternoLastra				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	YCoordinataAppoggioLastra 	: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	
+	ZFinale 					: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	ZInternoLastra				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	ZCentroLastra      			: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	ZEsternoLastra				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	
+	JFinale 					: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	
+	XInternoLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YInternoLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZInternoLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	XCentroLastra_A_B  : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	YCentroLastra_A_B  : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZCentroLastra_A_B  : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	XEsternoLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YEsternoLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZEsternoLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		
+	
+	YCoordinataAppoggioLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
+	ZCoordinataAppoggioLastra_A_B : POINTER TO ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
+	
+	
+	
+END_VAR
+VAR_OUTPUT
+END_VAR
+	
+VAR
+	Contador						: UINT;
+	varEven							: UINT;
+	LadoRegistarFor					: UINT;
+	NuPieza_A						: UINT;
+	NuPieza_B						: UINT;
+	counter2						: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+CASE TipoCalForCavallete OF
+{Region "Lato DX della cavallina "}
+	
+	1:	// Lato DX della cavallina
+		FOR Contador := 1 TO numeroLastre_int * 2 DO 
+			IF NOT 	CalculoEstacionPickinPiezasDiferentes THEN 
+				varEven := Contador MOD 2;
+					CASE varEven OF
+						0:
+							XFinale^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X180;
+							CASE TipoRisultato OF 
+								0:
+									XFinale^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X180;
+									ZFinale^[Contador] := ZInternoLastra^[(Contador+varEven)/2] + Supporto^.OFSDE_Z180;
+								1:
+									XFinale^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X180;
+									ZFinale^[Contador] := ZInternoLastra^[(Contador+varEven)/2] + Supporto^.OFSDE_Z180;
+								3:
+									XFinale^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X180;
+									ZFinale^[Contador] := ZInternoLastra^[(Contador+varEven)/2] + Supporto^.OFSDE_Z180;
+								4:
+									XFinale^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X180;
+									ZFinale^[Contador] := ZInternoLastra^[(Contador+varEven)/2] + Supporto^.OFSDE_Z180;
+							END_CASE
+							JFinale^[Contador] := 180 - AlgoloAlfa_gradi + Supporto^.OFSDE_J180; 
+						1: 
+							XFinale^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X0;
+							CASE TipoRisultato OF 
+								1:	
+										
+										YFinale^[Contador] := YInternoLastra^[(Contador + varEven)/2] + Supporto^.OFSDE_Y0;
+										ZFinale^[Contador] := ZInternoLastra^[(Contador+varEven)/2] 	+ Supporto^.OFSDE_Z0;
+									2:	
+										YFinale^[Contador] := YCentroLastra^[(Contador + varEven)/2] + Supporto^.OFSDE_Y0;
+										ZFinale^[Contador] := ZCentroLastra^[(Contador + varEven)/2] + Supporto^.OFSDE_Z0;
+									3:	
+										YFinale^[Contador] := YEsternoLastra^[(Contador + varEven)/2] + Supporto^.OFSDE_Y0;
+										ZFinale^[Contador] := ZEsternoLastra^[(Contador + varEven)/2] + Supporto^.OFSDE_Z0;
+									4:	
+										YFinale^[Contador] := YCoordinataAppoggioLastra^[(Contador + varEven)/2] + Supporto^.OFSDE_Y0;
+										ZFinale^[Contador] := ZEsternoLastra^[(Contador + varEven)/2] + Supporto^.OFSDE_Z0;
+								
+							END_CASE
+							 JFinale^[Contador] := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+					END_CASE
+			ELSIF CalculoEstacionPickinPiezasDiferentes AND Supporto^.Tipologia = CAVALLETTO THEN 
+				Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= Contador , Grados:= ADR(LadoRegistarFor)  ,
+										 Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+				CASE TipoRisultato OF 
+									1:	
+										CASE LadoRegistarFor OF
+											0: 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X0;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YInternoLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZInternoLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+											180 :
+												 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X180;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := YInternoLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZInternoLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+										END_CASE
+									2:	
+										CASE LadoRegistarFor OF
+											0: 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X0;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YCentroLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZCentroLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+											180 :
+												 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X180;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := YCentroLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZCentroLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+										END_CASE
+									3:	
+										CASE LadoRegistarFor OF
+											0: 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X0;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YEsternoLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZEsternoLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+											180 :
+												 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X180;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := YEsternoLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZEsternoLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+										END_CASE
+									4:	
+										CASE LadoRegistarFor OF
+											0: 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X0;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YCoordinataAppoggioLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZCoordinataAppoggioLastra_A_B^[NuPieza_A].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+											180 :
+												 
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_X := Supporto^.XDim/2 + Supporto^.OFSDE_X180;;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := YCoordinataAppoggioLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Y0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZCoordinataAppoggioLastra_A_B^[NuPieza_B].Lado_B_180Grados + Supporto^.OFSDE_Z0;
+												CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0 ;
+										END_CASE
+																		
+					END_CASE
+							
+			END_IF
+
+	END_FOR 
+{endregion}
+
+{Region "Ordinamento consecutivo prima un lato poi l'altro"}
+
+
+		(* Ordinamento consecutivo prima un lato poi l'altro *)
+		2:
+			FOR Contador :=1 TO numeroLastre_int BY 1 DO
+				Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= Contador , Grados:= ADR(LadoRegistarFor)  ,
+										 Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+				IF NOT CalculoEstacionPickinPiezasDiferentes THEN 
+					CASE TipoRisultato OF 
+							1:	
+								
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Y := YInternoLastra^[Contador] + Supporto^.OFSDE_Y0;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Z := ZInternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+								
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Y := -YInternoLastra^[Contador] + Supporto^.OFSDE_Y180;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Z := ZInternoLastra^[Contador] + Supporto^.OFSDE_Z180;
+								
+									
+	
+							2:
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Y := YCentroLastra^[Contador] + Supporto^.OFSDE_Y0;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Z := ZCentroLastra^[Contador] + Supporto^.OFSDE_Z0;
+								
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Y := -YCentroLastra^[Contador] + Supporto^.OFSDE_Y180;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Z := ZCentroLastra^[Contador] + Supporto^.OFSDE_Z180;
+							
+							3:
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Y := YEsternoLastra^[Contador] + Supporto^.OFSDE_Y0;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Z := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+								
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Y := -YEsternoLastra^[Contador] + Supporto^.OFSDE_Y180;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Z := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z180;
+							
+							4:
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Y := YCoordinataAppoggioLastra^[Contador] + Supporto^.OFSDE_Y0;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_Z := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+								
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Y := -YCoordinataAppoggioLastra^[Contador] + Supporto^.OFSDE_Y180;
+								CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_Z := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z180;
+	
+					END_CASE
+					CoorFinaleLado_Pri0_Des180^[Contador].LadoA.CoordenadaFinale_J :=  AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+					CoorFinaleLado_Pri0_Des180^[Contador].LadoB.CoordenadaFinale_J := 180 - AlgoloAlfa_gradi + Supporto^.OFSDE_J180;
+				ELSIF  CalculoEstacionPickinPiezasDiferentes AND Supporto^.Tipologia = CAVALLETTO  THEN 	
+					CASE TipoRisultato OF
+						1:
+							CASE LadoRegistarFor OF
+								0:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YInternoLastra_A_B^[NuPieza_A] + Supporto^.OFSDE_Y0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZInternoLastra_A_B^[NuPieza_A] + Supporto^.OFSDE_Z0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+								180:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := -YInternoLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Y180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZInternoLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Z180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := 180 - AlgoloAlfa_gradi + Supporto^.OFSDE_J180;
+							END_CASE
+						
+						
+						2:
+							CASE LadoRegistarFor OF
+								0:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YCentroLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Y0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZCentroLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Z0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+								180:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := -YCentroLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Y180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZCentroLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Z180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := 180 - AlgoloAlfa_gradi + Supporto^.OFSDE_J180;
+							END_CASE
+						3:
+							CASE LadoRegistarFor OF
+								0:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YEsternoLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Y0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZEsternoLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Z0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+								180:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := -YEsternoLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Y180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZEsternoLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Z180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := 180 - AlgoloAlfa_gradi + Supporto^.OFSDE_J180;
+							END_CASE
+						4:
+							CASE LadoRegistarFor OF
+								0:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Y := YCoordinataAppoggioLastra_A_B^[NuPieza_A] + Supporto^.OFSDE_Y0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_Z := ZEsternoLastra_A_B^[NuPieza_A] + Supporto^.OFSDE_Z0;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_A].LadoA.CoordenadaFinale_J := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+								180:
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Y := -YCoordinataAppoggioLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Y180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_Z := ZEsternoLastra_A_B^[NuPieza_B] + Supporto^.OFSDE_Z180;
+									CoorFinaleLado_Pri0_Des180^[NuPieza_B].LadoB.CoordenadaFinale_J := 180 - AlgoloAlfa_gradi + Supporto^.OFSDE_J180;
+							END_CASE
+						
+						
+						
+						
+						
+					END_CASE
+				
+				END_IF
+				
+				
+				
+				
+				
+				
+			END_FOR
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+{endregion}
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="Fb_CalculoCoordenadasFinalesFormacion">
+      <LineId Id="40" Count="0" />
+      <LineId Id="281" Count="0" />
+      <LineId Id="274" Count="0" />
+      <LineId Id="276" Count="1" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="163" Count="1" />
+      <LineId Id="83" Count="1" />
+      <LineId Id="218" Count="0" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="124" Count="10" />
+      <LineId Id="122" Count="1" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="219" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="136" Count="9" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="102" Count="1" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="167" Count="2" />
+      <LineId Id="174" Count="1" />
+      <LineId Id="207" Count="2" />
+      <LineId Id="176" Count="1" />
+      <LineId Id="206" Count="0" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="213" Count="3" />
+      <LineId Id="212" Count="0" />
+      <LineId Id="210" Count="0" />
+      <LineId Id="178" Count="0" />
+      <LineId Id="232" Count="11" />
+      <LineId Id="231" Count="0" />
+      <LineId Id="244" Count="12" />
+      <LineId Id="220" Count="0" />
+      <LineId Id="257" Count="12" />
+      <LineId Id="221" Count="1" />
+      <LineId Id="224" Count="0" />
+      <LineId Id="173" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="282" Count="1" />
+      <LineId Id="286" Count="0" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="284" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="300" Count="1" />
+      <LineId Id="312" Count="0" />
+      <LineId Id="379" Count="0" />
+      <LineId Id="326" Count="1" />
+      <LineId Id="340" Count="0" />
+      <LineId Id="359" Count="3" />
+      <LineId Id="357" Count="0" />
+      <LineId Id="376" Count="0" />
+      <LineId Id="356" Count="0" />
+      <LineId Id="331" Count="1" />
+      <LineId Id="343" Count="0" />
+      <LineId Id="363" Count="3" />
+      <LineId Id="335" Count="1" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="368" Count="3" />
+      <LineId Id="337" Count="1" />
+      <LineId Id="333" Count="0" />
+      <LineId Id="372" Count="3" />
+      <LineId Id="334" Count="0" />
+      <LineId Id="315" Count="0" />
+      <LineId Id="378" Count="0" />
+      <LineId Id="377" Count="0" />
+      <LineId Id="387" Count="1" />
+      <LineId Id="390" Count="0" />
+      <LineId Id="401" Count="0" />
+      <LineId Id="404" Count="0" />
+      <LineId Id="422" Count="1" />
+      <LineId Id="425" Count="0" />
+      <LineId Id="406" Count="1" />
+      <LineId Id="424" Count="0" />
+      <LineId Id="426" Count="0" />
+      <LineId Id="405" Count="0" />
+      <LineId Id="402" Count="1" />
+      <LineId Id="397" Count="0" />
+      <LineId Id="409" Count="1" />
+      <LineId Id="427" Count="0" />
+      <LineId Id="429" Count="0" />
+      <LineId Id="428" Count="0" />
+      <LineId Id="411" Count="1" />
+      <LineId Id="430" Count="1" />
+      <LineId Id="408" Count="0" />
+      <LineId Id="398" Count="0" />
+      <LineId Id="414" Count="1" />
+      <LineId Id="432" Count="1" />
+      <LineId Id="435" Count="0" />
+      <LineId Id="416" Count="0" />
+      <LineId Id="436" Count="1" />
+      <LineId Id="417" Count="0" />
+      <LineId Id="413" Count="0" />
+      <LineId Id="399" Count="0" />
+      <LineId Id="418" Count="1" />
+      <LineId Id="439" Count="1" />
+      <LineId Id="438" Count="0" />
+      <LineId Id="420" Count="0" />
+      <LineId Id="441" Count="1" />
+      <LineId Id="421" Count="0" />
+      <LineId Id="400" Count="0" />
+      <LineId Id="392" Count="4" />
+      <LineId Id="391" Count="0" />
+      <LineId Id="389" Count="0" />
+      <LineId Id="380" Count="6" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="287" Count="12" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="49" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

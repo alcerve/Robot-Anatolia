@@ -5502,7 +5502,7 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 		TFCalcoloFormaturaWA[CalFor].Materiale[e_Tipo_Elemento_Da_Lavorare.QUADROTTA]	:= HMI_Forming_LastraDaDepositare;
 		TFCalcoloFormaturaWA[CalFor].Supporto											:= HMI_Forming_Supporto;	//Assegno la tipologia di supporto
 		
-		TFCalcoloFormaturaWA[CalFor].DimensionesPiezasLadoALadoB     := HMi_DimensionesPiezasWorkAreaDeposito ;
+		TFCalcoloFormaturaWA[CalFor].DimensionesPiezasDifEsPiking     := HMi_DimensionesPiezasWorkAreaDeposito ;
 		
 	
 		//CASE HMI_WorkAreaDataPicking[j].Typology OF //**Mod
