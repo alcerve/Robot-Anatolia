@@ -5520,7 +5520,12 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 		END_CASE
 			 
 		TFCalcoloFormaturaWA[CalFor].CalcolaFormatura := TRUE; 		//Lancio esecuzione dei calcoli
-		TFCalcoloFormaturaWA[CalFor].CalculoEstacionPickinPiezasDiferentes := TRUE ;	  
+				  
+			IF HabilitapikingPruevas THEN 				
+				TFCalcoloFormaturaWA[CalFor].CalculoEstacionPickinPiezasDiferentes := TRUE ;
+	  		ELSE
+				TFCalcoloFormaturaWA[CalFor].CalculoEstacionPickinPiezasDiferentes := FALSE ;		  
+			END_IF
 		MEMSET(ADR(HMI_Forming_FormaturaCalcolata),0,SIZEOF(HMI_Forming_FormaturaCalcolata));	//Pulisco la memoria di destinazione
 		HMI_Forming_Attivazione[i] := FALSE;
 		TFCalcoloFormaturaWA[CalFor].PulisciMemoria := FALSE;
@@ -8857,7 +8862,9 @@ END_IF
       <LineId Id="6669" Count="0" />
       <LineId Id="6668" Count="0" />
       <LineId Id="6365" Count="10" />
+      <LineId Id="6694" Count="1" />
       <LineId Id="6465" Count="0" />
+      <LineId Id="6696" Count="2" />
       <LineId Id="6376" Count="1" />
       <LineId Id="6360" Count="0" />
       <LineId Id="6378" Count="0" />

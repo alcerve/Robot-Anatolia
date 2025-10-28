@@ -444,6 +444,9 @@ VAR_GLOBAL PERSISTENT
 	FormacionPikingCalculada							: BOOL ;
 END_VAR
 
-]]></Declaration>
+
+VAR_GLOBAL RETAIN
+	HabilitapikingPruevas: BOOL;
+END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>
