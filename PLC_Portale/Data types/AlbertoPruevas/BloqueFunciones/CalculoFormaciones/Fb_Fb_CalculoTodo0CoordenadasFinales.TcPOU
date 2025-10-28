@@ -5,7 +5,7 @@
 VAR_INPUT
 	CalculoEstacionPickinPiezasDiferentes		: BOOL;
 	numeroLastre_int			:UINT;
-	Calcular  					:UINT ;
+	TipoCalForCavallete  					:UINT ;
 	TipoRisultato				:UINT;
 	AlgoloAlfa_gradi			:LREAL;
 	
@@ -49,51 +49,59 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[FOR Contador:=1 TO numeroLastre_int BY 1 DO
-				
-	XFinaleLado_0Grados^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X0;
+      <ST><![CDATA[
+IF TipoCalForCavallete = 3 THEN 
 	
-		IF  NOT CalculoEstacionPickinPiezasDiferentes	THEN	
-			CASE TipoRisultato OF
-				1:	
-					YFinaleLado_0Grados^[Contador] := YInternoLastra^[Contador] + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZInternoLastra^[Contador] + Supporto^.OFSDE_Z0;
-					
-				2:	
-					YFinaleLado_0Grados^[Contador] := YCentroLastra^[Contador] + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZCentroLastra^[Contador] + Supporto^.OFSDE_Z0;
-				3:	
-					YFinaleLado_0Grados^[Contador] := YEsternoLastra^[Contador] + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
-				4:	
-					YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra^[Contador] + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
-			END_CASE
-		ELSIF CalculoEstacionPickinPiezasDiferentes	THEN
-			CASE TipoRisultato OF
-				1:	
-					YFinaleLado_0Grados^[Contador] := YInternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZInternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;	
-					
-				2:	
-					
-					YFinaleLado_0Grados^[Contador] := YCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
-				3:	
-					YFinaleLado_0Grados^[Contador] := YEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
-				4:	
-					YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
-					ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
-			END_CASE
-		END_IF
-	
-	JFinaleLado_0Grados^[Contador] := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
-END_FOR]]></ST>
+		FOR Contador:=1 TO numeroLastre_int BY 1 DO
+						
+			XFinaleLado_0Grados^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X0;
+			
+				IF  NOT CalculoEstacionPickinPiezasDiferentes	THEN	
+					CASE TipoRisultato OF
+						1:	
+							YFinaleLado_0Grados^[Contador] := YInternoLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZInternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+							
+						2:	
+							YFinaleLado_0Grados^[Contador] := YCentroLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZCentroLastra^[Contador] + Supporto^.OFSDE_Z0;
+						3:	
+							YFinaleLado_0Grados^[Contador] := YEsternoLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+						4:	
+							YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+					END_CASE
+				ELSIF CalculoEstacionPickinPiezasDiferentes	THEN
+					CASE TipoRisultato OF
+						1:	
+							YFinaleLado_0Grados^[Contador] := YInternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZInternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;	
+							
+						2:	
+							
+							YFinaleLado_0Grados^[Contador] := YCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+						3:	
+							YFinaleLado_0Grados^[Contador] := YEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+						4:	
+							YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+					END_CASE
+				END_IF
+			
+			JFinaleLado_0Grados^[Contador] := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+		END_FOR
+END_IF
+]]></ST>
     </Implementation>
     <LineIds Name="Fb_Fb_CalculoTodo0CoordenadasFinales">
+      <LineId Id="184" Count="2" />
       <LineId Id="52" Count="39" />
       <LineId Id="9" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="190" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

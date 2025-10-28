@@ -1713,7 +1713,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			WorkAreaState^[Mission^.PPick].Supporto.YDim /2 + Dimensioni_Pinza.Spessore(*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																			
 																			IngombroDestinazioneY_Pos - *) 
-																			+ OffsetSicurezza.Y.Avuoto + INGOMBRO_RISCONTRO_FRAME)  ;	
+																			(*+ OffsetSicurezza.Y.Avuoto *)+ INGOMBRO_RISCONTRO_FRAME)  ;	
 										NuIngombroYCalculado180G_Depuracion := 11;		
 										// Añadido 	4 -9-2025_________________________________________________
 										ELSIF  WorkAreaState^[Mission^.PPick].Supporto.Tipologia = BUNDLE  AND  PosRobot = 0    THEN 

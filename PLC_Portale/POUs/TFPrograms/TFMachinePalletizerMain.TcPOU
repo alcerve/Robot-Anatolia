@@ -86,6 +86,7 @@ VAR
 	LadoRegistar: UINT;
 	CooCavallete: INT;
 	DD: UINT;
+	HolaCabron :INT ;
 END_VAR
 
 
@@ -4642,9 +4643,9 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 					MEMSET(destAddr := ADR(TFFormacionCavalleteCalculada),fillByte := 0 , n := SIZEOF(TFFormacionCavalleteCalculada));
 					MEMSET(destAddr := ADR(TFCalcoloFormaturaWA),fillByte := 0 , n := SIZEOF(TFCalcoloFormaturaWA));
 					MEMSET(destAddr := ADR(HMI_Forming_FormaturaAttivataWa),fillByte := 0 , n := SIZEOF(HMI_Forming_FormaturaAttivataWa));
-					IF Prueva THEN 
+				
 							MEMSET(destAddr := ADR(HMi_DimensionesPiezasWorkAreaDeposito),fillByte := 0 , n := SIZEOF(HMi_DimensionesPiezasWorkAreaDeposito));			  
-					END_IF
+				
 				
 					
 					FormacionesCalculadas := FALSE ;
@@ -5258,7 +5259,8 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 								WorkAreaState[NumPostazioneDeposito].Supporto.TipoTrabajoLado_Cavallete 					:= HMI_WorkAreaDataPicking[NumPostazioneDeposito].TipoTrabajoLado_Cavallete ; 
 								//WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO (*- ActualPickingListFromHMI[IdxLista].SupportPianoFerro.YDim/2*);
 								WorkAreaOffset[NumPostazioneDeposito].Y 								:= OFFSET_POSTAZIONE_LEGNO + WorkAreaState[NumPostazioneDeposito].Supporto.YDim/2;	
-								
+								CoordenadaPasillo0_Y := WorkArea[NumPostazioneDeposito].Y +  WorkAreaOffset[NumPostazioneDeposito].Y  - Dimensioni_Pinza.Spessore - INGOMBRO_RISCONTRO_BUNDLE - WorkAreaState[NumPostazioneDeposito].Supporto.YDim /2 ;
+								CoordenadaPasillo180_Y := WorkArea[NumPostazioneDeposito].Y + WorkAreaState[NumPostazioneDeposito].Supporto.YDim /2 + WorkAreaOffset[NumPostazioneDeposito].Y  + Dimensioni_Pinza.Spessore + INGOMBRO_RISCONTRO_FRAME  ;	
 								WorkAreaProductionList[NumPostazioneDeposito].Support 				:= WorkAreaState[NumPostazioneDeposito].Supporto; 
 								
 								FOR j:= Iforstart TO Iforend DO
@@ -5412,11 +5414,11 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 			HMI_Formatura.HMI_Forming_Supporto.Tipologia		:= WorkAreaState[CalFor].Supporto.Tipologia;// RequestPickingListFromHMI[1].Support.Tipologia;		
 			CASE HMI_WorkAreaDataPicking[NumPostazioneDeposito].Typology OF 
 				A_FRAME_VERT:
-							   
+					HMI_Formatura.HMI_Forming_Supporto.TipoTrabajoLado_Cavallete :=	WorkAreaState[CalFor].Supporto.TipoTrabajoLado_Cavallete ;	   
 					HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio 		:= 1;                      
 					HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta		:= 15;              
 					HMI_Formatura.HMI_Forming_Supporto.ZDim_Ext1        := HMI_Formatura.HMI_Forming_Supporto.ZDim + HMI_Formatura.HMI_Forming_Supporto.AltezzaDenteRitenuta;		  
-					BUNDLE_VERT:
+				BUNDLE_VERT:
 					HMI_Formatura.HMI_Forming_Supporto.YDim				:= WorkAreaState[CalFor].Supporto.YDim * 2;
 					HMI_Formatura.HMI_Forming_Supporto.DimVertice 		:= WorkAreaState[CalFor].Supporto.DimVertice *2;	
 					HMI_Formatura.HMI_Forming_Supporto.TipoPianoAppoggio := 1;                      
@@ -5518,10 +5520,10 @@ IF Picking.Cmd_CalcolaLista[IdxLista] AND HMI_Forming_Attivazione[IdxLista] AND 
 		END_CASE
 			 
 		TFCalcoloFormaturaWA[CalFor].CalcolaFormatura := TRUE; 		//Lancio esecuzione dei calcoli
-			  
+		TFCalcoloFormaturaWA[CalFor].CalculoEstacionPickinPiezasDiferentes := TRUE ;	  
 		MEMSET(ADR(HMI_Forming_FormaturaCalcolata),0,SIZEOF(HMI_Forming_FormaturaCalcolata));	//Pulisco la memoria di destinazione
 		HMI_Forming_Attivazione[i] := FALSE;
-		TFCalcoloFormaturaDaLista.PulisciMemoria := FALSE;
+		TFCalcoloFormaturaWA[CalFor].PulisciMemoria := FALSE;
 		TFCalcoloFormaturaWA[CalFor]();
   
 	 END_IF
@@ -8760,7 +8762,9 @@ END_IF
       <LineId Id="6558" Count="0" />
       <LineId Id="5731" Count="9" />
       <LineId Id="6681" Count="0" />
-      <LineId Id="5741" Count="11" />
+      <LineId Id="5741" Count="2" />
+      <LineId Id="6693" Count="0" />
+      <LineId Id="5744" Count="8" />
       <LineId Id="5755" Count="0" />
       <LineId Id="5757" Count="0" />
       <LineId Id="6587" Count="2" />
