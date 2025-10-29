@@ -360,9 +360,9 @@ FOR In_PosRobot := 1 TO MAXAREAPRESENT DO
 END_FOR 
 
 IF RobotCentroPosX THEN 
-	PosicionJDestino := WorkArea^[PosRobot].X ;
+	EjexEnPosicion  := WorkArea^[PosRobot].X ;
 	ELSE
-	PosicionJDestino := 0;	
+	EjexEnPosicion := 0;	
 	
 END_IF
 

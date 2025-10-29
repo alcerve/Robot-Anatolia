@@ -1701,7 +1701,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																			MAX(QuotaFuoriIngombro_Y_Calcolata,
 																			QuotaCentroPostazione  + 					(* Quota Y Postazione *)	
 																			Soporte
-																			+ OffsetSicurezza.Y.Avuoto + Dimensioni_Pinza.Spessore)  ;
+																			+ MAX( OffsetSicurezza.Y.Avuoto , Dimensioni_Pinza.Spessore))  ;
 										NuIngombroYCalculado180G_Depuracion := 10;		   			   
 		   								// Añadido 	2 -9-2025_________________________________________________
 										ELSIF (( WorkAreaState^[Mission^.PPick].Supporto.Tipologia = CAVALLETTO  AND NuPosGuiroPiking = PosRobot) OR ( PosRobot <> 0 AND WorkAreaState^[PosRobot].Supporto.Tipologia <> CAVALLETTO))  AND PosicionJActual = 90     THEN 
@@ -1756,7 +1756,7 @@ CASE VERSO_PALLETTIZZATORE OF
 																	QuotaCentroPostazione + 						(* Quota Y Postazione *)																									
 																	WorkAreaState^[iwa].Supporto.YDim /2 (*-	        (* Dimensione/2 del Pallet/Cassa/Cavallina *)
 																	IngombroDestinazioneY_Pos - *) 
-																	+ OffsetSicurezza.Y.Avuoto + INGOMBRO_RISCONTRO_FRAME )  ;	
+																	+ max ( Dimensioni_Pinza.Spessore ,  OffsetSicurezza.Y.Avuoto )+ INGOMBRO_RISCONTRO_FRAME )  ;	
 										NuIngombroYCalculado180G_Depuracion := 15;							
 										END_IF 
 					  

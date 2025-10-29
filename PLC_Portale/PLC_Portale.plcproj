@@ -21,6 +21,7 @@
     <Folder Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones" />
     <Folder Include="Data types\AlbertoPruevas\Estructuras" />
     <Folder Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete" />
+    <Folder Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\EstructuraCaballetePiking" />
     <Folder Include="Data types\AlbertoPruevas\Funciones" />
     <Folder Include="Data types\AlbertoPruevas\BloqueFunciones" />
     <Folder Include="Data types\AlbertoPruevas\Enumeraciones" />
@@ -115,6 +116,12 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Enumeraciones\E_Ul_RecogidaCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\EstructuraCaballetePiking\ES_DatosPosCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\EstructuraCaballetePiking\Es_PiezasCaballetePiking.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_CoordenadasCaballeteLadoA.TcDUT">

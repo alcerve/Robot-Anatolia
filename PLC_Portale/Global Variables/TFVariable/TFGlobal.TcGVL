@@ -265,6 +265,7 @@ VAR_GLOBAL
 	Nu_Sensores_Leyendo: BYTE;
 	// Habilitacion Giro coger con fc
 	Habilito_Pos_j_Fc: BOOL;
+	EjexEnPosicion: LREAL;
 END_VAR
 
 VAR_GLOBAL PERSISTENT
@@ -442,11 +443,10 @@ VAR_GLOBAL PERSISTENT
 	
 	FormacionesCalculadas								: BOOL;
 	FormacionPikingCalculada							: BOOL ;
+	HabilitapikingPruevas								: BOOL;
 END_VAR
 
 
-VAR_GLOBAL RETAIN
-	HabilitapikingPruevas: BOOL;
-END_VAR]]></Declaration>
+]]></Declaration>
   </GVL>
 </TcPlcObject>
