@@ -1968,6 +1968,13 @@ END_IF
 UltimaPostazioneInPrelievo := Mission^.PPick;
 ppickOld := Mission^.PPick;
 
+IF HabilitacionFormacionNueva THEN
+	FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata] := FormaturaWa[Mission^.PPick];
+	FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata] := FormaturaWa[Mission^.PPick];
+	;
+END_IF
+
+
 //Z prelievo a seconda della tipologia 
 IF WorkareaState^[Mission^.PPick].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //SE PRELIEVO SU BUNDLE O CASSA
 	IF LatoPrelievo = 180 THEN
@@ -2146,7 +2153,7 @@ IF LatoPrelievo = 180 THEN
 	
 	IF HMI_OffsetDepositoLastra.J180 = 0 OR  HMI_OffsetDepositoLastra.J180 < 0 THEN 
 		Mission^.JPick := 180 - 2;
-	ELSIF HMI_OffsetDepositoLastra.J180 <= 4 AND   HMI_OffsetDepositoLastra.J180 > 0 THEN 
+	ELSIF HMI_OffsetDepositoLastra.J180 <= 5 AND   HMI_OffsetDepositoLastra.J180 > 0 THEN 
 		Mission^.JPick := 180 - HMI_OffsetDepositoLastra.J180;
 	ELSE 
 		Mission^.JPick := 180 - 2;	
@@ -2169,13 +2176,13 @@ IF LatoPrelievo = 180 THEN
 		Y_PuntoPrelievo180 := Mission^.YPick ;
 			Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		 IF Mission^.YDim  < 1300 THEN
-			Mission^.YPick 				:= Mission^.YPick - (80  ) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
-			Mission^.ZPick				:= Mission^.ZPick + (15 +25) ;
+			Mission^.YPick 				:= Mission^.YPick - (10  ) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+			Mission^.ZPick				:= Mission^.ZPick + (5 +25) ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 			ELSE
 				
-			Mission^.YPick 				:= Mission^.YPick  - (45) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
- 			Mission^.ZPick				:= Mission^.ZPick + 15 ;
+			Mission^.YPick 				:= Mission^.YPick (* - (45)*) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+ 			Mission^.ZPick				:= Mission^.ZPick ;//+ 15 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		 END_IF
 		
@@ -2185,12 +2192,12 @@ IF LatoPrelievo = 180 THEN
 		Y_PuntoPrelievo180 := Mission^.YPick ;
 		Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		IF Mission^.YDim  < 1300 THEN
-				Mission^.YPick 				:= Mission^.YPick - (Dimensioni_Pinza.DimTraveVerticale -35) ;//(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
-				Mission^.ZPick				:= Mission^.ZPick + (25 +20) ;
+				Mission^.YPick 				:= Mission^.YPick - 10 ; //(Dimensioni_Pinza.DimTraveVerticale -35) ;//(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+				Mission^.ZPick				:= Mission^.ZPick + (0) ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			ELSE
-				Mission^.YPick 				:= Mission^.YPick - 60 ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
-				Mission^.ZPick				:= Mission^.ZPick + 28 ;
+				Mission^.YPick 				:= Mission^.YPick -10(* - 60 *); //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
+				Mission^.ZPick				:= Mission^.ZPick + 30 ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			
 		END_IF
@@ -2200,7 +2207,7 @@ IF LatoPrelievo = 180 THEN
 
 ELSIF LatoPrelievo = 0 THEN
 	//Mission^.JPick := 3;
-	IF HMI_OffsetDepositoLastra.J0 > 4 THEN 
+	IF HMI_OffsetDepositoLastra.J0 > 5 THEN 
 		Mission^.JPick := 4;
 	ELSIF HMI_OffsetDepositoLastra.J0 <> 0 THEN 
 		Mission^.JPick := HMI_OffsetDepositoLastra.J0;	
@@ -2215,7 +2222,7 @@ ELSIF LatoPrelievo = 0 THEN
 			Mission^.ZPick				:= Mission^.ZPick + (20) ; // pieza pequeña
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		ELSE
-			Mission^.YPick 				:= Mission^.YPick  + 25; // + 50 (*+ 50 *);
+			Mission^.YPick 				:= Mission^.YPick  + 100; // + 50 (*+ 50 *);
 			Mission^.ZPick				:= Mission^.ZPick + 12 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;	
 	END_IF
@@ -2339,6 +2346,11 @@ TFCalcoliIngombroPinza(Mission := Mission,
 						ScostamentoVerticalePuntoCentrale := ADR(ScostamentoVerticalePuntoCentrale));
 
 ScostamentoVerticalePuntoCentrale := ABS(Dimensioni_Pinza.Spessore * COS(deg_to_rad(-90+AngoloDepositoLastra))-Dimensioni_Pinza.Spessore);		
+IF HabilitacionFormacionNueva THEN
+	FormaturaBundleRT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata] := FormaturaWa[Mission^.PPlace];
+	FormaturaAFRAMERT[WorkAreaProductionList^[Mission^.PPlace].NumeroListaAssociata] := FormaturaWa[Mission^.PPlace];
+	;
+END_IF
 
 //Z prelievo a seconda della tipologia 
 IF WorkareaState^[Mission^.PPlace].Supporto.Tipologia = e_Tipo_Pallet.BUNDLE THEN //Se ho in DEPOSITO il supporto di tipo BUNDLE
@@ -3039,6 +3051,10 @@ END_IF	]]></ST>
       <LineId Id="1245" Count="3" />
       <LineId Id="1235" Count="0" />
       <LineId Id="843" Count="3" />
+      <LineId Id="1924" Count="1" />
+      <LineId Id="1929" Count="1" />
+      <LineId Id="1927" Count="1" />
+      <LineId Id="1926" Count="0" />
       <LineId Id="1339" Count="0" />
       <LineId Id="848" Count="0" />
       <LineId Id="1635" Count="0" />
@@ -3151,7 +3167,7 @@ END_IF	]]></ST>
       <LineId Id="1847" Count="0" />
       <LineId Id="1837" Count="0" />
       <LineId Id="1831" Count="0" />
-      <LineId Id="1833" Count="0" />
+      <LineId Id="1936" Count="0" />
       <LineId Id="1846" Count="0" />
       <LineId Id="1835" Count="0" />
       <LineId Id="1834" Count="0" />
@@ -3210,6 +3226,7 @@ END_IF	]]></ST>
       <LineId Id="943" Count="2" />
       <LineId Id="1691" Count="0" />
       <LineId Id="946" Count="27" />
+      <LineId Id="1931" Count="4" />
       <LineId Id="1520" Count="0" />
       <LineId Id="1528" Count="0" />
       <LineId Id="1673" Count="0" />

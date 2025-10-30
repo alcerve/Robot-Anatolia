@@ -1414,10 +1414,10 @@ External Setpoint Generation:
 			<OtherSettings AllowMotionCmdToSlave="true" PulseDistancePos="50"/>
 		</AxisPara>
 		<Encoder Name="Enc" EncType="19">
-			<EncPara ScaleFactorNumerator="27.64" ScaleFactorDenominator="65536" Offset="38938.6948199463" Inverse="true" MaxCount="#xffffffff">
+			<EncPara ScaleFactorNumerator="27.7398016228" ScaleFactorDenominator="65536" Offset="38938.6948199463" Inverse="true" MaxCount="#xffffffff">
 				<FilterTime TVelo="0" TAcc="0"/>
 				<SoftEndMinControl Enable="true" Range="445"/>
-				<SoftEndMaxControl Enable="true" Range="3120"/>
+				<SoftEndMaxControl Enable="true" Range="3300"/>
 				<Inc RefSearchInverse="true" RefSyncInverse="false"/>
 			</EncPara>
 			<Vars VarGrpType="1">

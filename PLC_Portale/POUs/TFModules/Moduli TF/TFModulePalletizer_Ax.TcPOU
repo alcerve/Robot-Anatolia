@@ -126,7 +126,7 @@ END_IF*)
 
 (* Tastatori Pinza *)
 //Px_Touch := IN.Px_Touch_1 AND IN.Px_Touch_2;
-Px_Touch := IN.Px_Touch_1 OR IN.Px_Touch_2;
+Px_Touch := IN.Px_Touch_1 OR IN.Px_Touch_2 OR In.Px_NuTouch;
 Px_TouchEmergency := IN.Px_TouchEmergency_1 AND IN.Px_TouchEmergency_2;
 
 Spaziotastatori(Sensor:= NOT Px_Touch,
@@ -1018,7 +1018,7 @@ CASE CmdExe.Code OF
 					Ax^.Parameter.BufferMode 	:= MC_Aborting;
 					Ax^.Command.MoveAbsolute    := TRUE;
 					
-					TFTimerSet(ADR(TempoFiltroTastatoriOFF),20,Px_Touch);
+					TFTimerSet(ADR(TempoFiltroTastatoriOFF),0,Px_Touch);
 										
 					IF Ax^.Status.MoveAbsoluteDone (*OR TFAsseInFinestra(Posizione_Attuale := Ax^.Status.ActPosition ,Posizione_Finale := AxisPar^.Quota_Destinazione ,FinestraDiControllo := 10 )*)  THEN
 						Ax^.Command.MoveAbsolute := FALSE;

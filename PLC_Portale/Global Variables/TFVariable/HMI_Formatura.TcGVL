@@ -11,6 +11,8 @@ VAR_GLOBAL
 	HMI_Forming_FormaturaCalcolata			: TFMachinePalletizer_FormingForSlab; //Formatura calcolata dal FB
 	HMI_Forming_ErroreCalcoli 				: UINT;//Errore calcoli formatura per sagnalazioni a operatore 
 	
+	HMI_Forming_ErroreCalcoliWa 			: ARRAY[1.. 12] OF UINT;//Errore calcoli formatura per sagnalazioni a operatore 
+	
 	HMI_Forming_IndiceFormaturaAttivata		: UINT; //Indica l'indice sul quale la formatura è stata attivata
 	HMI_Forming_CodiciAbilitatiFormatura	: ARRAY[1..MAXFORMING] OF TFCodiciPerFormatura;
 

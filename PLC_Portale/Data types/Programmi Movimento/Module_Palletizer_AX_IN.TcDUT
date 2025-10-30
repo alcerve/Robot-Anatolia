@@ -5,6 +5,7 @@
 STRUCT
 	BeltSafety : BOOL;
 	Px_Touch_1   : BOOL;
+	Px_NuTouch	:BOOL ;
 	Px_TouchEmergency_1	: BOOL;
 	Px_Touch_2   : BOOL;
 	Px_TouchEmergency_2	: BOOL;

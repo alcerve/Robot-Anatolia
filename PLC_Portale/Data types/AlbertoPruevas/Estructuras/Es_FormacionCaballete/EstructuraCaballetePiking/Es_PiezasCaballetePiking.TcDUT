@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="Es_PiezasCaballetePiking" Id="{00f92936-4f21-4ee3-8b95-6afeaa19d158}">
+    <Declaration><![CDATA[TYPE Es_PiezasCaballetePiking :
+STRUCT
+	EstadoPiking			: UINT ;
+	DatosPiezaPiking 		: ARRAY [1..MAXELEMENTLIST] OF ES_DatosPosCaballetePiking ;
+	
+	//DimensionesPiezasPiking	: ARRAY  [1..MAXELEMENTLIST] OF ES_dimensionPiezaLadoA_ladoB;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -941,7 +941,7 @@ CASE VERSO_PALLETTIZZATORE OF
 					END_IF
 					//Posizionamento lungo Y lato 180°
 					IF Apprendimento.Y.Lato180.Stato = APPRENDIMENTO_ESEGUITO AND Temp_Bool[20] THEN
-						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata;
+						Quota_DestY := Apprendimento.Y.Lato180.QuotaRilevata - 20;
 					END_IF
 					//Posizionamento lungo Z
 					IF Apprendimento.Z.Lato180.Stato = APPRENDIMENTO_ESEGUITO THEN

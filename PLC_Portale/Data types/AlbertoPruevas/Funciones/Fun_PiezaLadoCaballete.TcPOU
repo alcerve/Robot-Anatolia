@@ -3,7 +3,8 @@
   <POU Name="Fun_PiezaLadoCaballete" Id="{9dba98a8-2d97-436f-a126-f7400ae2c80d}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION Fun_PiezaLadoCaballete : Uint
 VAR_INPUT
-	Nu_PiezaGlobal 			: uint ;
+	Nu_PiezaGlobal 			: UINT ;
+	Grados 					: pointer TO UINT ;
 END_VAR
 VAR_OUTPUT
 	Nu_pieza_LadoA: UINT;
@@ -15,23 +16,36 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[CASE Nu_PiezaGlobal OF
+      <ST><![CDATA[
+
+//Dia 23-10-2025
+CASE Nu_PiezaGlobal OF
 	1:
 		Nu_pieza_LadoA :=  Nu_PiezaGlobal ;
+		Grados^ := 0;
 	2..100 :
 		IF Nu_PiezaGlobal > 1 THEN 
 			RestoDiv := Nu_PiezaGlobal MOD 2 ;
 			CASE RestoDiv OF
 				0:
 					Nu_pieza_LadoB := Nu_PiezaGlobal / 2 ;
+					Grados^ := 180;
 				1:
-					Nu_pieza_LadoA := ((Nu_PiezaGlobal-1) / 2)+1 ;	
+					Nu_pieza_LadoA := ((Nu_PiezaGlobal-1) / 2)+1 ;
+					Grados^ := 0;	
 			END_CASE
 		END_IF
 END_CASE]]></ST>
     </Implementation>
     <LineIds Name="Fun_PiezaLadoCaballete">
-      <LineId Id="38" Count="12" />
+      <LineId Id="79" Count="2" />
+      <LineId Id="38" Count="2" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="41" Count="5" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="47" Count="1" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="49" Count="1" />
       <LineId Id="16" Count="0" />
     </LineIds>
   </POU>
