@@ -52,6 +52,9 @@ IF NOT PH_Presenza AND NOT PHPostazioniDOWNTrig[WorkAreaNumber] THEN
 	IF WorkAreaState^[WorkAreaNumber].State >= WORKAREA_STATE_OCCUPIED_WORKING THEN
 		TFClearWorkAreaArray(WorkArea,WorkAreaState,WorkAreaNumber);
 	END_IF
+	//Modificacion borrar datos piking Al sacar el soporte
+	MEMSET(destAddr := ADR(HMi_DimensionesPiezasWorkAreaDeposito),fillByte := 0 , n := SIZEOF(HMi_DimensionesPiezasWorkAreaDeposito));
+	
 ELSIF PH_Presenza AND PHPostazioniDOWNTrig[WorkAreaNumber] THEN
 	PHPostazioniDOWNTrig[WorkAreaNumber] := FALSE;
 END_IF
@@ -212,6 +215,8 @@ END_IF]]></ST>
       <LineId Id="173" Count="0" />
       <LineId Id="142" Count="0" />
       <LineId Id="174" Count="0" />
+      <LineId Id="639" Count="0" />
+      <LineId Id="637" Count="1" />
       <LineId Id="170" Count="1" />
       <LineId Id="143" Count="0" />
       <LineId Id="158" Count="0" />

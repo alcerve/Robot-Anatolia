@@ -434,6 +434,68 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 				END_CASE;
 			END_FOR;
 			
+			FOR counter1 :=1 TO numeroLastre_int DO
+				Fun_PiezaLadoCaballete(Nu_PiezaGlobal:= counter1 , Grados:= ADR(LadoRegistarFor) , 
+														Nu_pieza_LadoA=>NuPieza_A , Nu_pieza_LadoB=> NuPieza_B  );
+				IF CalculoEstacionPickinPiezasDiferentes THEN
+					IF CalculoEstacionPickinPiezasDiferentes AND Supporto.Tipologia = CAVALLETTO THEN 
+					
+					CASE Supporto.TipoTrabajoLado_Cavallete OF
+					0:	
+						CASE LadoRegistarFor OF
+							0 :
+								IF (Supporto.HMAX +30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoA.YDim) OR (Supporto.XDim+30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoA.XDim) THEN
+								Errore := ErrDimensionCaballete;
+								RETURN;
+							END_IF	
+						  180 :
+						  		IF (Supporto.HMAX +30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoB.YDim) OR (Supporto.XDim+30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoB.XDim) THEN
+								Errore := ErrDimensionCaballete;
+								RETURN;
+						END_IF
+								
+						END_CASE
+							
+					
+						
+					1:	
+						IF (Supporto.HMAX +30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoA.YDim) OR (Supporto.XDim+30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoA.XDim) THEN
+								Errore := ErrDimensionCaballete;
+								RETURN;
+						END_IF
+					2:	
+						IF (Supporto.HMAX +30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoB.YDim) OR (Supporto.XDim+30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoB.XDim) THEN
+								Errore := ErrDimensionCaballete;
+								RETURN;
+						END_IF
+					END_CASE
+					ELSIF CalculoEstacionPickinPiezasDiferentes AND Supporto.Tipologia <> CAVALLETTO THEN
+						IF (Supporto.HMAX +30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoB.YDim) OR (Supporto.XDim+30 <= DimensionesPiezasDifEsPiking[counter1].DimPieza_LadoB.XDim) THEN
+								Errore := ErrDimensionesBundel;
+								RETURN;
+						END_IF
+					END_IF
+					
+				ELSE 
+					IF  Supporto.Tipologia = CAVALLETTO THEN 
+						IF (Supporto.HMAX + 30 <= Materiale[TipoElementoDep[counter1]].YDim) OR (Supporto.XDim+30 <= Materiale[TipoElementoDep[counter1]].XDim) THEN
+							Errore := ErrDimensionCaballete;
+						RETURN;
+						END_IF
+					ELSIF Supporto.Tipologia <> CAVALLETTO  THEN
+						IF (Supporto.HMAX + 30 <= Materiale[TipoElementoDep[counter1]].YDim) OR (Supporto.XDim+30 <= Materiale[TipoElementoDep[counter1]].XDim) THEN
+							Errore := ErrDimensionesBundel;
+						RETURN;
+						END_IF
+					END_IF 
+				END_IF
+			END_FOR
+			
+			
+			
+			
+			
+			
 			(* Controlli dati coerenti *)
 			FOR counter1:=1 TO MAXFORMINGSLAB DO
 				IF(Materiale[TipoElementoDep[counter1]].XDim <0) OR (Materiale[TipoElementoDep[counter1]].YDim <0) OR 
@@ -1632,7 +1694,44 @@ END_IF
       <LineId Id="11543" Count="1" />
       <LineId Id="8824" Count="3" />
       <LineId Id="11545" Count="1" />
-      <LineId Id="8828" Count="220" />
+      <LineId Id="8828" Count="126" />
+      <LineId Id="11558" Count="0" />
+      <LineId Id="11611" Count="1" />
+      <LineId Id="11559" Count="0" />
+      <LineId Id="11583" Count="1" />
+      <LineId Id="11579" Count="0" />
+      <LineId Id="11585" Count="0" />
+      <LineId Id="11622" Count="1" />
+      <LineId Id="11629" Count="2" />
+      <LineId Id="11624" Count="0" />
+      <LineId Id="11626" Count="0" />
+      <LineId Id="11633" Count="2" />
+      <LineId Id="11632" Count="0" />
+      <LineId Id="11627" Count="0" />
+      <LineId Id="11621" Count="0" />
+      <LineId Id="11619" Count="1" />
+      <LineId Id="11580" Count="0" />
+      <LineId Id="11589" Count="0" />
+      <LineId Id="11616" Count="2" />
+      <LineId Id="11581" Count="0" />
+      <LineId Id="11594" Count="0" />
+      <LineId Id="11613" Count="2" />
+      <LineId Id="11593" Count="0" />
+      <LineId Id="11582" Count="0" />
+      <LineId Id="11606" Count="0" />
+      <LineId Id="11608" Count="2" />
+      <LineId Id="11607" Count="0" />
+      <LineId Id="11563" Count="2" />
+      <LineId Id="11636" Count="1" />
+      <LineId Id="11604" Count="1" />
+      <LineId Id="11601" Count="0" />
+      <LineId Id="11639" Count="0" />
+      <LineId Id="11641" Count="2" />
+      <LineId Id="11602" Count="0" />
+      <LineId Id="11640" Count="0" />
+      <LineId Id="11571" Count="0" />
+      <LineId Id="11551" Count="6" />
+      <LineId Id="8955" Count="93" />
       <LineId Id="10891" Count="0" />
       <LineId Id="10893" Count="0" />
       <LineId Id="9049" Count="7" />
