@@ -5383,7 +5383,9 @@ IF MachinePalletizer_TF.IN.Mode.Man AND
 														HMi_DimensionesPiezasWorkAreaDeposito[ja].DimPieza_LadoA := RequestPickingListFromHMIWorkArea[j].SlabDimension ;
 														//########################################################################################################	
 													END_FOR		  
-													Numero_piezas_CaballeteEstacionPiking.HMI_NumeroPezziPresentiPostazione_A_Cavaleto := Numero_piezas_CaballeteEstacionPiking.HMI_NumeroPezziPresentiPostazione_A_Cavaleto + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare; 		  	  	  
+													Pr2 := pr2 + HMI_WorkAreaDataPicking[j].NumElementiDaLavorare; 
+													Fun_NumeroPiezasLadoCaballete(NuPieasTotales:= pr2 , PiezasLadoA:=ADR(Numero_piezas_CaballeteEstacionPiking.HMI_NumeroPezziPresentiPostazione_A_Cavaleto ) ,
+																							 PiezasLadoB:=ADR(Numero_piezas_CaballeteEstacionPiking.HMI_NumeroPezziPresentiPostazione_B_Cavaleto) );		  	  	  
 													;
 												2:
 													pr1 := Numero_piezas_CaballeteEstacionPiking.HMI_NumeroPezziPresentiPostazione_B_Cavaleto  ;
@@ -9002,6 +9004,7 @@ END_IF
       <LineId Id="6861" Count="1" />
       <LineId Id="6613" Count="4" />
       <LineId Id="6612" Count="0" />
+      <LineId Id="6865" Count="1" />
       <LineId Id="6583" Count="1" />
       <LineId Id="6863" Count="1" />
       <LineId Id="6619" Count="4" />

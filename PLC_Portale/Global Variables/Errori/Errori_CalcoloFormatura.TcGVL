@@ -25,6 +25,10 @@ VAR_GLOBAL
 	ErrNessunCodiciPresente				: UINT := 117; //Errore in fase di attivazione: se sto attivando una formatura che non ha nessn codice presente
 	ErrDimensionesBundel				: UINT := 118;
 	ErrDimensionCaballete				: UINT := 119 ;
+	
+	ErrDimensionCaballeteWa				: ARRAY [1..10] OF UINT  ;
+	
+	
 END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>
