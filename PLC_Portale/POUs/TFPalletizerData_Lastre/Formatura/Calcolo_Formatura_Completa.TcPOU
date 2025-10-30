@@ -294,9 +294,18 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 			END_IF
 			
 			FOR counter1 :=1 TO numeroLastre_int DO
-				IF (Supporto.YDim+30 <= Materiale[TipoElementoDep[counter1]].YDim) OR (Supporto.XDim+30 <= Materiale[TipoElementoDep[counter1]].XDim) THEN
-					Errore := ErrDimensioneCassa;
-				RETURN;
+				IF CalculoEstacionPickinPiezasDiferentes THEN
+					IF (Supporto.YDim+30 <= DimensionesPiezasDifEsPiking[counter1].Dim_Horizontal.YDim) OR (Supporto.XDim+30 <= DimensionesPiezasDifEsPiking[counter1].Dim_Horizontal.XDim) THEN
+						Errore := ErrDimensioneCassa;
+					RETURN;
+					END_IF
+					
+				ELSE 
+					IF (Supporto.YDim+30 <= Materiale[TipoElementoDep[counter1]].YDim) OR (Supporto.XDim+30 <= Materiale[TipoElementoDep[counter1]].XDim) THEN
+						Errore := ErrDimensioneCassa;
+					RETURN;
+					END_IF
+				
 				END_IF
 			END_FOR
 			
@@ -676,26 +685,26 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 								CASE LadoRegistarFor OF
 									0: 
 										CI_A_B[NuPieza_A].Lado_A_0Grados := (Spessore_Lastra_Inclinata_Cumulato_A_B[NuPieza_A].Lado_A_0Grados * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
-										Yd3_A_B[NuPieza_A].Lado_A_0Grados := -CI[NuPieza_A] * SIN(AngoloAlfa_rad);
-										Zd3_A_B[NuPieza_A].Lado_A_0Grados :=  CI[NuPieza_A] * COS(AngoloAlfa_rad);
+										Yd3_A_B[NuPieza_A].Lado_A_0Grados := -CI_A_B[NuPieza_A].Lado_A_0Grados * SIN(AngoloAlfa_rad);
+										Zd3_A_B[NuPieza_A].Lado_A_0Grados :=  CI_A_B[NuPieza_A].Lado_A_0Grados * COS(AngoloAlfa_rad);
 								 180: 
 										CI_A_B[NuPieza_B].Lado_B_180Grados := (Spessore_Lastra_Inclinata_Cumulato_A_B[NuPieza_B].Lado_B_180Grados * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
-										Yd3_A_B[NuPieza_B].Lado_B_180Grados := -CI[NuPieza_B] * SIN(AngoloAlfa_rad);
-										Zd3_A_B[NuPieza_B].Lado_B_180Grados :=  CI[NuPieza_B] * COS(AngoloAlfa_rad);
+										Yd3_A_B[NuPieza_B].Lado_B_180Grados := -CI_A_B[NuPieza_B].Lado_B_180Grados * SIN(AngoloAlfa_rad);
+										Zd3_A_B[NuPieza_B].Lado_B_180Grados :=  CI_A_B[NuPieza_B].Lado_B_180Grados * COS(AngoloAlfa_rad);
 								END_CASE
 							1:
 								CI_A_B[counter1].Lado_A_0Grados := (Spessore_Lastra_Inclinata_Cumulato_A_B[counter1].Lado_A_0Grados * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
-								Yd3_A_B[counter1].Lado_A_0Grados := -CI[counter1] * SIN(AngoloAlfa_rad);
-								Zd3_A_B[counter1].Lado_A_0Grados :=  CI[counter1] * COS(AngoloAlfa_rad);
+								Yd3_A_B[counter1].Lado_A_0Grados := -CI_A_B[counter1].Lado_A_0Grados * SIN(AngoloAlfa_rad);
+								Zd3_A_B[counter1].Lado_A_0Grados :=  CI_A_B[counter1].Lado_A_0Grados * COS(AngoloAlfa_rad);
 							2:
 								CI_A_B[counter1].Lado_B_180Grados := (Spessore_Lastra_Inclinata_Cumulato_A_B[NuPieza_B].Lado_B_180Grados * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
-								Yd3_A_B[counter1].Lado_B_180Grados := -CI[counter1] * SIN(AngoloAlfa_rad);
-								Zd3_A_B[counter1].Lado_B_180Grados :=  CI[counter1] * COS(AngoloAlfa_rad);
+								Yd3_A_B[counter1].Lado_B_180Grados := -CI_A_B[counter1].Lado_B_180Grados * SIN(AngoloAlfa_rad);
+								Zd3_A_B[counter1].Lado_B_180Grados :=  CI_A_B[counter1].Lado_B_180Grados * COS(AngoloAlfa_rad);
 						END_CASE
 					ELSIF Supporto.Tipologia <> CAVALLETTO THEN 
-						CI[counter1] := (Spessore_Lastra_Inclinata_Cumulato[counter1] * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
-						Yd3[counter1] := -CI[counter1] * SIN(AngoloAlfa_rad);
-						Zd3[counter1] := CI[counter1] * COS(AngoloAlfa_rad);
+						CI_A_B[counter1].Lado_B_180Grados := (Spessore_Lastra_Inclinata_Cumulato[counter1] * SIN (AngoloBeta_rad) ) / SIN( rad90 + AngoloAlfa_rad - AngoloBeta_rad);
+						Yd3_A_B[counter1].Lado_B_180Grados := -CI_A_B[counter1].Lado_B_180Grados * SIN(AngoloAlfa_rad);
+						Zd3_A_B[counter1].Lado_B_180Grados := CI_A_B[counter1].Lado_B_180Grados * COS(AngoloAlfa_rad);
 					END_IF
 				END_FOR;
 			END_IF
@@ -763,10 +772,10 @@ IF CalcolaFormatura AND NOT CalcolaFormaturaDone AND MemoriaInizializzata THEN
 										ZInternoLastra_A_B[NuPieza_B].Lado_B_180Grados := ZCoordinataAppoggioLastra_A_B[NuPieza_B].Lado_B_180Grados + (DimensionesPiezasDifEsPiking[NuPieza_A].DimPieza_LadoB.YDim / 2) * COS (AngoloAlfa_rad); 	
 								END_CASE
 							1: 
-								YCoordinataAppoggioLastra_A_B[counter2].Lado_A_0Grados := (B/2) + Spessore_Lastra_Inclinata_Cumulato_A_B[counter2].Lado_B_180Grados + Yd3[counter2];
+								YCoordinataAppoggioLastra_A_B[counter2].Lado_A_0Grados := (B/2) + Spessore_Lastra_Inclinata_Cumulato_A_B[counter2].Lado_A_0Grados + Yd3[counter2];
 								YInternoLastra_A_B[counter2].Lado_A_0Grados := YCoordinataAppoggioLastra_A_B[counter2].Lado_A_0Grados - (DimensionesPiezasDifEsPiking[counter2].DimPieza_LadoA.YDim / 2) * SIN (AngoloAlfa_rad);
 								ZCoordinataAppoggioLastra_A_B[counter2].Lado_A_0Grados := Supporto.ZDim + Zd3_A_B[counter2].Lado_A_0Grados;
-								ZInternoLastra_A_B[counter2].Lado_A_0Grados := ZCoordinataAppoggioLastra_A_B[counter2].Lado_A_0Grados + (DimensionesPiezasDifEsPiking[counter2].Dim_Horizontal.YDim / 2) * COS (AngoloAlfa_rad); 
+								ZInternoLastra_A_B[counter2].Lado_A_0Grados := ZCoordinataAppoggioLastra_A_B[counter2].Lado_A_0Grados + (DimensionesPiezasDifEsPiking[counter2].DimPieza_LadoA.YDim / 2) * COS (AngoloAlfa_rad); 
 							2:
 								YCoordinataAppoggioLastra_A_B[counter2].Lado_B_180Grados := (B/2) + Spessore_Lastra_Inclinata_Cumulato_A_B[counter2].Lado_B_180Grados + Yd3[NuPieza_B];
 								YInternoLastra_A_B[counter2].Lado_B_180Grados := YCoordinataAppoggioLastra_A_B[counter2].Lado_B_180Grados - (DimensionesPiezasDifEsPiking[counter2].DimPieza_LadoB.YDim / 2) * SIN (AngoloAlfa_rad);
@@ -1616,7 +1625,14 @@ END_IF
       <LineId Id="9849" Count="1" />
       <LineId Id="8786" Count="0" />
       <LineId Id="9851" Count="0" />
-      <LineId Id="8787" Count="261" />
+      <LineId Id="8787" Count="36" />
+      <LineId Id="11542" Count="0" />
+      <LineId Id="11548" Count="2" />
+      <LineId Id="11547" Count="0" />
+      <LineId Id="11543" Count="1" />
+      <LineId Id="8824" Count="3" />
+      <LineId Id="11545" Count="1" />
+      <LineId Id="8828" Count="220" />
       <LineId Id="10891" Count="0" />
       <LineId Id="10893" Count="0" />
       <LineId Id="9049" Count="7" />

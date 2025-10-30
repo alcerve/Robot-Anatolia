@@ -2176,13 +2176,13 @@ IF LatoPrelievo = 180 THEN
 		Y_PuntoPrelievo180 := Mission^.YPick ;
 			Z_PuntoPrelievo180Bundle    := Mission^.ZPick ;
 		 IF Mission^.YDim  < 1300 THEN
-			Mission^.YPick 				:= Mission^.YPick - (80  ) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
-			Mission^.ZPick				:= Mission^.ZPick + (15 +25) ;
+			Mission^.YPick 				:= Mission^.YPick - (10  ) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
+			Mission^.ZPick				:= Mission^.ZPick + (5 +25) ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 			ELSE
 				
 			Mission^.YPick 				:= Mission^.YPick (* - (45)*) ; //(Dimensioni_Pinza.DimTraveVerticale /2) (*-80*);	// modificado = 200
- 			Mission^.ZPick				:= Mission^.ZPick + 15 ;
+ 			Mission^.ZPick				:= Mission^.ZPick ;//+ 15 ;
 			Mission^.ZPickApproach		:= Mission^.ZPick;
 		 END_IF
 		
@@ -2197,7 +2197,7 @@ IF LatoPrelievo = 180 THEN
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			ELSE
 				Mission^.YPick 				:= Mission^.YPick -10(* - 60 *); //(Dimensioni_Pinza.DimTraveVerticale /2) (*-70*)  ;	// modificado = 200
-				Mission^.ZPick				:= Mission^.ZPick + 20 ;
+				Mission^.ZPick				:= Mission^.ZPick + 30 ;
 				Mission^.ZPickApproach		:= Mission^.ZPick;		
 			
 		END_IF
