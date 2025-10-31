@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="Fb_Fb_CalculoTodo0CoordenadasFinales" Id="{072911b5-830b-4bf7-a42e-d87ae447cd6a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Fb_Fb_CalculoTodo0CoordenadasFinales
+VAR_INPUT
+	CalculoEstacionPickinPiezasDiferentes		: BOOL;
+	numeroLastre_int			:UINT;
+	TipoCalForCavallete  					:UINT ;
+	TipoRisultato				:UINT;
+	AlgoloAlfa_gradi			:LREAL;
+	
+	Supporto :POINTER TO  TFMachinePalletizer_Pallet;
+	
+	YCoordinataAppoggioLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Y del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
+	ZCoordinataAppoggioLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB/2] OF LREAL;		// Coordinata Z del punto di appoggio della lastra sulla base della cavallina  (CAVALLINA-INCLINATO)
+	
+	YCoordinataAppoggioLastra_A_B :POINTER TO  ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
+	ZCoordinataAppoggioLastra_A_B :POINTER TO  ARRAY [1..MAXFORMINGSLAB/2] OF ES_SpesoreLastra_A_B;
+	
+	XFinaleLado_0Grados :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto finale n-esima lastra/falda depositata
+	YFinaleLado_0Grados :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto finale n-esima lastra/falda depositata
+	ZFinaleLado_0Grados :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto finale n-esima lastra/falda depositata
+	JFinaleLado_0Grados :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata J punto finale n-esima lastra/falda depositata
+	
+	XInternoLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YInternoLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZInternoLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	XCentroLastra  :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	YCentroLastra  :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZCentroLastra  :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	XEsternoLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata X punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YEsternoLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Y punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZEsternoLastra :POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;		// Coordinata Z punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	
+	XInternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YInternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZInternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto interno n-esima lastra depositata  (CAVALLINA-CASSA)
+	XCentroLastra_A_B  :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	YCentroLastra_A_B  :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZCentroLastra_A_B  :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto centrale n-esima lastra depositata  (CAVALLINA-CASSA)
+	XEsternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata X punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	YEsternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Y punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+	ZEsternoLastra_A_B :POINTER TO ARRAY [1..MAXFORMINGSLAB] OF ES_SpesoreLastra_A_B;		// Coordinata Z punto esterno n-esima lastra depositata  (CAVALLINA-CASSA)
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	Contador: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+IF TipoCalForCavallete = 3 THEN 
+	
+		FOR Contador:=1 TO numeroLastre_int BY 1 DO
+						
+			XFinaleLado_0Grados^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X0;
+			
+				IF  NOT CalculoEstacionPickinPiezasDiferentes	THEN	
+					CASE TipoRisultato OF
+						1:	
+							YFinaleLado_0Grados^[Contador] := YInternoLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZInternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+							
+						2:	
+							YFinaleLado_0Grados^[Contador] := YCentroLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZCentroLastra^[Contador] + Supporto^.OFSDE_Z0;
+						3:	
+							YFinaleLado_0Grados^[Contador] := YEsternoLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+						4:	
+							YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra^[Contador] + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra^[Contador] + Supporto^.OFSDE_Z0;
+					END_CASE
+				ELSIF CalculoEstacionPickinPiezasDiferentes	THEN
+					CASE TipoRisultato OF
+						1:	
+							YFinaleLado_0Grados^[Contador] := YInternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZInternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;	
+							
+						2:	
+							
+							YFinaleLado_0Grados^[Contador] := YCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZCentroLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+						3:	
+							YFinaleLado_0Grados^[Contador] := YEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+						4:	
+							YFinaleLado_0Grados^[Contador] := YCoordinataAppoggioLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Y0;
+							ZFinaleLado_0Grados^[Contador] := ZEsternoLastra_A_B^[Contador].Lado_A_0Grados + Supporto^.OFSDE_Z0;
+					END_CASE
+				END_IF
+			
+			JFinaleLado_0Grados^[Contador] := AlgoloAlfa_gradi + Supporto^.OFSDE_J0;
+		END_FOR
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="Fb_Fb_CalculoTodo0CoordenadasFinales">
+      <LineId Id="184" Count="2" />
+      <LineId Id="52" Count="39" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="190" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

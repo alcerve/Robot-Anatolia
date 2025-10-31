@@ -5,6 +5,7 @@
 VAR_GLOBAL CONSTANT
 	Pos0TrasporteCavallete						: UINT := 0;		
 	Pos180TrasporteCavallete					: UINT := 180;	
+	
 	RIBALTINO_NOP								: INT := 0;
 	RIBALTINO_VERTICALE							: INT := 1;
 	RIBALTINO_ORRIZZONTALE						: INT := 2;
@@ -246,6 +247,8 @@ VAR_GLOBAL
 	PosicionJActual							: LREAL;
 	RobotWorkAreaCavallete 					: BOOL ;
 	RobotCentroPosX							: BOOL ;
+	CotaCentroPosRobot						:LREAL ;
+	
 	PosicionJDestino						: LREAL;
 	PosicionJOrigen							: LREAL;
 	EjeYPosFueraIngombro					: BOOL;
@@ -263,6 +266,9 @@ VAR_GLOBAL
 	Nu_Sensores_Leyendo: BYTE;
 	// Habilitacion Giro coger con fc
 	Habilito_Pos_j_Fc: BOOL;
+	EjexEnPosicion: LREAL;
+	Ok_sensores_Tastator_Fb: BOOL;
+	HabilitaEsPiezasAlInicio: BOOL;
 END_VAR
 
 VAR_GLOBAL PERSISTENT
@@ -423,8 +429,15 @@ VAR_GLOBAL PERSISTENT
 	NuEstacionesPiking									: UINT ;
 	NuEstacionPiking									: UINT ;
 	PosCavalleteOrdenPikin								: ARRAY [1..MAXAREA] OF e_Tipo_Pallet ;
+	
+	CoordenadaPasillo_Ppick0_Y							: LREAL ;
 	CoordenadaPasillo0_Y								: LREAL ;
+	CoordenadaPasillo0_Pplace_Y							: LREAL ;
+	
+	CoordenadaPasillo180_Ppick0_Y						: LREAL ;
 	CoordenadaPasillo180_Y								: LREAL ;
+	CoordenadaPasillo180_Pplace_Y						: LREAL ;
+	
 	CoordenadaPosGiroPieza_X							: LREAL ;
 	NuPosGuiroPiking									: UINT ;
 	PIezaAgarrada										: BOOL ;
@@ -436,9 +449,13 @@ VAR_GLOBAL PERSISTENT
 	GestionDescargaCaballete							: Es_LadosCaballete;
 	GestionCargaCaballete								: Es_LadosCaballete;
 	
+	HabilitacionFormacionNueva							: BOOL;
+	
 	FormacionesCalculadas								: BOOL;
 	FormacionPikingCalculada							: BOOL ;
+	HabilitapikingPruevas								: BOOL;
 END_VAR
+
 
 ]]></Declaration>
   </GVL>

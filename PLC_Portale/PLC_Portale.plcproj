@@ -18,11 +18,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Data types" />
+    <Folder Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones" />
     <Folder Include="Data types\AlbertoPruevas\Estructuras" />
     <Folder Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete" />
+    <Folder Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\EstructuraCaballetePiking" />
     <Folder Include="Data types\AlbertoPruevas\Funciones" />
     <Folder Include="Data types\AlbertoPruevas\BloqueFunciones" />
     <Folder Include="Data types\AlbertoPruevas\Enumeraciones" />
+    <Folder Include="Data types\AlbertoPruevas\Funciones\FuncionesFormaciones" />
     <Folder Include="Data types\DatiVari" />
     <Folder Include="Data types\DatiVari\EAP" />
     <Folder Include="Data types\DatiVari\Workorder" />
@@ -82,6 +85,7 @@
     <Folder Include="POUs\TFPalletizerData\NON_USATE" />
     <Folder Include="POUs\TFPalletizerData_Lastre" />
     <Folder Include="POUs\TFPalletizerData_Lastre\Formatura" />
+    <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar" />
     <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\Utility" />
     <Folder Include="POUs\TFPalletizerData_Lastre\Formatura\Utility\CSV read_write in text mode" />
     <Folder Include="POUs\TFGateAccess" />
@@ -99,10 +103,25 @@
     </Folder>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones\Fb_CalculoCoordenadasFinalesFormacion.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones\Fb_CalculoTodo180CoordenadasFinales.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\CalculoFormaciones\Fb_Fb_CalculoTodo0CoordenadasFinales.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\BloqueFunciones\Fb_SensoresTasteggio.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Enumeraciones\E_Ul_RecogidaCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\EstructuraCaballetePiking\ES_DatosPosCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\EstructuraCaballetePiking\Es_PiezasCaballetePiking.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_CoordenadasCaballeteLadoA.TcDUT">
@@ -114,10 +133,13 @@
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_CoordenadasCaballeteLadoB.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\ES_CoordenadasPiezaLadoA_ladoB.TcDUT">
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\ES_dimensionPiezaLadoA_ladoB.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\Es_NumeroPiezasCaballete.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_FormacionCaballete\ES_SpesoreLastra_A_B.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Estructuras\Es_Ingombro_PorPosicion.TcDUT">
@@ -132,7 +154,13 @@
     <Compile Include="Data types\AlbertoPruevas\Estructuras\ProgramaEjecucion.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\FuncionesFormaciones\Fun_CalculoCoordenadasFinalesFormacion.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Data types\AlbertoPruevas\Funciones\FunLadoTrabajoCaballete.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_NumeroPiezasLadoCaballete.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data types\AlbertoPruevas\Funciones\Fun_PiezaLadoCaballete.TcPOU">
@@ -1445,13 +1473,16 @@
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_CompletaNew.TcPOU">
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_24_10_2025.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Backup16_10_25.TcPOU">
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar\Calcolo_Formatura_CompletaNew.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Calcolo_Formatura_Completa_Back.TcPOU">
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar\Calcolo_Formatura_Completa_Back.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\FuncionesFormacionParaquitar\Calcolo_Formatura_Completa_Backup16_10_25.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\TFPalletizerData_Lastre\Formatura\Utility\CSV read_write in text mode\P_TextModeRead.TcPOU">

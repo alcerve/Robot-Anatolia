@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
   <GVL Name="Errori_CalcoloFormatura" Id="{29fc06e3-af6d-4229-858b-1e338dbf21cf}">
     <Declaration><![CDATA[{attribute 'Tc2GvlVarNames'}
 VAR_GLOBAL
@@ -23,7 +23,12 @@ VAR_GLOBAL
 	ErrNumeroMassimoFormatureAmmesse 	: UINT := 115;
 	ErrRipetizioneCodici				: UINT := 116; //Errore in fase di attivazione: se sto attivando una formatura ma ce n'è un'altra attiva con i codici che si vogliono attivare 
 	ErrNessunCodiciPresente				: UINT := 117; //Errore in fase di attivazione: se sto attivando una formatura che non ha nessn codice presente
-
+	ErrDimensionesBundel				: UINT := 118;
+	ErrDimensionCaballete				: UINT := 119 ;
+	
+	ErrDimensionCaballeteWa				: ARRAY [1..10] OF UINT  ;
+	
+	
 END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>

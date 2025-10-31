@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="Fun_CalculoCoordenadasFinalesFormacion" Id="{3f8db5d7-85e7-4ed0-803f-96d110a21ee7}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION Fun_CalculoCoordenadasFinalesFormacion : bool
+VAR_INPUT
+	TipoCalForCavallete 		: UINT ;
+	numeroLastre_int 		: UINT ;
+	Supporto 				: POINTER TO TFMachinePalletizer_Pallet;
+	XFinale 				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	YFinale 				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	YInternoLastra 			: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	ZFinale 				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	ZInternoLastra			: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+	JFinale 				: POINTER TO  ARRAY [1..MAXFORMINGSLAB] OF LREAL;
+END_VAR
+VAR
+	Contador: UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR Contador := 1 TO numeroLastre_int * 2 DO 
+	CASE TipoCalForCavallete OF 
+		1: 
+
+			XFinale^[Contador] := Supporto^.XDim/2 + Supporto^.OFSDE_X180;
+			;
+		2: 
+			;
+		3:
+			;
+		4: 
+			;
+	END_CASE
+	
+END_FOR]]></ST>
+    </Implementation>
+    <LineIds Name="Fun_CalculoCoordenadasFinalesFormacion">
+      <LineId Id="7" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="24" Count="6" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="19" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
